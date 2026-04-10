@@ -31,9 +31,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. User can set model/provider configuration via `.env` and see it applied without code changes.
   2. User can install dependencies and run the service using `uv` commands.
   3. User can observe milestone progress in git history with commits aligned to roadmap phases.
-**Plans**: 1 plan
+**Plans**: 2 plans
 Plans:
 - [x] 01-01-PLAN.md — Enforce typed `.env` startup contract, `uv` verification path, and git checkpoint traceability.
+- [ ] 01-02-PLAN.md — Close CORE-05 run-path gap with uvicorn dependency, service run script, and verification evidence updates.
 
 ### Phase 2: Streaming Chat Contract
 **Goal**: Users can call a chat endpoint and receive streaming responses end-to-end.
@@ -109,7 +110,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Environment & Workflow Baseline | 0/1 | Planned | - |
+| 1. Environment & Workflow Baseline | 0/2 | Planned | - |
 | 2. Streaming Chat Contract | 0/0 | Not started | - |
 | 3. Request-Scoped Agent & Stateless Runtime | 0/0 | Not started | - |
 | 4. Capability Invocation Tracing | 0/0 | Not started | - |

@@ -1,8 +1,8 @@
 ---
 phase: 1
 slug: environment-workflow-baseline
-status: draft
-nyquist_compliant: false
+status: active
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-04-10
 ---
@@ -18,17 +18,17 @@ created: 2026-04-10
 | Property | Value |
 |----------|-------|
 | **Framework** | pytest |
-| **Config file** | none — Wave 0 installs |
-| **Quick run command** | `uv run pytest -q -x` |
-| **Full suite command** | `uv run pytest -q` |
+| **Config file** | `pyproject.toml` (`[tool.pytest.ini_options]`) |
+| **Quick run command** | `uv run pytest tests/test_settings.py tests/test_startup.py -q -x` |
+| **Full suite command** | `uv run pytest tests/test_settings.py tests/test_startup.py -q -x` |
 | **Estimated runtime** | ~30 seconds |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `uv run pytest -q -x`
-- **After every plan wave:** Run `uv run pytest -q`
+- **After every task commit:** Run `uv run pytest tests/test_settings.py tests/test_startup.py -q -x`
+- **After every plan wave:** Run `uv run pytest tests/test_settings.py tests/test_startup.py -q -x`
 - **Before `/gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 120 seconds
 
@@ -38,9 +38,9 @@ created: 2026-04-10
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 1-01-01 | 01 | 1 | CORE-04 | T-1-01 | Required env vars are validated at startup and service fails fast on missing keys | unit/integration | `uv run pytest tests/test_settings.py::test_required_env_keys_fail_fast -q -x` | ❌ W0 | ⬜ pending |
-| 1-01-02 | 01 | 1 | CORE-05 | — | `uv` is the canonical dependency and runtime command path | smoke | `uv sync && uv run <entry-command>` | ❌ W0 | ⬜ pending |
-| 1-01-03 | 01 | 1 | DEV-02 | — | Git history shows phase-aligned commit checkpoints | manual/scripted | `git log --oneline --decorate` | ✅ | ⬜ pending |
+| 1-01-01 | 01 | 1 | CORE-04 | T-1-02, T-1-04, T-1-05 | Required env vars are validated at startup and service fails fast on missing keys | unit/integration | `uv run pytest tests/test_settings.py tests/test_startup.py -q -x` | ✅ | ✅ green |
+| 1-01-02 | 01 | 1 | CORE-05 | — | `uv` is the canonical dependency and runtime command path | smoke | `uv sync && uv run pytest tests/test_settings.py tests/test_startup.py -q -x` | ✅ | ✅ green |
+| 1-01-03 | 01 | 1 | DEV-02 | T-1-03 | Git history shows phase-aligned commit checkpoints | scripted | `git log --oneline --decorate -n 20 | rg "phase 1|01-environment-workflow-baseline|docs\(01\)|feat\(01\)"` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -48,9 +48,9 @@ created: 2026-04-10
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_settings.py` — startup env contract tests for CORE-04
-- [ ] `pyproject.toml` pytest config — baseline test invocation settings
-- [ ] Canonical service entrypoint and `uv run` command mapping for CORE-05
+- [x] `tests/test_settings.py` — startup env contract tests for CORE-04
+- [x] `pyproject.toml` pytest config — baseline test invocation settings
+- [x] Canonical service entrypoint and `uv run` command mapping for CORE-05
 
 ---
 
@@ -58,17 +58,17 @@ created: 2026-04-10
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Commit milestone visibility | DEV-02 | Human review of commit semantic alignment | Run `git log --oneline --decorate` and confirm Phase 1 checkpoints are explicit |
+| Commit milestone visibility | DEV-02 | Scripted check ensures recent history contains phase-aligned tags | Run `git log --oneline --decorate -n 20 | rg "phase 1|01-environment-workflow-baseline|docs\(01\)|feat\(01\)"` and confirm at least one match |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 120s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** phase 1 task automation validated

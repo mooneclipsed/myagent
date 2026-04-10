@@ -64,29 +64,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | — | Pending |
-| CORE-02 | — | Pending |
-| CORE-03 | — | Pending |
-| CORE-04 | — | Pending |
-| CORE-05 | — | Pending |
-| CAP-01 | — | Pending |
-| CAP-02 | — | Pending |
-| CAP-03 | — | Pending |
-| CAP-04 | — | Pending |
-| CAP-05 | — | Pending |
-| RES-01 | — | Pending |
-| RES-02 | — | Pending |
-| RES-03 | — | Pending |
-| RES-04 | — | Pending |
-| RES-05 | — | Pending |
-| DEV-01 | — | Pending |
-| DEV-02 | — | Pending |
-| DEV-03 | — | Pending |
+| CORE-01 | Phase 2 | Pending |
+| CORE-02 | Phase 3 | Pending |
+| CORE-03 | Phase 3 | Pending |
+| CORE-04 | Phase 1 | Pending |
+| CORE-05 | Phase 1 | Pending |
+| CAP-01 | Phase 4 | Pending |
+| CAP-02 | Phase 4 | Pending |
+| CAP-03 | Phase 4 | Pending |
+| CAP-04 | Phase 5 | Pending |
+| CAP-05 | Phase 4 | Pending |
+| RES-01 | Phase 6 | Pending |
+| RES-02 | Phase 7 | Pending |
+| RES-03 | Phase 6 | Pending |
+| RES-04 | Phase 7 | Pending |
+| RES-05 | Phase 8 | Pending |
+| DEV-01 | Phase 8 | Pending |
+| DEV-02 | Phase 1 | Pending |
+| DEV-03 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-10*

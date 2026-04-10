@@ -12,8 +12,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **CORE-01**: User can call a FastAPI chat endpoint and receive streaming responses (SSE) end-to-end.
 - [ ] **CORE-02**: User can create/configure a single request-scoped agent from API-provided config payload.
 - [ ] **CORE-03**: Service keeps runtime near-stateless; request/session state comes from API payload and selected session backend.
-- [ ] **CORE-04**: User can configure model/provider via `.env` without code changes.
-- [ ] **CORE-05**: Project is managed with `uv` for dependency and execution workflows.
+- [x] **CORE-04**: User can configure model/provider via `.env` without code changes.
+- [x] **CORE-05**: Project is managed with `uv` for dependency and execution workflows.
 
 ### Capability Validation
 
@@ -34,7 +34,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Dev Workflow & Traceability
 
 - [ ] **DEV-01**: User can start and validate the service through a documented runnable demo flow.
-- [ ] **DEV-02**: User can track progress through git commits tied to project milestones.
+- [x] **DEV-02**: User can track progress through git commits tied to project milestones.
 - [ ] **DEV-03**: User can run at least one documented example per capability class (skill/tool/MCP/resume).
 
 ## v2 Requirements
@@ -67,8 +67,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORE-01 | Phase 2 | Pending |
 | CORE-02 | Phase 3 | Pending |
 | CORE-03 | Phase 3 | Pending |
-| CORE-04 | Phase 1 | Pending |
-| CORE-05 | Phase 1 | Pending |
+| CORE-04 | Phase 1 | Complete |
+| CORE-05 | Phase 1 | Complete |
 | CAP-01 | Phase 4 | Pending |
 | CAP-02 | Phase 4 | Pending |
 | CAP-03 | Phase 4 | Pending |
@@ -80,7 +80,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RES-04 | Phase 7 | Pending |
 | RES-05 | Phase 8 | Pending |
 | DEV-01 | Phase 8 | Pending |
-| DEV-02 | Phase 1 | Pending |
+| DEV-02 | Phase 1 | Complete |
 | DEV-03 | Phase 8 | Pending |
 
 **Coverage:**

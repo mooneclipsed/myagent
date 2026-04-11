@@ -17,10 +17,13 @@ The platform must provide a stable, repeatable call chain where one chat session
 
 ### Active
 
-- [ ] Build a FastAPI streaming chat API that creates/uses a request-scoped single agent.
 - [ ] Validate skill invocation, tool invocation, MCP invocation, and context management in end-to-end chat flows.
 - [ ] Implement resume/session persistence and recovery using both JSON file storage and Redis storage.
 - [ ] Keep service design as stateless as practical, with runtime context coming from API requests/session backends.
+
+### Validated (Phase 2)
+
+- [x] Build a streaming chat API with SSE endpoint using AgentApp (agentscope-runtime). Validated in Phase 02: Streaming Chat Contract.
 
 ### Out of Scope
 
@@ -70,4 +73,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 after initialization*
+*Last updated: 2026-04-11 after Phase 02 completion*

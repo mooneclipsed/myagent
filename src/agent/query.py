@@ -6,7 +6,7 @@ from agentscope.memory import InMemoryMemory
 from agentscope.model import OpenAIChatModel
 from agentscope.pipeline import stream_printing_messages
 
-from src.core.settings import get_settings
+from src.core.config import AgentConfig, resolve_effective_config
 from src.main import app
 
 
@@ -14,7 +14,11 @@ from src.main import app
 async def chat_query(self, msgs, request=None, **kwargs):
     """Handle chat queries with SSE streaming via agentscope-runtime.
 
-    Creates a fresh agent per request using settings from .env.
+    Creates a fresh agent per request using request-scoped config with
+    .env fallback (D-01, D-02, D-04). Per-request overrides are extracted
+    from request.agent_config when present; otherwise all model config
+    comes from .env defaults.
+
     The @app.query decorator wraps this async generator into SSE events
     automatically, producing the lifecycle:
       response(created) -> response(in_progress) -> message(in_progress)
@@ -24,21 +28,25 @@ async def chat_query(self, msgs, request=None, **kwargs):
     Args:
         self: The AgentApp instance (passed by the decorator).
         msgs: The input messages from the request body (messages array per D-01).
-        request: The raw AgentRequest object (optional, not used in this phase).
+        request: The raw AgentRequest object (optional, may carry agent_config).
         **kwargs: Additional keyword arguments from the framework.
 
     Yields:
         Tuple of (msg, last) where msg is the response chunk and last indicates
         if this is the final chunk in the stream.
     """
-    settings = get_settings()
+    # Extract per-request config override (D-01, D-04)
+    agent_config = None
+    if request and hasattr(request, "agent_config") and request.agent_config:
+        agent_config = AgentConfig(**request.agent_config)
+    config = resolve_effective_config(agent_config)
 
     agent = ReActAgent(
         name="agentops",
         model=OpenAIChatModel(
-            model_name=settings.MODEL_NAME,
-            api_key=settings.MODEL_API_KEY,
-            client_kwargs={"base_url": settings.MODEL_BASE_URL},
+            model_name=config["model_name"],
+            api_key=config["api_key"],
+            client_kwargs={"base_url": config["base_url"]},
             stream=True,
         ),
         sys_prompt="You are a helpful assistant.",

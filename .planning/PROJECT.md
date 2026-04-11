@@ -25,6 +25,10 @@ The platform must provide a stable, repeatable call chain where one chat session
 
 - [x] Build a streaming chat API with SSE endpoint using AgentApp (agentscope-runtime). Validated in Phase 02: Streaming Chat Contract.
 
+### Validated (Phase 6)
+
+- [x] Persist and resume sessions using a JSON-file backend (RES-01, RES-03). Validated in Phase 06: JSON Session Persistence.
+
 ### Out of Scope
 
 - Multi-agent orchestration/routing in v1 — initial target is single-agent chat for faster validation loops.
@@ -73,4 +77,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-11 after Phase 02 completion*
+*Last updated: 2026-04-12 after Phase 06 completion*

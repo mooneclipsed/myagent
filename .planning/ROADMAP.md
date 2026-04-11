@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Streaming Chat Contract** - SSE chat endpoint delivers end-to-end streaming responses. (completed 2026-04-11)
 - [x] **Phase 3: Request-Scoped Agent & Stateless Runtime** - Per-request agent creation with minimal server state. (completed 2026-04-11)
 - [x] **Phase 4: Capability Invocation Tracing** - Skill/tool/MCP calls emit structured trace events. (completed 2026-04-11)
-- [ ] **Phase 5: Context Continuity Validation** - Multi-turn context stays consistent within a session.
+- [x] **Phase 5: Context Continuity Validation** - Multi-turn context stays consistent within a session. (completed 2026-04-12)
 - [ ] **Phase 6: JSON Session Persistence** - Persist and resume sessions via JSON backend.
 - [ ] **Phase 7: Redis Session Persistence** - Persist and resume sessions via Redis backend.
 - [ ] **Phase 8: Parity & Demo Flows** - Parity checks and documented runnable examples.
@@ -84,7 +84,7 @@ Plans:
   2. User can confirm the session retains context across multiple turns without losing earlier messages.
 **Plans**: 1 plan
 Plans:
-- [ ] 05-01-PLAN.md -- Write multi-turn context continuity tests (CAP-04) and Phase 5 verification script.
+- [x] 05-01-PLAN.md -- Write multi-turn context continuity tests (CAP-04) and Phase 5 verification script.
 
 ### Phase 6: JSON Session Persistence
 **Goal**: Users can persist and resume sessions using a JSON-file backend.
@@ -95,8 +95,8 @@ Plans:
   2. User can resume a chat from the persisted JSON session and continue the conversation.
 **Plans**: 2 plans
 Plans:
-- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
-- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
+- [ ] 06-01-PLAN.md -- Create session module, update settings with SESSION_DIR, wire JSONSession load/save into query handler and lifespan.
+- [ ] 06-02-PLAN.md -- Verify session persistence, resume round-trip, and backward compatibility with automated tests and Phase 6 smoke script.
 
 ### Phase 7: Redis Session Persistence
 **Goal**: Users can persist and resume sessions using a Redis backend.
@@ -134,7 +134,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 | 2. Streaming Chat Contract | 2/2 | Complete | 2026-04-11 |
 | 3. Request-Scoped Agent & Stateless Runtime | 2/2 | Complete | 2026-04-11 |
 | 4. Capability Invocation Tracing | 2/2 | Complete | 2026-04-11 |
-| 5. Context Continuity Validation | 0/0 | Not started | - |
-| 6. JSON Session Persistence | 0/0 | Not started | - |
+| 5. Context Continuity Validation | 1/1 | Complete | 2026-04-12 |
+| 6. JSON Session Persistence | 0/2 | Not started | - |
 | 7. Redis Session Persistence | 0/0 | Not started | - |
 | 8. Parity & Demo Flows | 0/0 | Not started | - |

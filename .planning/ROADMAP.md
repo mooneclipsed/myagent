@@ -45,8 +45,8 @@ Plans:
   2. User can repeat the same request and observe the stream completes without server-side state drift.
 **Plans**: 2 plans
 Plans:
-- [x] 02-01-PLAN.md — Replace bare FastAPI with AgentApp, add agentscope-runtime dependency, and register SSE streaming query handler at /process.
-- [x] 02-02-PLAN.md — Verify SSE streaming contract with automated tests (lifecycle, errors, repeat stability) and reproducible smoke script.
+- [x] 02-01-PLAN.md -- Replace bare FastAPI with AgentApp, add agentscope-runtime dependency, and register SSE streaming query handler at /process.
+- [x] 02-02-PLAN.md -- Verify SSE streaming contract with automated tests (lifecycle, errors, repeat stability) and reproducible smoke script.
 
 ### Phase 3: Request-Scoped Agent & Stateless Runtime
 **Goal**: Users can create a per-request agent from API config while keeping the service near-stateless.
@@ -58,7 +58,7 @@ Plans:
   3. User can verify runtime state is sourced from request/session backends rather than in-memory coupling.
 **Plans**: 2 plans
 Plans:
-- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
+- [x] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
 - [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
 
 ### Phase 4: Capability Invocation Tracing
@@ -132,8 +132,8 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Environment & Workflow Baseline | 2/2 | Complete   | 2026-04-11 |
-| 2. Streaming Chat Contract | 0/2 | Planned | - |
-| 3. Request-Scoped Agent & Stateless Runtime | 0/0 | Not started | - |
+| 2. Streaming Chat Contract | 2/2 | Complete | 2026-04-11 |
+| 3. Request-Scoped Agent & Stateless Runtime | 1/2 | In Progress | - |
 | 4. Capability Invocation Tracing | 0/0 | Not started | - |
 | 5. Context Continuity Validation | 0/0 | Not started | - |
 | 6. JSON Session Persistence | 0/0 | Not started | - |

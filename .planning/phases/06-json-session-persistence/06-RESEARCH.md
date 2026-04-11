@@ -352,17 +352,17 @@ async def chat_query(self, msgs, request=None, **kwargs):
 
 **Note:** Most claims are verified by source code inspection and live testing. Only 3 assumptions remain, all LOW risk.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Session save timing in the SSE lifecycle**
+1. **Session save timing in the SSE lifecycle** — RESOLVED by Plan 01 Task 2
    - What we know: The `async for` loop in `chat_query` yields SSE events. After the loop exits, all messages are in memory.
-   - What's unclear: Whether the Runner/framework does anything after the generator returns that might affect the response.
-   - Recommendation: Save after the streaming loop in the handler. The response is already being streamed to the client by the Runner's stream adapter, so the save happens server-side without blocking the client.
+   - What was unclear: Whether the Runner/framework does anything after the generator returns that might affect the response.
+   - Resolution: Save placed after the streaming loop in the handler. The response is already being streamed to the client by the Runner's stream adapter, so the save happens server-side without blocking the client.
 
-2. **session_id presence detection**
+2. **session_id presence detection** — RESOLVED by Plan 01 Task 2
    - What we know: `Runner.stream_query` always sets `request.session_id` to a non-empty UUID.
-   - What's unclear: Whether the handler can distinguish "client sent session_id" from "runner auto-generated it".
-   - Recommendation: The runner's auto-generation means the handler always gets a non-empty session_id. Always attempt session save -- this is correct behavior. If the client didn't send one, a new session file is created with the auto-generated ID. This aligns with D-04/D-08.
+   - What was unclear: Whether the handler can distinguish "client sent session_id" from "runner auto-generated it".
+   - Resolution: Always attempt session save for every request. Runner auto-generates UUID when absent, so handler always sees non-empty session_id. New sessions start with empty memory (identical behavior to stateless flow). This aligns with D-04/D-08.
 
 ## Environment Availability
 

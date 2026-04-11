@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Environment & Workflow Baseline** - Config and tooling ready for reproducible runs. (completed 2026-04-11)
 - [x] **Phase 2: Streaming Chat Contract** - SSE chat endpoint delivers end-to-end streaming responses. (completed 2026-04-11)
 - [x] **Phase 3: Request-Scoped Agent & Stateless Runtime** - Per-request agent creation with minimal server state. (completed 2026-04-11)
-- [ ] **Phase 4: Capability Invocation Tracing** - Skill/tool/MCP calls emit structured trace events.
+- [x] **Phase 4: Capability Invocation Tracing** - Skill/tool/MCP calls emit structured trace events. (completed 2026-04-11)
 - [ ] **Phase 5: Context Continuity Validation** - Multi-turn context stays consistent within a session.
 - [ ] **Phase 6: JSON Session Persistence** - Persist and resume sessions via JSON backend.
 - [ ] **Phase 7: Redis Session Persistence** - Persist and resume sessions via Redis backend.
@@ -72,8 +72,8 @@ Plans:
   4. MCP server subprocess starts at service startup and closes cleanly on shutdown.
 **Plans**: 2 plans
 Plans:
-- [ ] 04-01-PLAN.md -- Register example tool functions and MCP server into shared Toolkit, integrate MCP lifecycle into lifespan, pass toolkit to per-request ReActAgent.
-- [ ] 04-02-PLAN.md -- Verify tool registration, MCP lifecycle, and response format with automated tests and Phase 4 smoke script.
+- [x] 04-01-PLAN.md -- Register example tool functions and MCP server into shared Toolkit, integrate MCP lifecycle into lifespan, pass toolkit to per-request ReActAgent.
+- [x] 04-02-PLAN.md -- Verify tool registration, MCP lifecycle, and response format with automated tests and Phase 4 smoke script.
 
 ### Phase 5: Context Continuity Validation
 **Goal**: Users can verify context continuity across multi-turn chat within a session.
@@ -134,7 +134,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 | 1. Environment & Workflow Baseline | 2/2 | Complete   | 2026-04-11 |
 | 2. Streaming Chat Contract | 2/2 | Complete | 2026-04-11 |
 | 3. Request-Scoped Agent & Stateless Runtime | 2/2 | Complete | 2026-04-11 |
-| 4. Capability Invocation Tracing | 0/2 | Planned | - |
+| 4. Capability Invocation Tracing | 2/2 | Complete | 2026-04-11 |
 | 5. Context Continuity Validation | 0/0 | Not started | - |
 | 6. JSON Session Persistence | 0/0 | Not started | - |
 | 7. Redis Session Persistence | 0/0 | Not started | - |

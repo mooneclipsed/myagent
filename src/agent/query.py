@@ -8,6 +8,7 @@ from agentscope.pipeline import stream_printing_messages
 
 from src.core.config import AgentConfig, resolve_effective_config
 from src.main import app
+from src.tools import toolkit
 
 
 @app.query(framework="agentscope")
@@ -52,6 +53,7 @@ async def chat_query(self, msgs, request=None, **kwargs):
         sys_prompt="You are a helpful assistant.",
         formatter=OpenAIChatFormatter(),
         memory=InMemoryMemory(),
+        toolkit=toolkit,  # Phase 4 D-01/D-02: shared toolkit with registered tools + MCP
     )
     agent.set_console_output_enabled(enabled=False)
 

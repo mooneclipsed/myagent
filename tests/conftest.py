@@ -1,8 +1,22 @@
-"""Shared fixtures for Phase 2 streaming contract tests."""
+"""Shared fixtures for Phase 2+ streaming contract tests."""
 
 import pytest
 from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
+
+from src.tools import _mcp_clients
+
+
+@pytest.fixture(autouse=True)
+def _mock_mcp_client():
+    """Auto-mock MCP client for all tests to avoid subprocess dependency."""
+    _mcp_clients.clear()
+    with patch("src.app.lifespan.StdIOStatefulClient") as MockMCP:
+        mock_client = AsyncMock()
+        mock_client.name = "mock-mcp"
+        MockMCP.return_value = mock_client
+        yield
+    _mcp_clients.clear()
 
 
 @pytest.fixture

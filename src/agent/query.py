@@ -49,8 +49,9 @@ async def chat_query(self, msgs, request=None, **kwargs):
     session_id = None
 
     if request and hasattr(request, "session_id") and request.session_id:
-        session_id = request.session_id
-        if validate_session_id(session_id):
+        raw_session_id = request.session_id
+        if validate_session_id(raw_session_id):
+            session_id = raw_session_id
             await session_backend.load_session_state(
                 session_id=session_id,
                 memory=memory,

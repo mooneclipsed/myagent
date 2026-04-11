@@ -77,6 +77,18 @@ def valid_payload():
 
 
 @pytest.fixture
+def multi_turn_payload():
+    """Multi-turn /process request payload with 3 messages (user-assistant-user)."""
+    return {
+        "input": [
+            {"role": "user", "content": [{"type": "text", "text": "My name is Alice."}]},
+            {"role": "assistant", "content": [{"type": "text", "text": "Hello Alice!"}]},
+            {"role": "user", "content": [{"type": "text", "text": "What is my name?"}]},
+        ]
+    }
+
+
+@pytest.fixture
 def config_override_payload():
     """Payload with agent_config override per D-03."""
     return {

@@ -1,9 +1,9 @@
 ---
-status: testing
+status: diagnosed
 phase: 02-streaming-chat-contract
 source: [02-01-SUMMARY.md, 02-02-SUMMARY.md]
 started: 2026-04-11T17:25:00Z
-updated: 2026-04-11T18:00:00Z
+updated: 2026-04-11T18:05:00Z
 ---
 
 ## Current Test
@@ -69,17 +69,25 @@ blocked: 0
   reason: "User reported: SSE返回status:failed，ReActAgent.__init__() missing 1 required positional argument: 'formatter'"
   severity: blocker
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "src/agent/query.py:35 creates ReActAgent without the required 'formatter' positional argument. agentscope's ReActAgent.__init__() signature requires formatter parameter."
+  artifacts:
+    - path: "src/agent/query.py"
+      issue: "ReActAgent(name='agentops', model=..., sys_prompt=..., memory=...) missing required 'formatter' argument"
+  missing:
+    - "Add formatter argument to ReActAgent constructor - need to research correct formatter type from agentscope API"
   debug_session: ""
 
 - truth: "Full test suite passes without regressions after conftest.py refactor"
   status: failed
-  reason: "User reported: test_missing_MODEL_PROVIDER_raises_validation_error FAIL: DID NOT RAISE — conftest.py fixture order issue"
+  reason: "User reported: test_missing_MODEL_PROVIDER_raises_validation_error FAIL: DID NOT RAISE — .env file provides fallback values after monkeypatch.delenv"
   severity: major
   test: 7
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "Settings uses SettingsConfigDict(env_file='.env', extra='ignore') which reads from BOTH env vars AND .env file. monkeypatch.delenv only removes from env vars, but .env file still has MODEL_PROVIDER, so get_settings() succeeds. The conftest.py refactor didn't account for .env file interference."
+  artifacts:
+    - path: "tests/conftest.py"
+      issue: "configured_env fixture doesn't prevent .env file from providing fallback values"
+    - path: "src/core/settings.py"
+      issue: "SettingsConfigDict(env_file='.env') creates dual-source config"
+  missing:
+    - "Fix configured_env fixture to also override env_file to empty/tmp path, or use monkeypatch to override Settings.model_config"
   debug_session: ""

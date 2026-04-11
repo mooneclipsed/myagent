@@ -12,7 +12,7 @@ This roadmap delivers a stable, repeatable call-chain validation shell by buildi
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Environment & Workflow Baseline** - Config and tooling ready for reproducible runs.
+- [x] **Phase 1: Environment & Workflow Baseline** - Config and tooling ready for reproducible runs. (completed 2026-04-11)
 - [ ] **Phase 2: Streaming Chat Contract** - SSE chat endpoint delivers end-to-end streaming responses.
 - [ ] **Phase 3: Request-Scoped Agent & Stateless Runtime** - Per-request agent creation with minimal server state.
 - [ ] **Phase 4: Capability Invocation Tracing** - Skill/tool/MCP calls emit structured trace events.
@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 Plans:
 - [x] 01-01-PLAN.md — Enforce typed `.env` startup contract, `uv` verification path, and git checkpoint traceability.
-- [ ] 01-02-PLAN.md — Close CORE-05 run-path gap with uvicorn dependency, service run script, and verification evidence updates.
+- [x] 01-02-PLAN.md — Close CORE-05 run-path gap with uvicorn dependency, service run script, and verification evidence updates.
 
 ### Phase 2: Streaming Chat Contract
 **Goal**: Users can call a chat endpoint and receive streaming responses end-to-end.
@@ -110,7 +110,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Environment & Workflow Baseline | 0/2 | Planned | - |
+| 1. Environment & Workflow Baseline | 2/2 | Complete   | 2026-04-11 |
 | 2. Streaming Chat Contract | 0/0 | Not started | - |
 | 3. Request-Scoped Agent & Stateless Runtime | 0/0 | Not started | - |
 | 4. Capability Invocation Tracing | 0/0 | Not started | - |

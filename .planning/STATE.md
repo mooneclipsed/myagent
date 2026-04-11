@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-04-10T11:15:57.351Z"
-last_activity: 2026-04-10 -- Phase 01 planning complete
+status: verifying
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-04-11T06:21:59.429Z"
+last_activity: 2026-04-11
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -25,26 +25,26 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 
 ## Current Position
 
-Phase: 01 (environment-workflow-baseline) — EXECUTING
-Plan: 1 of 1
-Status: Ready to execute
-Last activity: 2026-04-10 -- Phase 01 planning complete
+Phase: 01 (environment-workflow-baseline) — READY FOR VERIFICATION
+Plan: 2 of 2
+Status: Phase complete — ready for verification
+Last activity: 2026-04-11
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: 0 min
-- Total execution time: 0.0 hours
+- Total plans completed: 2
+- Average duration: 9 min
+- Total execution time: 0.3 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 2 | 18 min | 9 min |
 
 **Recent Trend:**
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 3 min | 3 tasks | 10 files |
+| Phase 01 P02 | 15min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,9 @@ Recent decisions affecting current work:
 - [Phase 01]: Use pydantic-settings required MODEL_* fields with .env binding — Enforces strict startup configuration contract and clear missing-key validation errors.
 - [Phase 01]: Validate settings in FastAPI lifespan using cached singleton — Guarantees fail-fast startup and prevents per-request .env reloading.
 - [Phase 01]: Standardize phase verification on uv sync, targeted pytest, and scripted git grep — Provides one-command reproducibility and explicit DEV-02 checkpoint visibility.
+- [Phase 01]: Use scripts/run_service.sh as the canonical uv run service entrypoint. — Gives Phase 1 a single executable startup path aligned with CORE-05.
+- [Phase 01]: Run the service smoke check with isolated env values. — Proves bootability without mutating local .env or weakening fail-fast startup validation.
+- [Phase 01]: Preserve exact command validation with an rg fallback. — Keeps verification portable across shells while retaining the plan’s exact command evidence.
 
 ### Pending Todos
 
@@ -81,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-10T10:51:56.820Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-04-11T06:18:27.248Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None

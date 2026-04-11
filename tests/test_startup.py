@@ -1,31 +1,6 @@
 import pytest
 
-
-@pytest.fixture
-def configured_env(monkeypatch):
-    monkeypatch.setenv("MODEL_PROVIDER", "openai")
-    monkeypatch.setenv("MODEL_NAME", "gpt-4o-mini")
-    monkeypatch.setenv("MODEL_API_KEY", "test-key")
-    monkeypatch.setenv("MODEL_BASE_URL", "https://api.example.com/v1")
-
-
-@pytest.fixture
-def clear_settings_cache():
-    try:
-        from src.core.settings import get_settings
-
-        get_settings.cache_clear()
-    except Exception:
-        pass
-
-    yield
-
-    try:
-        from src.core.settings import get_settings
-
-        get_settings.cache_clear()
-    except Exception:
-        pass
+# Fixtures configured_env and clear_settings_cache are provided by conftest.py
 
 
 def test_startup_fails_when_MODEL_PROVIDER_missing(configured_env, clear_settings_cache, monkeypatch):

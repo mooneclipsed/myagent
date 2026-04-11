@@ -1,38 +1,6 @@
 import pytest
 
-REQUIRED_ENV_KEYS = (
-    "MODEL_PROVIDER",
-    "MODEL_NAME",
-    "MODEL_API_KEY",
-    "MODEL_BASE_URL",
-)
-
-
-@pytest.fixture
-def configured_env(monkeypatch):
-    monkeypatch.setenv("MODEL_PROVIDER", "openai")
-    monkeypatch.setenv("MODEL_NAME", "gpt-4o-mini")
-    monkeypatch.setenv("MODEL_API_KEY", "test-key")
-    monkeypatch.setenv("MODEL_BASE_URL", "https://api.example.com/v1")
-
-
-@pytest.fixture
-def clear_settings_cache():
-    try:
-        from src.core.settings import get_settings
-
-        get_settings.cache_clear()
-    except Exception:
-        pass
-
-    yield
-
-    try:
-        from src.core.settings import get_settings
-
-        get_settings.cache_clear()
-    except Exception:
-        pass
+# Fixtures configured_env and clear_settings_cache are provided by conftest.py
 
 
 def test_missing_MODEL_PROVIDER_raises_validation_error(configured_env, clear_settings_cache, monkeypatch):
@@ -87,9 +55,9 @@ def test_get_settings_loads_values_once_with_all_required_keys(configured_env, c
 
     assert settings_first is settings_second
     assert settings_first.MODEL_PROVIDER == "openai"
-    assert settings_first.MODEL_NAME == "gpt-4o-mini"
+    assert settings_first.MODEL_NAME == "test-model"
     assert settings_first.MODEL_API_KEY == "test-key"
-    assert settings_first.MODEL_BASE_URL == "https://api.example.com/v1"
+    assert settings_first.MODEL_BASE_URL == "http://localhost:9999/v1"
 
 
 def test_settings_loading_does_not_require_env_example_file(configured_env, clear_settings_cache, tmp_path, monkeypatch):

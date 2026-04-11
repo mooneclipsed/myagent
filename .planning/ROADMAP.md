@@ -56,7 +56,10 @@ Plans:
   1. User can submit an API config payload and see a request-scoped agent created for that request.
   2. User can make a second request with different config and see the new config applied without server restart.
   3. User can verify runtime state is sourced from request/session backends rather than in-memory coupling.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
+- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
 
 ### Phase 4: Capability Invocation Tracing
 **Goal**: Users can trigger skill/tool/MCP calls and inspect structured call-chain traces.
@@ -67,7 +70,10 @@ Plans:
   2. User can run a chat that triggers a tool call and see structured invocation, result, and error events.
   3. User can run a chat that triggers an MCP call and see structured request and response events.
   4. User can retrieve a run trace with ordered steps and a run correlation ID.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
+- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
 
 ### Phase 5: Context Continuity Validation
 **Goal**: Users can verify context continuity across multi-turn chat within a session.
@@ -76,7 +82,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. User can carry a multi-turn conversation and observe prior turns influencing later responses.
   2. User can confirm the session retains context across multiple turns without losing earlier messages.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
+- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
 
 ### Phase 6: JSON Session Persistence
 **Goal**: Users can persist and resume sessions using a JSON-file backend.
@@ -85,7 +94,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. User can persist a session to the JSON backend and confirm the session state is stored.
   2. User can resume a chat from the persisted JSON session and continue the conversation.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
+- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
 
 ### Phase 7: Redis Session Persistence
 **Goal**: Users can persist and resume sessions using a Redis backend.
@@ -94,7 +106,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. User can persist a session to Redis and confirm the session state is stored.
   2. User can resume a chat from the persisted Redis session and continue the conversation.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
+- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
 
 ### Phase 8: Parity & Demo Flows
 **Goal**: Users can validate parity across JSON/Redis and run documented examples for all capabilities.
@@ -104,7 +119,10 @@ Plans:
   1. User can run the same core flow against JSON and Redis backends and observe consistent resume behavior.
   2. User can follow a documented demo flow to start and validate the service end-to-end.
   3. User can run documented examples for skill, tool, MCP, and resume capabilities.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
+- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
 
 ## Progress
 

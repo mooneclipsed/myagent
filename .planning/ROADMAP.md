@@ -95,8 +95,8 @@ Plans:
   2. User can resume a chat from the persisted JSON session and continue the conversation.
 **Plans**: 2 plans
 Plans:
-- [ ] 06-01-PLAN.md -- Create session module, update settings with SESSION_DIR, wire JSONSession load/save into query handler and lifespan.
-- [ ] 06-02-PLAN.md -- Verify session persistence, resume round-trip, and backward compatibility with automated tests and Phase 6 smoke script.
+- [x] 06-01-PLAN.md -- Create session module, update settings with SESSION_DIR, wire JSONSession load/save into query handler and lifespan.
+- [x] 06-02-PLAN.md -- Verify session persistence, resume round-trip, and backward compatibility with automated tests and Phase 6 smoke script.
 
 ### Phase 7: Redis Session Persistence
 **Goal**: Users can persist and resume sessions using a Redis backend.

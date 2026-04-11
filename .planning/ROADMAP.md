@@ -82,10 +82,9 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. User can carry a multi-turn conversation and observe prior turns influencing later responses.
   2. User can confirm the session retains context across multiple turns without losing earlier messages.
-**Plans**: 2 plans
+**Plans**: 1 plan
 Plans:
-- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
-- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
+- [ ] 05-01-PLAN.md -- Write multi-turn context continuity tests (CAP-04) and Phase 5 verification script.
 
 ### Phase 6: JSON Session Persistence
 **Goal**: Users can persist and resume sessions using a JSON-file backend.

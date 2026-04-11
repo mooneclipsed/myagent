@@ -60,3 +60,21 @@ def valid_payload():
             }
         ]
     }
+
+
+@pytest.fixture
+def config_override_payload():
+    """Payload with agent_config override per D-03."""
+    return {
+        "input": [
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "Hello, reply with one word."}],
+            }
+        ],
+        "agent_config": {
+            "model_name": "gpt-4o",
+            "api_key": "sk-override-key",
+            "base_url": "http://custom-api.example.com/v1",
+        },
+    }

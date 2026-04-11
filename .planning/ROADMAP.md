@@ -45,8 +45,8 @@ Plans:
   2. User can repeat the same request and observe the stream completes without server-side state drift.
 **Plans**: 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Replace bare FastAPI with AgentApp, add agentscope-runtime dependency, and register SSE streaming query handler at /process.
-- [ ] 02-02-PLAN.md — Verify SSE streaming contract with automated tests (lifecycle, errors, repeat stability) and reproducible smoke script.
+- [x] 02-01-PLAN.md — Replace bare FastAPI with AgentApp, add agentscope-runtime dependency, and register SSE streaming query handler at /process.
+- [x] 02-02-PLAN.md — Verify SSE streaming contract with automated tests (lifecycle, errors, repeat stability) and reproducible smoke script.
 
 ### Phase 3: Request-Scoped Agent & Stateless Runtime
 **Goal**: Users can create a per-request agent from API config while keeping the service near-stateless.

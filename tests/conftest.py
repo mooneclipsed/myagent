@@ -7,11 +7,19 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def configured_env(monkeypatch):
-    """Set required env vars for settings loading."""
+    """Set required env vars for settings loading and disable .env file."""
     monkeypatch.setenv("MODEL_PROVIDER", "openai")
     monkeypatch.setenv("MODEL_NAME", "test-model")
     monkeypatch.setenv("MODEL_API_KEY", "test-key")
     monkeypatch.setenv("MODEL_BASE_URL", "http://localhost:9999/v1")
+    # Prevent .env file from providing fallback values during tests
+    from src.core.settings import Settings
+
+    monkeypatch.setattr(
+        Settings,
+        "model_config",
+        {**Settings.model_config, "env_file": None},
+    )
 
 
 @pytest.fixture

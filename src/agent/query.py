@@ -1,6 +1,7 @@
 """Streaming query handler for the AgentApp /process endpoint."""
 
 from agentscope.agent import ReActAgent
+from agentscope.formatter import OpenAIChatFormatter
 from agentscope.memory import InMemoryMemory
 from agentscope.model import OpenAIChatModel
 from agentscope.pipeline import stream_printing_messages
@@ -41,6 +42,7 @@ async def chat_query(self, msgs, request=None, **kwargs):
             stream=True,
         ),
         sys_prompt="You are a helpful assistant.",
+        formatter=OpenAIChatFormatter(),
         memory=InMemoryMemory(),
     )
     agent.set_console_output_enabled(enabled=False)

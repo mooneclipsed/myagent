@@ -9,9 +9,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Runtime Core
 
-- [ ] **CORE-01**: User can call a FastAPI chat endpoint and receive streaming responses (SSE) end-to-end.
-- [ ] **CORE-02**: User can create/configure a single request-scoped agent from API-provided config payload.
-- [ ] **CORE-03**: Service keeps runtime near-stateless; request/session state comes from API payload and selected session backend.
+- [x] **CORE-01**: User can call a FastAPI chat endpoint and receive streaming responses (SSE) end-to-end.
+- [x] **CORE-02**: User can create/configure a single request-scoped agent from API-provided config payload.
+- [x] **CORE-03**: Service keeps runtime near-stateless; request/session state comes from API payload and selected session backend.
 - [x] **CORE-04**: User can configure model/provider via `.env` without code changes.
 - [x] **CORE-05**: Project is managed with `uv` for dependency and execution workflows.
 
@@ -64,9 +64,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 2 | Pending |
-| CORE-02 | Phase 3 | Pending |
-| CORE-03 | Phase 3 | Pending |
+| CORE-01 | Phase 2 | Complete |
+| CORE-02 | Phase 3 | Complete |
+| CORE-03 | Phase 3 | Complete |
 | CORE-04 | Phase 1 | Complete |
 | CORE-05 | Phase 1 | Complete |
 | CAP-01 | Phase 4 | Pending |
@@ -90,4 +90,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-04-10*
-*Last updated: 2026-04-10 after initial definition*
+*Last updated: 2026-04-11 after Phase 3 completion*

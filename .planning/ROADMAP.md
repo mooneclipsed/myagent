@@ -13,8 +13,8 @@ This roadmap delivers a stable, repeatable call-chain validation shell by buildi
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Environment & Workflow Baseline** - Config and tooling ready for reproducible runs. (completed 2026-04-11)
-- [ ] **Phase 2: Streaming Chat Contract** - SSE chat endpoint delivers end-to-end streaming responses.
-- [ ] **Phase 3: Request-Scoped Agent & Stateless Runtime** - Per-request agent creation with minimal server state.
+- [x] **Phase 2: Streaming Chat Contract** - SSE chat endpoint delivers end-to-end streaming responses. (completed 2026-04-11)
+- [x] **Phase 3: Request-Scoped Agent & Stateless Runtime** - Per-request agent creation with minimal server state. (completed 2026-04-11)
 - [ ] **Phase 4: Capability Invocation Tracing** - Skill/tool/MCP calls emit structured trace events.
 - [ ] **Phase 5: Context Continuity Validation** - Multi-turn context stays consistent within a session.
 - [ ] **Phase 6: JSON Session Persistence** - Persist and resume sessions via JSON backend.
@@ -59,7 +59,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
-- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
+- [x] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
 
 ### Phase 4: Capability Invocation Tracing
 **Goal**: Users can trigger skill/tool/MCP calls and inspect structured call-chain traces.
@@ -133,7 +133,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 |-------|----------------|--------|-----------|
 | 1. Environment & Workflow Baseline | 2/2 | Complete   | 2026-04-11 |
 | 2. Streaming Chat Contract | 2/2 | Complete | 2026-04-11 |
-| 3. Request-Scoped Agent & Stateless Runtime | 1/2 | In Progress | - |
+| 3. Request-Scoped Agent & Stateless Runtime | 2/2 | Complete | 2026-04-11 |
 | 4. Capability Invocation Tracing | 0/0 | Not started | - |
 | 5. Context Continuity Validation | 0/0 | Not started | - |
 | 6. JSON Session Persistence | 0/0 | Not started | - |

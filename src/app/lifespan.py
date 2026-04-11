@@ -1,6 +1,7 @@
 """FastAPI lifespan hook for startup validation and MCP client lifecycle."""
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from agentscope.mcp import StdIOStatefulClient
@@ -15,7 +16,12 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def app_lifespan(_: FastAPI):
     # Existing: validate settings at startup (fail-fast)
-    get_settings()
+    settings = get_settings()
+
+    # Phase 6 D-09: Ensure session directory exists at startup
+    session_dir = settings.SESSION_DIR
+    os.makedirs(session_dir, exist_ok=True)
+    logger.info("Session directory ready: %s", session_dir)
 
     # Phase 4 D-05: Connect local MCP server at startup
     mcp_client = StdIOStatefulClient(

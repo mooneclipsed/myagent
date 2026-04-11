@@ -6,6 +6,7 @@ from agentscope.memory import InMemoryMemory
 from agentscope.model import OpenAIChatModel
 from agentscope.pipeline import stream_printing_messages
 
+from src.agent.session import get_session_backend, validate_session_id
 from src.core.config import AgentConfig, resolve_effective_config
 from src.main import app
 from src.tools import toolkit
@@ -13,12 +14,12 @@ from src.tools import toolkit
 
 @app.query(framework="agentscope")
 async def chat_query(self, msgs, request=None, **kwargs):
-    """Handle chat queries with SSE streaming via agentscope-runtime.
+    """Handle chat queries with SSE streaming and optional session persistence.
 
-    Creates a fresh agent per request using request-scoped config with
-    .env fallback (D-01, D-02, D-04). Per-request overrides are extracted
-    from request.agent_config when present; otherwise all model config
-    comes from .env defaults.
+    Creates a fresh agent per request (D-07). When session_id is present,
+    loads prior memory state before agent creation and saves updated memory
+    after streaming completes (D-08). When session_id is absent, behavior
+    is identical to Phase 5 (backward compatible, D-05).
 
     The @app.query decorator wraps this async generator into SSE events
     automatically, producing the lifecycle:
@@ -42,6 +43,19 @@ async def chat_query(self, msgs, request=None, **kwargs):
         agent_config = AgentConfig(**request.agent_config)
     config = resolve_effective_config(agent_config)
 
+    # Session-aware memory (D-01, D-04, D-07)
+    session_backend = get_session_backend()
+    memory = InMemoryMemory()
+    session_id = None
+
+    if request and hasattr(request, "session_id") and request.session_id:
+        session_id = request.session_id
+        if validate_session_id(session_id):
+            await session_backend.load_session_state(
+                session_id=session_id,
+                memory=memory,
+            )
+
     agent = ReActAgent(
         name="agentops",
         model=OpenAIChatModel(
@@ -52,7 +66,7 @@ async def chat_query(self, msgs, request=None, **kwargs):
         ),
         sys_prompt="You are a helpful assistant.",
         formatter=OpenAIChatFormatter(),
-        memory=InMemoryMemory(),
+        memory=memory,
         toolkit=toolkit,  # Phase 4 D-01/D-02: shared toolkit with registered tools + MCP
     )
     agent.set_console_output_enabled(enabled=False)
@@ -62,3 +76,10 @@ async def chat_query(self, msgs, request=None, **kwargs):
         coroutine_task=agent(msgs),
     ):
         yield msg, last
+
+    # Save updated memory after streaming completes (D-08)
+    if session_id:
+        await session_backend.save_session_state(
+            session_id=session_id,
+            memory=agent.memory,
+        )

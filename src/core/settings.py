@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     MODEL_NAME: str
     MODEL_API_KEY: str
     MODEL_BASE_URL: str
+    SESSION_DIR: str = "./sessions"
 
 
 @lru_cache(maxsize=1)

@@ -19,8 +19,8 @@ created: 2026-04-10
 |----------|-------|
 | **Framework** | pytest |
 | **Config file** | `pyproject.toml` (`[tool.pytest.ini_options]`) |
-| **Quick run command** | `uv run pytest tests/test_settings.py tests/test_startup.py -q -x` |
-| **Full suite command** | `uv run pytest tests/test_settings.py tests/test_startup.py -q -x` |
+| **Quick run command** | `bash scripts/verify_phase1.sh` |
+| **Full suite command** | `bash scripts/verify_phase1.sh` |
 | **Estimated runtime** | ~30 seconds |
 
 ---
@@ -28,7 +28,7 @@ created: 2026-04-10
 ## Sampling Rate
 
 - **After every task commit:** Run `uv run pytest tests/test_settings.py tests/test_startup.py -q -x`
-- **After every plan wave:** Run `uv run pytest tests/test_settings.py tests/test_startup.py -q -x`
+- **After every plan wave:** Run `bash scripts/verify_phase1.sh`
 - **Before `/gsd-verify-work`:** Full suite must be green
 - **Max feedback latency:** 120 seconds
 
@@ -39,8 +39,8 @@ created: 2026-04-10
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 1-01-01 | 01 | 1 | CORE-04 | T-1-02, T-1-04, T-1-05 | Required env vars are validated at startup and service fails fast on missing keys | unit/integration | `uv run pytest tests/test_settings.py tests/test_startup.py -q -x` | ✅ | ✅ green |
-| 1-01-02 | 01 | 1 | CORE-05 | — | `uv` is the canonical dependency and runtime command path | smoke | `uv sync && uv run pytest tests/test_settings.py tests/test_startup.py -q -x` | ✅ | ✅ green |
-| 1-01-03 | 01 | 1 | DEV-02 | T-1-03 | Git history shows phase-aligned commit checkpoints | scripted | `git log --oneline --decorate -n 20 | rg "phase 1|01-environment-workflow-baseline|docs\(01\)|feat\(01\)"` | ✅ | ✅ green |
+| 1-01-02 | 01 | 2 | CORE-05 | T-01-02-01, T-01-02-02, T-01-02-03 | `uv run uvicorn src.main:app --host 127.0.0.1 --port 8000` is the canonical runtime command, and the service boot check starts a bounded app process without exposing secrets | smoke | `bash scripts/verify_phase1.sh` | ✅ | ✅ green |
+| 1-01-03 | 01 | 1 | DEV-02 | T-1-03 | Git history shows phase-aligned commit checkpoints | scripted | `git log --oneline --decorate -n 20 | grep -E "phase 1|01-environment-workflow-baseline|docs\(01\)|feat\(01\)"` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -58,7 +58,7 @@ created: 2026-04-10
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Commit milestone visibility | DEV-02 | Scripted check ensures recent history contains phase-aligned tags | Run `git log --oneline --decorate -n 20 | rg "phase 1|01-environment-workflow-baseline|docs\(01\)|feat\(01\)"` and confirm at least one match |
+| Commit milestone visibility | DEV-02 | Scripted check ensures recent history contains phase-aligned tags | Run `git log --oneline --decorate -n 20 | grep -E "phase 1|01-environment-workflow-baseline|docs\(01\)|feat\(01\)"` and confirm at least one match |
 
 ---
 

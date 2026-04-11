@@ -1,4 +1,5 @@
 <!-- GSD:project-start source:PROJECT.md -->
+用中文对话,文档生成用英文
 ## Project
 
 **AgentScope Skill/Tool/MCP Validation Platform**

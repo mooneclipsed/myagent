@@ -62,18 +62,18 @@ Plans:
 - [x] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
 
 ### Phase 4: Capability Invocation Tracing
-**Goal**: Users can trigger skill/tool/MCP calls and inspect structured call-chain traces.
+**Goal**: Users can trigger tool and MCP calls through chat and confirm the calls execute (visible in agent responses). Structured tracing (CAP-05, observe structured events) deferred to future phase per D-06/D-07.
 **Depends on**: Phase 3
 **Requirements**: CAP-01, CAP-02, CAP-03, CAP-05
 **Success Criteria** (what must be TRUE):
-  1. User can run a chat that triggers a skill call and see structured invocation and result events.
-  2. User can run a chat that triggers a tool call and see structured invocation, result, and error events.
-  3. User can run a chat that triggers an MCP call and see structured request and response events.
-  4. User can retrieve a run trace with ordered steps and a run correlation ID.
+  1. User can trigger a tool call through chat and see the tool result in the agent response.
+  2. User can trigger an MCP call through chat and see the MCP tool result in the agent response.
+  3. Tool functions are registered at startup and shared across all requests.
+  4. MCP server subprocess starts at service startup and closes cleanly on shutdown.
 **Plans**: 2 plans
 Plans:
-- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
-- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
+- [ ] 04-01-PLAN.md -- Register example tool functions and MCP server into shared Toolkit, integrate MCP lifecycle into lifespan, pass toolkit to per-request ReActAgent.
+- [ ] 04-02-PLAN.md -- Verify tool registration, MCP lifecycle, and response format with automated tests and Phase 4 smoke script.
 
 ### Phase 5: Context Continuity Validation
 **Goal**: Users can verify context continuity across multi-turn chat within a session.
@@ -134,7 +134,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 | 1. Environment & Workflow Baseline | 2/2 | Complete   | 2026-04-11 |
 | 2. Streaming Chat Contract | 2/2 | Complete | 2026-04-11 |
 | 3. Request-Scoped Agent & Stateless Runtime | 2/2 | Complete | 2026-04-11 |
-| 4. Capability Invocation Tracing | 0/0 | Not started | - |
+| 4. Capability Invocation Tracing | 0/2 | Planned | - |
 | 5. Context Continuity Validation | 0/0 | Not started | - |
 | 6. JSON Session Persistence | 0/0 | Not started | - |
 | 7. Redis Session Persistence | 0/0 | Not started | - |

@@ -118,9 +118,10 @@ Plans:
   1. User can run the same core flow against JSON and Redis backends and observe consistent resume behavior.
   2. User can follow a documented demo flow to start and validate the service end-to-end.
   3. User can run documented examples for skill, tool, MCP, and resume capabilities.
-**Plans**: [To be planned]
+**Plans**: 2 plans
 Plans:
-- [ ] (to be planned)
+- [ ] 08-01-PLAN.md — Register example skill, create RES-05 parity test for JSON/Redis session backend consistency.
+- [ ] 08-02-PLAN.md — Create demo scripts for all capability classes and update README.md as unified getting-started guide.
 
 ## Progress
 
@@ -136,4 +137,4 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 | 5. Context Continuity Validation | 1/1 | Complete | 2026-04-12 |
 | 6. JSON Session Persistence | 0/2 | Not started | - |
 | 7. Redis Session Persistence | 0/0 | Not started | - |
-| 8. Parity & Demo Flows | 0/0 | Not started | - |
+| 8. Parity & Demo Flows | 0/2 | Not started | - |

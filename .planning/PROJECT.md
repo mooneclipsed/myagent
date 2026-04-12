@@ -17,8 +17,6 @@ The platform must provide a stable, repeatable call chain where one chat session
 
 ### Active
 
-- [ ] Validate skill invocation, tool invocation, MCP invocation, and context management in end-to-end chat flows.
-- [ ] Implement resume/session persistence and recovery using both JSON file storage and Redis storage.
 - [ ] Keep service design as stateless as practical, with runtime context coming from API requests/session backends.
 
 ### Validated (Phase 2)
@@ -32,6 +30,11 @@ The platform must provide a stable, repeatable call chain where one chat session
 ### Validated (Phase 7)
 
 - [x] Persist and resume sessions using a Redis backend (RES-02, RES-04). Validated in Phase 07: Redis Session Persistence.
+
+### Validated (Phase 8)
+
+- [x] Validate JSON/Redis resume behavior consistency (RES-05). Validated in Phase 08: Parity & Demo Flows.
+- [x] Documented runnable demo flow for all capabilities (DEV-01, DEV-03). Validated in Phase 08: Parity & Demo Flows.
 
 ### Out of Scope
 
@@ -81,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-12 after Phase 07 completion*
+*Last updated: 2026-04-12 after Phase 08 completion*

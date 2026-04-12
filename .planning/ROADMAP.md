@@ -107,8 +107,8 @@ Plans:
   2. User can resume a chat from the persisted Redis session and continue the conversation.
 **Plans**: 2 plans
 Plans:
-- [ ] 07-01-PLAN.md -- Add Redis settings, extend session factory for JSONSession/RedisSession, add lifespan health check.
-- [ ] 07-02-PLAN.md -- Verify Redis session persistence with automated tests and Phase 7 verification script.
+- [x] 07-01-PLAN.md -- Add Redis settings, extend session factory for JSONSession/RedisSession, add lifespan health check.
+- [x] 07-02-PLAN.md -- Verify Redis session persistence with automated tests and Phase 7 verification script.
 
 ### Phase 8: Parity & Demo Flows
 **Goal**: Users can validate parity across JSON/Redis and run documented examples for all capabilities.

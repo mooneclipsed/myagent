@@ -120,8 +120,8 @@ Plans:
   3. User can run documented examples for skill, tool, MCP, and resume capabilities.
 **Plans**: 2 plans
 Plans:
-- [ ] 08-01-PLAN.md — Register example skill, create RES-05 parity test for JSON/Redis session backend consistency.
-- [ ] 08-02-PLAN.md — Create demo scripts for all capability classes and update README.md as unified getting-started guide.
+- [x] 08-01-PLAN.md — Register example skill, create RES-05 parity test for JSON/Redis session backend consistency.
+- [x] 08-02-PLAN.md — Create demo scripts for all capability classes and update README.md as unified getting-started guide.
 
 ## Progress
 

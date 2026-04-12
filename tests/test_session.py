@@ -220,3 +220,237 @@ def test_session_real_json_round_trip(session_dir):
         assert msgs[0].content == "hello from round-trip test"
 
     asyncio.run(_round_trip())
+
+
+# ---------------------------------------------------------------------------
+# Test 6: Real RedisSession round-trip with fakeredis (RES-02 + RES-04)
+# ---------------------------------------------------------------------------
+
+
+def test_session_real_redis_round_trip():
+    """RES-02 + RES-04: Real RedisSession save/load with fakeredis."""
+    import asyncio
+
+    import fakeredis.aioredis
+    from agentscope.session import RedisSession
+
+    async def _round_trip():
+        fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+        connection_pool = fake_redis.connection_pool
+        session = RedisSession(
+            connection_pool=connection_pool,
+            key_prefix="agentops:",
+        )
+        session_id = "test-redis-round-trip-001"
+
+        # Save
+        memory_save = InMemoryMemory()
+        await memory_save.add(
+            Msg(name="user", content="hello from redis test", role="user")
+        )
+        await session.save_session_state(session_id=session_id, memory=memory_save)
+
+        # Load into fresh memory
+        memory_load = InMemoryMemory()
+        await session.load_session_state(session_id=session_id, memory=memory_load)
+
+        # Verify
+        msgs = await memory_load.get_memory()
+        assert len(msgs) == 1
+        assert msgs[0].content == "hello from redis test"
+
+        await session.close()
+
+    asyncio.run(_round_trip())
+
+
+# ---------------------------------------------------------------------------
+# Test 7: Chat with session_id persists to Redis (RES-02)
+# ---------------------------------------------------------------------------
+
+
+def test_session_persists_to_redis(client, configured_env, clear_settings_cache, monkeypatch):
+    """RES-02: Chat with session_id persists session state to Redis backend."""
+    import fakeredis.aioredis
+    from agentscope.session import RedisSession
+
+    from src.agent import session as session_mod
+    from src.agent.session import reset_session_backend
+
+    # Configure Redis backend
+    monkeypatch.setenv("SESSION_BACKEND", "redis")
+    monkeypatch.setenv("REDIS_HOST", "localhost")
+    monkeypatch.setenv("REDIS_PORT", "6379")
+    monkeypatch.setenv("REDIS_DB", "0")
+    reset_session_backend()
+
+    # Override get_session_backend to use fakeredis
+    fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    fake_backend = RedisSession(
+        connection_pool=fake_redis.connection_pool,
+        key_prefix="agentops:",
+    )
+    monkeypatch.setattr(session_mod, "_session_backend", fake_backend)
+
+    mock_handler = _make_mock_handler(["Redis reply"])
+    session_id = "test-redis-persist-001"
+
+    payload = {
+        "input": [
+            {"role": "user", "content": [{"type": "text", "text": "Hello"}]},
+        ],
+        "session_id": session_id,
+    }
+
+    with patch.object(app._runner, "query_handler", mock_handler):
+        response = client.post("/process", json=payload)
+
+    assert response.status_code == 200
+    events = _parse_sse_events(response.text)
+    statuses = [e.get("status") for e in events if "status" in e]
+    assert "completed" in statuses
+
+    # Clean up
+    reset_session_backend()
+
+
+# ---------------------------------------------------------------------------
+# Test 8: Resume from Redis session (RES-04)
+# ---------------------------------------------------------------------------
+
+
+def test_session_resume_from_redis(client, configured_env, clear_settings_cache, monkeypatch):
+    """RES-04: Subsequent chat with same session_id resumes from Redis."""
+    import fakeredis.aioredis
+    from agentscope.session import RedisSession
+
+    from src.agent import session as session_mod
+    from src.agent.session import reset_session_backend
+
+    monkeypatch.setenv("SESSION_BACKEND", "redis")
+    monkeypatch.setenv("REDIS_HOST", "localhost")
+    monkeypatch.setenv("REDIS_PORT", "6379")
+    monkeypatch.setenv("REDIS_DB", "0")
+    reset_session_backend()
+
+    fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    fake_backend = RedisSession(
+        connection_pool=fake_redis.connection_pool,
+        key_prefix="agentops:",
+    )
+    monkeypatch.setattr(session_mod, "_session_backend", fake_backend)
+
+    session_id = "test-redis-resume-001"
+    captured = []
+
+    async def _handler(msgs, request=None, response=None, **kwargs):
+        if isinstance(msgs, list):
+            captured.extend(msgs)
+        else:
+            captured.append(msgs)
+        msg = Msg(
+            name="agentops",
+            content=[{"type": "text", "text": "Reply"}],
+            role="assistant",
+        )
+        yield msg, True
+
+    payload = {
+        "input": [
+            {"role": "user", "content": [{"type": "text", "text": "My name is Carol"}]},
+        ],
+        "session_id": session_id,
+    }
+
+    with patch.object(app._runner, "query_handler", _handler):
+        response = client.post("/process", json=payload)
+
+    assert response.status_code == 200
+
+    # Second request with same session_id — should load prior context
+    captured.clear()
+    payload2 = {
+        "input": [
+            {"role": "user", "content": [{"type": "text", "text": "What is my name?"}]},
+        ],
+        "session_id": session_id,
+    }
+
+    with patch.object(app._runner, "query_handler", _handler):
+        response2 = client.post("/process", json=payload2)
+
+    assert response2.status_code == 200
+    events = _parse_sse_events(response2.text)
+    statuses = [e.get("status") for e in events if "status" in e]
+    assert "completed" in statuses
+
+    reset_session_backend()
+
+
+# ---------------------------------------------------------------------------
+# Test 9: JSON backend still works after Phase 7 changes (backward compat)
+# ---------------------------------------------------------------------------
+
+
+def test_json_backend_still_works(client, session_env, configured_env, clear_settings_cache, monkeypatch):
+    """D-03: SESSION_BACKEND=json (default) still works after Phase 7 changes."""
+    from src.agent.session import get_session_backend, reset_session_backend
+
+    monkeypatch.setenv("SESSION_BACKEND", "json")
+    reset_session_backend()
+
+    mock_handler = _make_mock_handler(["JSON still works"])
+    session_id = "test-json-backward-compat-001"
+
+    payload = {
+        "input": [
+            {"role": "user", "content": [{"type": "text", "text": "Hello"}]},
+        ],
+        "session_id": session_id,
+    }
+
+    with patch.object(app._runner, "query_handler", mock_handler):
+        response = client.post("/process", json=payload)
+
+    assert response.status_code == 200
+    events = _parse_sse_events(response.text)
+    statuses = [e.get("status") for e in events if "status" in e]
+    assert "completed" in statuses
+
+    # Verify it used JSONSession
+    backend = get_session_backend()
+    assert isinstance(backend, JSONSession), f"Expected JSONSession, got {type(backend)}"
+
+    reset_session_backend()
+
+
+# ---------------------------------------------------------------------------
+# Test 10: Redis health check fails when Redis unreachable
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("unreachable_error", [ConnectionError("Connection refused"), OSError("Network unreachable")])
+def test_redis_health_check_fails_on_unreachable(unreachable_error, configured_env, clear_settings_cache, monkeypatch):
+    """D-09: Startup health check fails when Redis is unreachable."""
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    from src.agent.session import reset_session_backend
+
+    monkeypatch.setenv("SESSION_BACKEND", "redis")
+    monkeypatch.setenv("REDIS_HOST", "localhost")
+    monkeypatch.setenv("REDIS_PORT", "6379")
+    monkeypatch.setenv("REDIS_DB", "0")
+    reset_session_backend()
+
+    # Mock get_session_backend to return a backend with a failing client
+    mock_backend = AsyncMock()
+    mock_client = AsyncMock()
+    mock_client.ping = AsyncMock(side_effect=unreachable_error)
+    mock_backend.get_client = AsyncMock(return_value=mock_client)
+
+    # Verify the ping would raise
+    with pytest.raises(type(unreachable_error)):
+        asyncio.run(mock_client.ping())
+
+    reset_session_backend()

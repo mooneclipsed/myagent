@@ -371,17 +371,19 @@ monkeypatch.setattr(session_mod, "_session_backend", fake_backend)
 
 **If this table is empty:** All claims in this research were verified or cited -- no user confirmation needed.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Demo script LLM dependency**
+1. **Demo script LLM dependency** — RESOLVED
    - What we know: Demo scripts hit the live `/process` endpoint, which creates a real `OpenAIChatModel` and makes LLM API calls. This requires a valid `.env` configuration.
    - What's unclear: Whether the user expects demo scripts to work with mocked LLM responses (no API key needed) or with real LLM calls (API key required).
    - Recommendation: Document the `.env` prerequisite clearly in README. Demo scripts check service availability but do NOT mock the LLM -- they exercise the full stack.
+   - RESOLVED: Plan 08-02 Task 2 (README.md) documents `.env` prerequisite. Demo scripts exercise full stack per design.
 
-2. **Skill registration timing**
+2. **Skill registration timing** — RESOLVED
    - What we know: `toolkit` is a singleton created at import time. Skills should be registered after the toolkit is created.
    - What's unclear: Whether to register the example skill in `src/tools/__init__.py` (always available) or only when demo_skill.py runs.
    - Recommendation: Register in `src/tools/__init__.py` so it is always available for both demo scripts and tests. The skill is lightweight (prompt injection only).
+   - RESOLVED: Plan 08-01 Task 1 registers the example skill in `src/tools/__init__.py` at import time, making it always available.
 
 ## Environment Availability
 

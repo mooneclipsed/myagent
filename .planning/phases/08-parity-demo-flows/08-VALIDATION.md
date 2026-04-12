@@ -2,8 +2,8 @@
 phase: 08
 slug: parity-demo-flows
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-12
 ---
 
@@ -38,12 +38,10 @@ created: 2026-04-12
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 08-01-01 | 01 | 1 | RES-05 | T-6-01 | Session ID validated via `validate_session_id()` | unit | `uv run pytest tests/test_parity.py -x -v` | ❌ W0 | ⬜ pending |
-| 08-02-01 | 02 | 1 | DEV-03 | — | N/A | smoke | `uv run scripts/demos/demo_tool.py` | ❌ W0 | ⬜ pending |
-| 08-02-02 | 02 | 1 | DEV-03 | — | N/A | smoke | `uv run scripts/demos/demo_skill.py` | ❌ W0 | ⬜ pending |
-| 08-02-03 | 02 | 1 | DEV-03 | — | N/A | smoke | `uv run scripts/demos/demo_mcp.py` | ❌ W0 | ⬜ pending |
-| 08-02-04 | 02 | 1 | DEV-03 | — | N/A | smoke | `uv run scripts/demos/demo_resume.py` | ❌ W0 | ⬜ pending |
-| 08-03-01 | 03 | 2 | DEV-01 | — | N/A | manual | README instructions review | ❌ W0 | ⬜ pending |
+| 08-01-01 | 01 | 1 | RES-05 | T-08-03 | `os.path.isdir()` guard on skill registration | unit | `grep -q "register_agent_skill" src/tools/__init__.py` | ❌ W0 | ⬜ pending |
+| 08-01-02 | 01 | 1 | RES-05 | T-08-01 | Hardcoded session_id in test scope | unit | `uv run pytest tests/test_parity.py -x -v` | ❌ W0 | ⬜ pending |
+| 08-02-01 | 02 | 2 | DEV-03 | T-08-04 | JSON parse with try/except in SSE | smoke | `test -f scripts/demos/demo_tool.py` + grep chain | ❌ W0 | ⬜ pending |
+| 08-02-02 | 02 | 2 | DEV-01,DEV-03 | T-08-05 | `.env.example` placeholder values only | smoke | `grep -q "## Quick Start" README.md` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -51,10 +49,10 @@ created: 2026-04-12
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_parity.py` — stubs for RES-05
-- [ ] `scripts/demos/` — directory with 4 demo script stubs
-- [ ] `skills/example_skill/SKILL.md` — skill definition file
-- [ ] `README.md` — update with getting-started guide structure
+- [x] `tests/test_parity.py` — stubs for RES-05 (Plan 01 Task 2)
+- [x] `scripts/demos/` — directory with 4 demo script stubs (Plan 02 Task 1-2)
+- [x] `skills/example_skill/SKILL.md` — skill definition file (Plan 01 Task 1)
+- [x] `README.md` — update with getting-started guide structure (Plan 02 Task 2)
 
 ---
 

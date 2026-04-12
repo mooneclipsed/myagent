@@ -107,8 +107,8 @@ Plans:
   2. User can resume a chat from the persisted Redis session and continue the conversation.
 **Plans**: 2 plans
 Plans:
-- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
-- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
+- [ ] 07-01-PLAN.md -- Add Redis settings, extend session factory for JSONSession/RedisSession, add lifespan health check.
+- [ ] 07-02-PLAN.md -- Verify Redis session persistence with automated tests and Phase 7 verification script.
 
 ### Phase 8: Parity & Demo Flows
 **Goal**: Users can validate parity across JSON/Redis and run documented examples for all capabilities.
@@ -118,10 +118,9 @@ Plans:
   1. User can run the same core flow against JSON and Redis backends and observe consistent resume behavior.
   2. User can follow a documented demo flow to start and validate the service end-to-end.
   3. User can run documented examples for skill, tool, MCP, and resume capabilities.
-**Plans**: 2 plans
+**Plans**: [To be planned]
 Plans:
-- [ ] 03-01-PLAN.md -- Add AgentConfig model, config resolution logic, and update query handler for request-scoped agent creation.
-- [ ] 03-02-PLAN.md -- Verify request-scoped config with automated tests and Phase 3 smoke script.
+- [ ] (to be planned)
 
 ## Progress
 

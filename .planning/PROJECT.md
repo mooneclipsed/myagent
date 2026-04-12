@@ -29,6 +29,10 @@ The platform must provide a stable, repeatable call chain where one chat session
 
 - [x] Persist and resume sessions using a JSON-file backend (RES-01, RES-03). Validated in Phase 06: JSON Session Persistence.
 
+### Validated (Phase 7)
+
+- [x] Persist and resume sessions using a Redis backend (RES-02, RES-04). Validated in Phase 07: Redis Session Persistence.
+
 ### Out of Scope
 
 - Multi-agent orchestration/routing in v1 — initial target is single-agent chat for faster validation loops.
@@ -77,4 +81,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-12 after Phase 06 completion*
+*Last updated: 2026-04-12 after Phase 07 completion*

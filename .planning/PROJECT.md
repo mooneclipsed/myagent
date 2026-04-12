@@ -8,42 +8,51 @@ A FastAPI-based agent testing shell for personal R&D validation, built around `a
 
 The platform must provide a stable, repeatable call chain where one chat session can reliably trigger and complete skill/tool/MCP interactions.
 
+## Current State
+
+**Shipped:** v1.0 (2026-04-12)
+- 8 phases completed, 15 plans executed, 52 tests passing
+- 17/18 requirements satisfied (CAP-05 structured tracing deferred by design)
+- Streaming SSE chat endpoint with per-request ReActAgent
+- Tool (get_weather, calculate) and MCP (get_time) capability invocation
+- Dual session persistence backends (JSON-file and Redis) with parity verified
+- 4 runnable demo scripts + unified README getting-started guide
+
+**Archived:** [v1.0 Roadmap](milestones/v1.0-ROADMAP.md) | [v1.0 Requirements](milestones/v1.0-REQUIREMENTS.md)
+
+## Next Milestone Goals
+
+*v2.0 not yet defined. Potential areas based on v1.0 findings:*
+- CAP-05 structured call-chain tracing (deferred from v1.0)
+- Multi-agent orchestration/routing (ANL-03)
+- Batch scenario regression suites (ANL-04)
+- Call-chain stability scoring (ANL-01)
+
+Run `/gsd-new-milestone` to define v2.0 scope.
+
+<details>
+<summary>v1.0 Project Context (archived)</summary>
+
 ## Requirements
 
 ### Validated
 
-- [x] Use `.env` for model configuration and use `uv` to manage dependencies and execution. Validated in Phase 01: Environment & Workflow Baseline.
-- [x] Use git to track implementation progress and milestones. Validated in Phase 01: Environment & Workflow Baseline.
+- [x] Use `.env` for model configuration and use `uv` to manage dependencies and execution. Validated in Phase 01.
+- [x] Use git to track implementation progress and milestones. Validated in Phase 01.
+- [x] Build a streaming chat API with SSE endpoint using AgentApp (agentscope-runtime). Validated in Phase 02.
+- [x] Persist and resume sessions using a JSON-file backend (RES-01, RES-03). Validated in Phase 06.
+- [x] Persist and resume sessions using a Redis backend (RES-02, RES-04). Validated in Phase 07.
+- [x] Validate JSON/Redis resume behavior consistency (RES-05). Validated in Phase 08.
+- [x] Documented runnable demo flow for all capabilities (DEV-01, DEV-03). Validated in Phase 08.
 
 ### Active
 
 - [ ] Keep service design as stateless as practical, with runtime context coming from API requests/session backends.
 
-### Validated (Phase 2)
-
-- [x] Build a streaming chat API with SSE endpoint using AgentApp (agentscope-runtime). Validated in Phase 02: Streaming Chat Contract.
-
-### Validated (Phase 6)
-
-- [x] Persist and resume sessions using a JSON-file backend (RES-01, RES-03). Validated in Phase 06: JSON Session Persistence.
-
-### Validated (Phase 7)
-
-- [x] Persist and resume sessions using a Redis backend (RES-02, RES-04). Validated in Phase 07: Redis Session Persistence.
-
-### Validated (Phase 8)
-
-- [x] Validate JSON/Redis resume behavior consistency (RES-05). Validated in Phase 08: Parity & Demo Flows.
-- [x] Documented runnable demo flow for all capabilities (DEV-01, DEV-03). Validated in Phase 08: Parity & Demo Flows.
-
 ### Out of Scope
 
 - Multi-agent orchestration/routing in v1 — initial target is single-agent chat for faster validation loops.
 - Non-core platform features beyond the testing shell — deferred to future versions after core call-chain validation.
-
-## Context
-
-The project is meant for personal development-time experimentation, not external production use in v1. Primary objective is confidence in call-chain stability across skill/tool/MCP integration before expanding functionality. `agentscope-runtime` capability boundaries (especially config-driven agent creation and resume support) are part of the exploration scope and should be validated through runnable API flows.
 
 ## Constraints
 
@@ -59,29 +68,18 @@ The project is meant for personal development-time experimentation, not external
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| v1 serves personal R&D validation | Optimize for fast local learning loops over productization | — Pending |
-| Single-agent chat in v1 | Reduce complexity and isolate core call-chain verification | — Pending |
-| Include skill/tool/MCP/context validation in v1 scope | Directly targets the primary technical unknowns | — Pending |
-| Implement both JSON and Redis resume backends in v1 | Compare local and service-style persistence behavior early | — Pending |
-| FastAPI + streaming interface | Match intended chat testing interaction model | — Pending |
-| Use `uv` and `.env` conventions | Keep setup reproducible and configuration explicit | — Pending |
+| v1 serves personal R&D validation | Optimize for fast local learning loops over productization | Validated |
+| Single-agent chat in v1 | Reduce complexity and isolate core call-chain verification | Validated |
+| Include skill/tool/MCP/context validation in v1 scope | Directly targets the primary technical unknowns | Validated |
+| Implement both JSON and Redis resume backends in v1 | Compare local and service-style persistence behavior early | Validated |
+| FastAPI + streaming interface | Match intended chat testing interaction model | Validated |
+| Use `uv` and `.env` conventions | Keep setup reproducible and configuration explicit | Validated |
+
+</details>
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? -> Move to Out of Scope with reason
-2. Requirements validated? -> Move to Validated with phase reference
-3. New requirements emerged? -> Add to Active
-4. Decisions to log? -> Add to Key Decisions
-5. "What This Is" still accurate? -> Update if drifted
-
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
-
 ---
-*Last updated: 2026-04-12 after Phase 08 completion*
+*Last updated: 2026-04-12 after v1.0 milestone archival*

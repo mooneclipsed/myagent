@@ -1,14 +1,16 @@
 """Tests for MCP client lifecycle and registration (CAP-03 invocation side).
 
 Per D-06/D-07, structured tracing/observability is deferred.
-These tests verify MCP client connection lifecycle.
+These tests verify MCP client connection lifecycle and FastMCP-backed server shape.
 """
 
 import asyncio
+import inspect
 
 import pytest
 from agentscope.mcp import StdIOStatefulClient
 from agentscope.tool import Toolkit
+from mcp.server.fastmcp import FastMCP
 from unittest.mock import AsyncMock
 
 
@@ -50,7 +52,6 @@ class TestMCPClientLifecycle:
 
         _mcp_clients.clear()
 
-        # Simulate two clients
         client1 = AsyncMock()
         client1.name = "first"
         client2 = AsyncMock()
@@ -58,14 +59,12 @@ class TestMCPClientLifecycle:
 
         _mcp_clients.extend([client1, client2])
 
-        # LIFO close
         async def close_all():
             for client in reversed(_mcp_clients):
                 await client.close(ignore_errors=True)
 
         asyncio.run(close_all())
 
-        # Verify close was called on both
         client2.close.assert_awaited_once_with(ignore_errors=True)
         client1.close.assert_awaited_once_with(ignore_errors=True)
         _mcp_clients.clear()
@@ -79,10 +78,20 @@ class TestMCPServerModule:
         import src.mcp.server
 
         assert hasattr(src.mcp.server, "server")
+        assert hasattr(src.mcp.server, "get_time")
         assert hasattr(src.mcp.server, "main")
 
-    def test_mcp_server_has_tools(self):
-        """MCP server module defines expected tool handlers."""
+    def test_mcp_server_is_fastmcp(self):
+        """src.mcp.server exports a FastMCP server instance."""
         import src.mcp.server
 
-        assert src.mcp.server.server is not None
+        assert isinstance(src.mcp.server.server, FastMCP)
+
+    def test_get_time_tool_contract(self):
+        """get_time remains a zero-argument tool function returning text."""
+        import src.mcp.server
+
+        assert len(inspect.signature(src.mcp.server.get_time).parameters) == 0
+        result = src.mcp.server.get_time()
+        assert isinstance(result, str)
+        assert result.startswith("Current time:")

@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 Phase: All v1.0 phases complete
 Status: Milestone v1.0 archived
-Last activity: 2026-04-13 - Completed quick task 260413-kqt: 将本地 MCP server 从低层 Server API 改为 FastMCP 实现，保持现有 get_time 工具能力不变，修复当前 MCP 调用报 get_time() takes 0 positional arguments but 2 were given 的问题，并在修改后验证 /process 通过 MCP 成功调用 get_time。
+Last activity: 2026-04-13 - Completed quick task 260413-m0d: 扩展当前 example skill，使其支持脚本执行，并提供一条可验证框架能调用脚本型 skill 的端到端测试路径。
 
 Progress: [██████████] 100%
 
@@ -46,6 +46,7 @@ Run `/gsd-new-milestone` to start v2.0 cycle (questioning → research → requi
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260413-kqt | 将本地 MCP server 从低层 Server API 改为 FastMCP 实现，保持现有 get_time 工具能力不变，修复当前 MCP 调用报 get_time() takes 0 positional arguments but 2 were given 的问题，并在修改后验证 /process 通过 MCP 成功调用 get_time。 | 2026-04-13 | 1d3083b | [260413-kqt-mcp-server-server-api-fastmcp-get-time-m](./quick/260413-kqt-mcp-server-server-api-fastmcp-get-time-m/) |
+| 260413-m0d | 扩展当前 example skill，使其支持脚本执行，并提供一条可验证框架能调用脚本型 skill 的端到端测试路径。 | 2026-04-13 | cf1d5c7 | [260413-m0d-example-skill-skill](./quick/260413-m0d-example-skill-skill/) |
 
 ---
 *Last updated: 2026-04-12 after v1.0 milestone archival*

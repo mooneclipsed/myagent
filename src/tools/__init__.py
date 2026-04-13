@@ -11,7 +11,7 @@ import os
 from agentscope.mcp import StdIOStatefulClient
 from agentscope.tool import Toolkit
 
-from src.tools.examples import calculate, get_weather
+from src.tools.examples import calculate, get_weather, run_platform_report
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ toolkit = Toolkit()
 # Register example tool functions at import time per D-01 (framework-native)
 toolkit.register_tool_function(tool_func=get_weather, group_name="basic")
 toolkit.register_tool_function(tool_func=calculate, group_name="basic")
+toolkit.register_tool_function(tool_func=run_platform_report, group_name="basic")
 
 # Phase 8 D-01: Register example agent skill (distinct from tool functions)
 _example_skill_dir = os.path.normpath(

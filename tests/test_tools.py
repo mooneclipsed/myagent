@@ -18,6 +18,7 @@ class TestToolRegistration:
         tool_names = list(toolkit.tools.keys())
         assert "get_weather" in tool_names, f"get_weather not in {tool_names}"
         assert "calculate" in tool_names, f"calculate not in {tool_names}"
+        assert "run_platform_report" in tool_names, f"run_platform_report not in {tool_names}"
 
     def test_toolkit_is_singleton(self):
         """Toolkit imported from different paths is the same object (D-02: shared)."""
@@ -79,3 +80,14 @@ class TestToolResponseFormat:
         result = calculate(operation="modulo", a=10, b=3)
         assert isinstance(result, ToolResponse)
         assert "Error" in result.content[0]["text"] or "unknown" in result.content[0]["text"]
+
+    def test_run_platform_report_returns_script_output(self):
+        """run_platform_report executes the bundled script and returns raw stdout."""
+        from src.tools.examples import run_platform_report
+
+        result = run_platform_report()
+        assert isinstance(result, ToolResponse)
+        text = result.content[0]["text"]
+        assert "EXAMPLE_SKILL_SCRIPT_OK" in text
+        assert "platform=AgentScope Validation Platform" in text
+        assert "backends=json,redis" in text

@@ -1,12 +1,21 @@
 """Example tool functions for end-to-end capability verification.
 
 Per D-03: Simple, deterministic tools callable through streaming chat
-without external dependencies. Both functions return ToolResponse with
+without external dependencies. All functions return ToolResponse with
 TextBlock content (Pitfall 1 from RESEARCH.md).
 """
 
+from pathlib import Path
+import subprocess
+import sys
+
 from agentscope.message import TextBlock
 from agentscope.tool import ToolResponse
+
+
+_SKILL_SCRIPT_PATH = (
+    Path(__file__).resolve().parents[2] / "skills" / "example_skill" / "platform_report.py"
+)
 
 
 def get_weather(city: str) -> ToolResponse:
@@ -47,3 +56,20 @@ def calculate(operation: str, a: float, b: float) -> ToolResponse:
     else:
         result = f"{ops[operation](a, b)}"
     return ToolResponse(content=[TextBlock(type="text", text=result)])
+
+
+def run_platform_report() -> ToolResponse:
+    """Run the bundled example skill script and return its raw report output.
+
+    Returns:
+        ToolResponse: Raw stdout emitted by the example skill script.
+    """
+    completed = subprocess.run(
+        [sys.executable, str(_SKILL_SCRIPT_PATH)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return ToolResponse(
+        content=[TextBlock(type="text", text=completed.stdout.strip())],
+    )

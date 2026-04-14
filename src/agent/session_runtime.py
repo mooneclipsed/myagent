@@ -22,9 +22,10 @@ from src.core.config import (
     SessionBootstrapRequest,
     SkillSummary,
     StdioMCPServerConfig,
+    ToolSummary,
     resolve_effective_config,
 )
-from src.tools import create_base_toolkit
+from src.tools import ToolRegistryError, register_configured_tools
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ class SessionRuntime:
     skill_registry: SkillRuntimeRegistry = field(default_factory=SkillRuntimeRegistry)
     mcp_clients: list[StatefulClientBase] = field(default_factory=list)
     resolved_config: dict = field(default_factory=dict)
+    tool_summaries: list[ToolSummary] = field(default_factory=list)
     skill_summaries: list[SkillSummary] = field(default_factory=list)
     mcp_servers: list[MCPServerSummary] = field(default_factory=list)
 
@@ -136,9 +138,11 @@ async def bootstrap_session_runtime(
             session_id=session_id,
             memory=memory,
         )
-        session_toolkit = create_base_toolkit(
-            include_legacy_example_skill_support=False,
-        )
+        session_toolkit = Toolkit()
+        try:
+            tool_summaries = register_configured_tools(session_toolkit, request.tools)
+        except ToolRegistryError as exc:
+            raise SessionRuntimeValidationError(str(exc)) from exc
         register_local_runtime_tools(session_toolkit)
         skill_registry = register_configured_skills(
             toolkit=session_toolkit,
@@ -179,6 +183,7 @@ async def bootstrap_session_runtime(
             skill_registry=skill_registry,
             mcp_clients=mcp_clients,
             resolved_config=resolved_config,
+            tool_summaries=tool_summaries,
             skill_summaries=skill_registry.list_skill_summaries(),
             mcp_servers=summaries,
         )

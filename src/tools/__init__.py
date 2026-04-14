@@ -11,7 +11,8 @@ import os
 from agentscope.mcp import StdIOStatefulClient
 from agentscope.tool import Toolkit
 
-from src.tools.examples import calculate, get_weather, run_platform_report
+from src.core.config import ToolConfig, ToolSummary
+from src.tools.examples import calculate, get_weather, run_platform_report, summarize_platform_callable
 
 logger = logging.getLogger(__name__)
 
@@ -51,3 +52,44 @@ toolkit = create_base_toolkit(include_legacy_example_skill_support=True)
 
 # Module-level list to track legacy startup MCP clients for LIFO shutdown
 _mcp_clients: list[StdIOStatefulClient] = []
+
+# ---------------------------------------------------------------------------
+# Name-based tool registry for session bootstrap
+# ---------------------------------------------------------------------------
+
+TOOL_REGISTRY: dict[str, callable] = {
+    "get_weather": get_weather,
+    "calculate": calculate,
+    "run_platform_report": run_platform_report,
+    "summarize_platform_callable": summarize_platform_callable,
+}
+
+
+class ToolRegistryError(ValueError):
+    """Raised when a requested tool name is not found in the local registry."""
+
+
+def register_configured_tools(
+    target_toolkit: Toolkit,
+    tool_configs: list[ToolConfig],
+) -> list[ToolSummary]:
+    """Register requested tools on a session-owned toolkit by name lookup.
+
+    Validates all names before registering any (fail-fast). Returns summaries.
+    Raises ToolRegistryError if any requested tool name is not in TOOL_REGISTRY.
+    """
+    unknown = [tc.name for tc in tool_configs if tc.name not in TOOL_REGISTRY]
+    if unknown:
+        raise ToolRegistryError(
+            f"Unknown tool(s) requested: {', '.join(unknown)}. "
+            f"Available: {', '.join(sorted(TOOL_REGISTRY.keys()))}"
+        )
+
+    summaries: list[ToolSummary] = []
+    for tc in tool_configs:
+        func = TOOL_REGISTRY[tc.name]
+        target_toolkit.register_tool_function(tool_func=func, group_name="basic")
+        description = (func.__doc__ or "").strip().split("\n")[0]
+        summaries.append(ToolSummary(name=tc.name, description=description))
+
+    return summaries

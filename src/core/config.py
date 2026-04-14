@@ -58,6 +58,14 @@ class SkillScriptConfig(BaseModel):
         return self
 
 
+class ToolConfig(BaseModel):
+    """Bootstrap configuration for a named tool from the local registry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+
+
 class SkillConfig(BaseModel):
     """Bootstrap configuration for a dynamic skill bundle."""
 
@@ -113,6 +121,15 @@ class MCPServerSummary(BaseModel):
     transport: Literal["sse", "streamable_http"] | None = None
 
 
+class ToolSummary(BaseModel):
+    """Normalized tool summary returned from bootstrap."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    description: str
+
+
 class SkillSummary(BaseModel):
     """Normalized skill summary returned from bootstrap."""
 
@@ -130,6 +147,7 @@ class SessionBootstrapRequest(BaseModel):
 
     session_id: str | None = None
     agent_config: AgentConfig | None = None
+    tools: list[ToolConfig] = Field(default_factory=list)
     skills: list[SkillConfig] = Field(default_factory=list)
     mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
 
@@ -141,6 +159,7 @@ class SessionBootstrapResponse(BaseModel):
 
     session_id: str
     status: Literal["ready"] = "ready"
+    tools: list[ToolSummary] = Field(default_factory=list)
     skills: list[SkillSummary] = Field(default_factory=list)
     mcp_servers: list[MCPServerSummary] = Field(default_factory=list)
 

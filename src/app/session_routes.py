@@ -41,6 +41,7 @@ def register_session_routes(app: AgentApp) -> None:
 
         return SessionBootstrapResponse(
             session_id=runtime.session_id,
+            tools=runtime.tool_summaries,
             skills=runtime.skill_summaries,
             mcp_servers=runtime.mcp_servers,
         )

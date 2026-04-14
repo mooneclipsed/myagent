@@ -248,3 +248,45 @@ def test_shutdown_closes_active_runtime(client):
 def test_shutdown_missing_session_returns_404(client):
     response = client.post("/sessions/unknown-session/shutdown")
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Tool registry integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_bootstrap_with_tools_registers_requested_tools(client):
+    payload = {
+        "session_id": "bootstrap-tools-001",
+        "tools": [{"name": "get_weather"}, {"name": "calculate"}],
+    }
+    response = client.post("/sessions/bootstrap", json=payload)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    tool_names = [t["name"] for t in body["tools"]]
+    assert "get_weather" in tool_names
+    assert "calculate" in tool_names
+    assert len(body["tools"]) == 2
+    for t in body["tools"]:
+        assert len(t["description"]) > 0
+
+
+def test_bootstrap_rejects_unknown_tool_name(client):
+    payload = {
+        "session_id": "bootstrap-tools-bad",
+        "tools": [{"name": "get_weather"}, {"name": "nonexistent_tool"}],
+    }
+    response = client.post("/sessions/bootstrap", json=payload)
+    assert response.status_code == 400
+    assert "nonexistent_tool" in response.json()["detail"]
+    assert "Unknown tool" in response.json()["detail"]
+
+
+def test_bootstrap_with_empty_tools_succeeds(client):
+    payload = {
+        "session_id": "bootstrap-tools-empty",
+        "tools": [],
+    }
+    response = client.post("/sessions/bootstrap", json=payload)
+    assert response.status_code == 200
+    assert response.json()["tools"] == []

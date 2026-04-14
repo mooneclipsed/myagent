@@ -1,2 +1,6 @@
-"""Agent query handlers -- importing this module registers the streaming endpoint."""
-from src.agent import query  # noqa: F401
+"""Agent package bootstrap helpers."""
+
+
+def register_query_handlers() -> None:
+    """Import query handlers to trigger AgentApp route registration."""
+    import src.agent.query  # noqa: F401

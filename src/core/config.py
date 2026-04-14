@@ -1,16 +1,17 @@
-"""Request-scoped agent configuration with .env fallback.
+"""Request-scoped and session-bootstrap configuration with .env fallback.
 
-Provides AgentConfig for per-request model overrides and
-resolve_effective_config for field-level fallback to .env defaults.
+Provides AgentConfig for per-request model overrides,
+MCP bootstrap request/response models, and resolve_effective_config for
+field-level fallback to .env defaults.
 
 Decisions: D-01 (minimally overridable), D-02 (field-level fallback),
-D-04 (optional agent_config), D-06 (config trace logging).
+D-04 (optional request config), D-06 (config trace logging).
 """
 
 import logging
-from typing import Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.core.settings import get_settings
 
@@ -18,13 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class AgentConfig(BaseModel):
-    """Per-request agent model configuration overrides.
-
-    All fields are optional -- when omitted, resolve_effective_config
-    falls back to the corresponding .env setting.
-
-    extra="forbid" prevents unexpected fields from silently passing through.
-    """
+    """Per-request agent model configuration overrides."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -33,19 +28,82 @@ class AgentConfig(BaseModel):
     base_url: Optional[str] = None
 
 
+class _BaseMCPServerConfig(BaseModel):
+    """Shared MCP server configuration fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+
+
+class StdioMCPServerConfig(_BaseMCPServerConfig):
+    """Bootstrap configuration for stdio MCP servers."""
+
+    type: Literal["stdio"] = "stdio"
+    command: str
+    args: list[str] | None = None
+    env: dict[str, str] | None = None
+    cwd: str | None = None
+
+
+class HttpMCPServerConfig(_BaseMCPServerConfig):
+    """Bootstrap configuration for stateful HTTP MCP servers."""
+
+    type: Literal["http"] = "http"
+    transport: Literal["sse", "streamable_http"]
+    url: str
+    headers: dict[str, str] | None = None
+    timeout: float = 30
+    sse_read_timeout: float = 60 * 5
+
+
+MCPServerConfig = Annotated[
+    StdioMCPServerConfig | HttpMCPServerConfig,
+    Field(discriminator="type"),
+]
+
+
+class MCPServerSummary(BaseModel):
+    """Normalized MCP server summary returned from bootstrap."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    type: Literal["stdio", "http"]
+    transport: Literal["sse", "streamable_http"] | None = None
+
+
+class SessionBootstrapRequest(BaseModel):
+    """Bootstrap request for creating a session-scoped agent runtime."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str | None = None
+    agent_config: AgentConfig | None = None
+    mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
+
+
+class SessionBootstrapResponse(BaseModel):
+    """Bootstrap response for a ready session runtime."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str
+    status: Literal["ready"] = "ready"
+    mcp_servers: list[MCPServerSummary] = Field(default_factory=list)
+
+
+class SessionShutdownResponse(BaseModel):
+    """Response returned after closing a bootstrapped session runtime."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str
+    status: Literal["closed"] = "closed"
+
+
 def resolve_effective_config(agent_config: AgentConfig | None = None) -> dict:
-    """Resolve effective model config by merging request overrides with .env defaults.
-
-    Each field is resolved independently: if the request provides a value,
-    it is used; otherwise the .env default is applied (D-02).
-
-    Args:
-        agent_config: Optional per-request config overrides.
-            When None, all values come from .env (D-04).
-
-    Returns:
-        Dict with keys: model_name, api_key, base_url.
-    """
+    """Resolve effective model config by merging request overrides with .env defaults."""
     settings = get_settings()
 
     if agent_config is None:
@@ -61,7 +119,6 @@ def resolve_effective_config(agent_config: AgentConfig | None = None) -> dict:
             "base_url": agent_config.base_url or settings.MODEL_BASE_URL,
         }
 
-    # Config trace logging (D-06) -- NEVER log api_key values
     source = "request" if agent_config else "env"
     logger.info(
         "effective config: model_name=%s, base_url=%s, source=%s",

@@ -1,0 +1,250 @@
+"""Tests for session bootstrap MCP runtime lifecycle and routing."""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from agentscope.message import Msg
+
+from src.agent.session_runtime import close_all_session_runtimes, get_session_runtime
+from src.main import app
+from tests.test_chat_stream import _parse_sse_events
+
+
+async def _mock_stream(*args, **kwargs):
+    msg = Msg(
+        name="agentops",
+        content=[{"type": "text", "text": "ok"}],
+        role="assistant",
+    )
+    yield msg, True
+
+
+@pytest.fixture(autouse=True)
+def _clear_runtime_between_tests():
+    import asyncio
+
+    asyncio.run(close_all_session_runtimes())
+    yield
+    asyncio.run(close_all_session_runtimes())
+
+
+def test_bootstrap_stdio_session_success(client):
+    payload = {
+        "session_id": "bootstrap-session-001",
+        "mcp_servers": [
+            {
+                "name": "time-mcp",
+                "type": "stdio",
+                "command": "python",
+                "args": ["-m", "src.mcp.server"],
+                "env": {"DEMO": "1"},
+                "cwd": "/tmp/demo",
+            }
+        ],
+    }
+
+    with patch("src.agent.session_runtime.StdIOStatefulClient") as mock_stdio:
+        mock_client = AsyncMock()
+        mock_client.name = "time-mcp"
+        mock_client.is_connected = True
+        mock_client.list_tools = AsyncMock(return_value=[])
+        mock_stdio.return_value = mock_client
+
+        response = client.post("/sessions/bootstrap", json=payload)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["session_id"] == "bootstrap-session-001"
+    assert body["status"] == "ready"
+    assert body["mcp_servers"] == [{"name": "time-mcp", "type": "stdio", "transport": None}]
+    mock_stdio.assert_called_once_with(
+        name="time-mcp",
+        command="python",
+        args=["-m", "src.mcp.server"],
+        env={"DEMO": "1"},
+        cwd="/tmp/demo",
+    )
+
+
+def test_bootstrap_http_session_success(client):
+    payload = {
+        "session_id": "bootstrap-session-002",
+        "mcp_servers": [
+            {
+                "name": "remote-mcp",
+                "type": "http",
+                "transport": "streamable_http",
+                "url": "http://example.com/mcp",
+                "headers": {"Authorization": "Bearer secret"},
+                "timeout": 12,
+                "sse_read_timeout": 34,
+            }
+        ],
+    }
+
+    with patch("src.agent.session_runtime.HttpStatefulClient") as mock_http:
+        mock_client = AsyncMock()
+        mock_client.name = "remote-mcp"
+        mock_client.is_connected = True
+        mock_client.list_tools = AsyncMock(return_value=[])
+        mock_http.return_value = mock_client
+
+        response = client.post("/sessions/bootstrap", json=payload)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["mcp_servers"] == [
+        {
+            "name": "remote-mcp",
+            "type": "http",
+            "transport": "streamable_http",
+        }
+    ]
+    mock_http.assert_called_once_with(
+        name="remote-mcp",
+        transport="streamable_http",
+        url="http://example.com/mcp",
+        headers={"Authorization": "Bearer secret"},
+        timeout=12,
+        sse_read_timeout=34,
+    )
+
+
+def test_bootstrap_rejects_invalid_http_transport(client):
+    payload = {
+        "session_id": "bootstrap-session-003",
+        "mcp_servers": [
+            {
+                "name": "bad-http",
+                "type": "http",
+                "transport": "websocket",
+                "url": "http://example.com/mcp",
+            }
+        ],
+    }
+
+    response = client.post("/sessions/bootstrap", json=payload)
+    assert response.status_code == 422
+
+
+def test_bootstrap_conflict_when_another_session_active(client):
+    payload_a = {"session_id": "bootstrap-session-a", "mcp_servers": []}
+    payload_b = {"session_id": "bootstrap-session-b", "mcp_servers": []}
+
+    response_a = client.post("/sessions/bootstrap", json=payload_a)
+    response_b = client.post("/sessions/bootstrap", json=payload_b)
+
+    assert response_a.status_code == 200
+    assert response_b.status_code == 409
+    assert "already owns this pod runtime" in response_b.json()["detail"]
+
+
+def test_bootstrap_same_session_returns_existing_runtime(client):
+    payload = {"session_id": "bootstrap-session-same", "mcp_servers": []}
+
+    response_a = client.post("/sessions/bootstrap", json=payload)
+    response_b = client.post("/sessions/bootstrap", json=payload)
+
+    assert response_a.status_code == 200
+    assert response_b.status_code == 200
+    assert response_a.json()["session_id"] == response_b.json()["session_id"]
+
+
+def test_bootstrap_failure_rolls_back_connected_clients(client):
+    payload = {
+        "session_id": "bootstrap-session-fail",
+        "mcp_servers": [
+            {"name": "first", "type": "stdio", "command": "python"},
+            {"name": "second", "type": "stdio", "command": "python"},
+        ],
+    }
+
+    first_client = AsyncMock()
+    first_client.name = "first"
+    first_client.is_connected = True
+    first_client.list_tools = AsyncMock(return_value=[])
+
+    second_client = AsyncMock()
+    second_client.name = "second"
+    second_client.connect = AsyncMock(side_effect=RuntimeError("boom"))
+    second_client.is_connected = False
+
+    with patch(
+        "src.agent.session_runtime.StdIOStatefulClient",
+        side_effect=[first_client, second_client],
+    ):
+        response = client.post("/sessions/bootstrap", json=payload)
+
+    assert response.status_code == 502
+    assert "Failed to initialize MCP server 'second' (stdio)." == response.json()["detail"]
+    first_client.close.assert_awaited_once_with(ignore_errors=True)
+
+
+def test_process_reuses_bootstrapped_session_agent(client, valid_payload):
+    bootstrap_payload = {"session_id": "bootstrap-process-001", "mcp_servers": []}
+    response = client.post("/sessions/bootstrap", json=bootstrap_payload)
+    assert response.status_code == 200
+
+    runtime = get_session_runtime("bootstrap-process-001")
+    assert runtime is not None
+
+    async def _mock_stream_runtime(*args, **kwargs):
+        assert kwargs["agents"] == [runtime.agent]
+        coroutine_task = kwargs["coroutine_task"]
+        assert coroutine_task.cr_code.co_name == "__call__"
+        coroutine_task.close()
+        msg = Msg(
+            name="agentops",
+            content=[{"type": "text", "text": "ok"}],
+            role="assistant",
+        )
+        yield msg, True
+
+    with patch("src.agent.query.stream_printing_messages", _mock_stream_runtime):
+        process_payload = {
+            **valid_payload,
+            "session_id": "bootstrap-process-001",
+        }
+        process_response = client.post("/process", json=process_payload)
+
+    assert process_response.status_code == 200
+    events = _parse_sse_events(process_response.text)
+    statuses = [e.get("status") for e in events if "status" in e]
+    assert "completed" in statuses
+
+
+def test_process_rejects_agent_config_for_bootstrapped_session(client, valid_payload):
+    bootstrap_payload = {"session_id": "bootstrap-process-002", "mcp_servers": []}
+    response = client.post("/sessions/bootstrap", json=bootstrap_payload)
+    assert response.status_code == 200
+
+    process_payload = {
+        **valid_payload,
+        "session_id": "bootstrap-process-002",
+        "agent_config": {"model_name": "other-model"},
+    }
+    process_response = client.post("/process", json=process_payload)
+
+    assert process_response.status_code == 200
+    events = _parse_sse_events(process_response.text)
+    assert any(event.get("status") == "failed" for event in events)
+
+
+def test_shutdown_closes_active_runtime(client):
+    response = client.post(
+        "/sessions/bootstrap",
+        json={"session_id": "bootstrap-shutdown-001", "mcp_servers": []},
+    )
+    assert response.status_code == 200
+
+    shutdown_response = client.post("/sessions/bootstrap-shutdown-001/shutdown")
+    assert shutdown_response.status_code == 200
+    assert shutdown_response.json() == {
+        "session_id": "bootstrap-shutdown-001",
+        "status": "closed",
+    }
+
+
+def test_shutdown_missing_session_returns_404(client):
+    response = client.post("/sessions/unknown-session/shutdown")
+    assert response.status_code == 404

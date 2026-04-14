@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from agentscope.mcp import StdIOStatefulClient
 from fastapi import FastAPI
 
+from src.agent.session_runtime import close_all_session_runtimes
 from src.core.settings import get_settings
 from src.tools import _mcp_clients, toolkit
 
@@ -15,16 +16,13 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def app_lifespan(_: FastAPI):
-    # Existing: validate settings at startup (fail-fast)
     settings = get_settings()
 
-    # Phase 6 D-09 / Phase 7: Ensure session directory exists only for JSON backend
     if settings.SESSION_BACKEND == "json":
         session_dir = settings.SESSION_DIR
         os.makedirs(session_dir, exist_ok=True)
         logger.info("Session directory ready: %s", session_dir)
 
-    # Phase 7 D-09: Redis health check when using Redis session backend
     if settings.SESSION_BACKEND == "redis":
         from src.agent.session import get_session_backend
 
@@ -39,7 +37,6 @@ async def app_lifespan(_: FastAPI):
                 f"Ensure Redis is running at {settings.REDIS_HOST}:{settings.REDIS_PORT}"
             ) from e
 
-    # Phase 4 D-05: Connect local MCP server at startup
     mcp_client = StdIOStatefulClient(
         name="example-mcp",
         command="python",
@@ -56,7 +53,8 @@ async def app_lifespan(_: FastAPI):
 
     yield
 
-    # Phase 7: Close Redis session backend if active
+    await close_all_session_runtimes()
+
     from src.agent.session import _session_backend, reset_session_backend
 
     if _session_backend is not None and hasattr(_session_backend, "close"):
@@ -67,7 +65,6 @@ async def app_lifespan(_: FastAPI):
             logger.warning("Error closing session backend: %s", e)
         reset_session_backend()
 
-    # Shutdown: close MCP clients in LIFO order (framework requirement)
     for client in reversed(_mcp_clients):
         try:
             await client.close(ignore_errors=True)

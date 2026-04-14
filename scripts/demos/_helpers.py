@@ -5,11 +5,12 @@ used by all demo scripts (D-02, D-04).
 """
 
 import json
+import os
 import sys
 
 import httpx
 
-SERVICE_URL = "http://127.0.0.1:8000"
+SERVICE_URL = os.getenv("SERVICE_URL", "http://127.0.0.1:8000")
 
 
 def check_service_running() -> None:
@@ -20,7 +21,7 @@ def check_service_running() -> None:
         print(
             "ERROR: Service is not running.\n"
             "Start it first with:\n"
-            "  bash scripts/run_service.sh\n"
+            "  sh scripts/run_service.sh\n"
             "Then re-run this demo.",
             file=sys.stderr,
         )

@@ -130,12 +130,32 @@ def make_shell_runner() -> callable:
 
 def make_python_callable_runner(script: SkillScriptConfig):
     """Wrap a declared python callable as a structured skill tool."""
-    module_name, func_name = (script.target or "").split(":", 1)
-    module = importlib.import_module(module_name)
-    target = getattr(module, func_name)
+    try:
+        parts = (script.target or "").split(":", 1)
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            raise ValueError(f"Invalid target format '{script.target}', expected 'module:function'")
+        module_name, func_name = parts
+        module = importlib.import_module(module_name)
+        target = getattr(module, func_name)
+    except (ValueError, ImportError, AttributeError) as exc:
+        load_error = str(exc)
+
+        def _tool(**kwargs):
+            return ToolResponse(
+                content=[TextBlock(type="text", text=f"Failed to load skill callable: {load_error}")],
+            )
+
+        _tool.__name__ = script.name
+        _tool.__doc__ = script.description
+        return _tool
 
     def _tool(**kwargs):
-        result = target(**kwargs)
+        try:
+            result = target(**kwargs)
+        except Exception as exc:
+            return ToolResponse(
+                content=[TextBlock(type="text", text=f"Skill callable error: {exc}")],
+            )
         if isinstance(result, ToolResponse):
             return result
         return ToolResponse(content=[TextBlock(type="text", text=str(result))])
@@ -155,9 +175,16 @@ def make_python_file_runner(skill_dir: str, script: SkillScriptConfig):
             input=json.dumps(kwargs) if kwargs else "",
             capture_output=True,
             text=True,
-            check=True,
+            check=False,
             cwd=skill_dir,
         )
+        if completed.returncode != 0:
+            return ToolResponse(
+                content=[TextBlock(
+                    type="text",
+                    text=f"Script failed (exit code {completed.returncode}):\n{completed.stderr.strip()}",
+                )],
+            )
         return ToolResponse(
             content=[TextBlock(type="text", text=completed.stdout.strip())],
         )

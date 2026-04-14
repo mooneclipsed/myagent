@@ -1,5 +1,7 @@
 """Streaming query handler for the AgentApp /process endpoint."""
 
+import logging
+
 from agentscope.memory import InMemoryMemory
 from agentscope.pipeline import stream_printing_messages
 
@@ -8,6 +10,8 @@ from src.agent.session_runtime import build_react_agent, get_session_runtime
 from src.core.config import AgentConfig, resolve_effective_config
 from src.main import app
 from src.tools import toolkit
+
+logger = logging.getLogger(__name__)
 
 
 @app.query(framework="agentscope")
@@ -25,7 +29,7 @@ async def chat_query(self, msgs, request=None, **kwargs):
 
     if runtime is not None:
         if request and hasattr(request, "agent_config") and request.agent_config:
-            raise RuntimeError(
+            raise ValueError(
                 "Bootstrapped sessions do not accept agent_config on /process. Re-bootstrap the session instead.",
             )
         agent = runtime.agent
@@ -48,14 +52,18 @@ async def chat_query(self, msgs, request=None, **kwargs):
             toolkit=toolkit,
         )
 
-    async for msg, last in stream_printing_messages(
-        agents=[agent],
-        coroutine_task=agent(msgs),
-    ):
-        yield msg, last
-
-    if session_id:
-        await session_backend.save_session_state(
-            session_id=session_id,
-            memory=agent.memory,
-        )
+    try:
+        async for msg, last in stream_printing_messages(
+            agents=[agent],
+            coroutine_task=agent(msgs),
+        ):
+            yield msg, last
+    finally:
+        if session_id:
+            try:
+                await session_backend.save_session_state(
+                    session_id=session_id,
+                    memory=agent.memory,
+                )
+            except Exception as exc:
+                logger.warning("Failed to save session state for %s: %s", session_id, exc)

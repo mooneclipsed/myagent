@@ -1,4 +1,4 @@
-"""Session-scoped runtime registry for bootstrapped agents and MCP clients."""
+"""Session-scoped runtime registry for bootstrapped agents, skills, and MCP clients."""
 
 from __future__ import annotations
 
@@ -14,11 +14,13 @@ from agentscope.model import OpenAIChatModel
 from agentscope.tool import Toolkit
 
 from src.agent.session import generate_session_id, get_session_backend, validate_session_id
+from src.agent.skill_runtime import SkillRuntimeRegistry, register_configured_skills, register_local_runtime_tools
 from src.core.config import (
     HttpMCPServerConfig,
     MCPServerConfig,
     MCPServerSummary,
     SessionBootstrapRequest,
+    SkillSummary,
     StdioMCPServerConfig,
     resolve_effective_config,
 )
@@ -55,8 +57,10 @@ class SessionRuntime:
     toolkit: Toolkit
     agent: ReActAgent
     memory: InMemoryMemory
+    skill_registry: SkillRuntimeRegistry = field(default_factory=SkillRuntimeRegistry)
     mcp_clients: list[StatefulClientBase] = field(default_factory=list)
     resolved_config: dict = field(default_factory=dict)
+    skill_summaries: list[SkillSummary] = field(default_factory=list)
     mcp_servers: list[MCPServerSummary] = field(default_factory=list)
 
     async def close(self) -> None:
@@ -132,7 +136,14 @@ async def bootstrap_session_runtime(
             session_id=session_id,
             memory=memory,
         )
-        session_toolkit = create_base_toolkit()
+        session_toolkit = create_base_toolkit(
+            include_legacy_example_skill_support=False,
+        )
+        register_local_runtime_tools(session_toolkit)
+        skill_registry = register_configured_skills(
+            toolkit=session_toolkit,
+            skill_configs=request.skills,
+        )
         mcp_clients: list[StatefulClientBase] = []
         summaries: list[MCPServerSummary] = []
         current_summary: MCPServerSummary | None = None
@@ -165,8 +176,10 @@ async def bootstrap_session_runtime(
             toolkit=session_toolkit,
             agent=agent,
             memory=memory,
+            skill_registry=skill_registry,
             mcp_clients=mcp_clients,
             resolved_config=resolved_config,
+            skill_summaries=skill_registry.list_skill_summaries(),
             mcp_servers=summaries,
         )
         return _active_runtime, True

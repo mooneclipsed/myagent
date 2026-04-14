@@ -128,8 +128,8 @@ def test_bootstrap_rejects_invalid_http_transport(client):
 
 
 def test_bootstrap_conflict_when_another_session_active(client):
-    payload_a = {"session_id": "bootstrap-session-a", "mcp_servers": []}
-    payload_b = {"session_id": "bootstrap-session-b", "mcp_servers": []}
+    payload_a = {"session_id": "bootstrap-session-a", "skills": [], "mcp_servers": []}
+    payload_b = {"session_id": "bootstrap-session-b", "skills": [], "mcp_servers": []}
 
     response_a = client.post("/sessions/bootstrap", json=payload_a)
     response_b = client.post("/sessions/bootstrap", json=payload_b)
@@ -140,7 +140,7 @@ def test_bootstrap_conflict_when_another_session_active(client):
 
 
 def test_bootstrap_same_session_returns_existing_runtime(client):
-    payload = {"session_id": "bootstrap-session-same", "mcp_servers": []}
+    payload = {"session_id": "bootstrap-session-same", "skills": [], "mcp_servers": []}
 
     response_a = client.post("/sessions/bootstrap", json=payload)
     response_b = client.post("/sessions/bootstrap", json=payload)
@@ -181,7 +181,7 @@ def test_bootstrap_failure_rolls_back_connected_clients(client):
 
 
 def test_process_reuses_bootstrapped_session_agent(client, valid_payload):
-    bootstrap_payload = {"session_id": "bootstrap-process-001", "mcp_servers": []}
+    bootstrap_payload = {"session_id": "bootstrap-process-001", "skills": [], "mcp_servers": []}
     response = client.post("/sessions/bootstrap", json=bootstrap_payload)
     assert response.status_code == 200
 
@@ -214,7 +214,7 @@ def test_process_reuses_bootstrapped_session_agent(client, valid_payload):
 
 
 def test_process_rejects_agent_config_for_bootstrapped_session(client, valid_payload):
-    bootstrap_payload = {"session_id": "bootstrap-process-002", "mcp_servers": []}
+    bootstrap_payload = {"session_id": "bootstrap-process-002", "skills": [], "mcp_servers": []}
     response = client.post("/sessions/bootstrap", json=bootstrap_payload)
     assert response.status_code == 200
 
@@ -233,7 +233,7 @@ def test_process_rejects_agent_config_for_bootstrapped_session(client, valid_pay
 def test_shutdown_closes_active_runtime(client):
     response = client.post(
         "/sessions/bootstrap",
-        json={"session_id": "bootstrap-shutdown-001", "mcp_servers": []},
+        json={"session_id": "bootstrap-shutdown-001", "skills": [], "mcp_servers": []},
     )
     assert response.status_code == 200
 

@@ -73,3 +73,19 @@ def run_platform_report() -> ToolResponse:
     return ToolResponse(
         content=[TextBlock(type="text", text=completed.stdout.strip())],
     )
+
+
+def summarize_platform_callable() -> ToolResponse:
+    """Return a deterministic callable summary for dynamic skill tests."""
+    return ToolResponse(
+        content=[
+            TextBlock(
+                type="text",
+                text=(
+                    "platform=AgentScope Validation Platform\n"
+                    "mode=session-owned-skill-runtime\n"
+                    "capabilities=skill_calls,tool_calls,mcp_calls,context_handling,session_persistence"
+                ),
+            )
+        ],
+    )

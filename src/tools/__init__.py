@@ -24,29 +24,30 @@ def register_default_tools(target_toolkit: Toolkit) -> None:
     """Register the built-in deterministic tool functions."""
     target_toolkit.register_tool_function(tool_func=get_weather, group_name="basic")
     target_toolkit.register_tool_function(tool_func=calculate, group_name="basic")
+
+
+def register_legacy_example_skill_support(target_toolkit: Toolkit) -> None:
+    """Register the bundled example skill and its legacy script tool."""
     target_toolkit.register_tool_function(
         tool_func=run_platform_report,
         group_name="basic",
     )
-
-
-def register_default_skills(target_toolkit: Toolkit) -> None:
-    """Register bundled agent skills when present."""
     if os.path.isdir(_example_skill_dir):
         target_toolkit.register_agent_skill(skill_dir=_example_skill_dir)
         logger.info("Example agent skill registered from %s", _example_skill_dir)
 
 
-def create_base_toolkit() -> Toolkit:
-    """Create a toolkit populated with the default tools and skills."""
+def create_base_toolkit(*, include_legacy_example_skill_support: bool = True) -> Toolkit:
+    """Create a toolkit populated with the default tools and optional legacy example skill support."""
     target_toolkit = Toolkit()
     register_default_tools(target_toolkit)
-    register_default_skills(target_toolkit)
+    if include_legacy_example_skill_support:
+        register_legacy_example_skill_support(target_toolkit)
     return target_toolkit
 
 
 # Shared toolkit singleton (legacy compatibility path)
-toolkit = create_base_toolkit()
+toolkit = create_base_toolkit(include_legacy_example_skill_support=True)
 
 # Module-level list to track legacy startup MCP clients for LIFO shutdown
 _mcp_clients: list[StdIOStatefulClient] = []

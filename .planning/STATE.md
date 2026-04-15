@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 Phase: All v1.0 phases complete
 Status: Milestone v1.0 archived
-Last activity: 2026-04-14 - Completed quick task 260414-nw2: Implement name-based tool registry for session bootstrap
+Last activity: 2026-04-15 - Completed quick task 260415-n2v: Refactor tool registration wiring: extract registration and registry management logic out of src/tools/__init__.py into a dedicated module under src/tools/, keep current bootstrap/name-based registry behavior unchanged, minimize scope.
 
 Progress: [██████████] 100%
 
@@ -49,6 +49,7 @@ Run `/gsd-new-milestone` to start v2.0 cycle (questioning → research → requi
 | 260413-m0d | 扩展当前 example skill，使其支持脚本执行，并提供一条可验证框架能调用脚本型 skill 的端到端测试路径。 | 2026-04-13 | cf1d5c7 | [260413-m0d-example-skill-skill](./quick/260413-m0d-example-skill-skill/) |
 | 260414-mop | Fix 4 robustness issues in skill runtime and query handler | 2026-04-14 | 885105c | [260414-mop-fix-4-robustness-issues-in-skill-runtime](./quick/260414-mop-fix-4-robustness-issues-in-skill-runtime/) |
 | 260414-nw2 | Implement name-based tool registry for session bootstrap | 2026-04-14 | 2b03b86 | [260414-nw2-implement-name-based-tool-registry-for-s](./quick/260414-nw2-implement-name-based-tool-registry-for-s/) |
+| 260415-n2v | Refactor tool registration wiring: extract registration and registry management logic out of src/tools/__init__.py into a dedicated module under src/tools/, keep current bootstrap/name-based registry behavior unchanged, minimize scope. | 2026-04-15 | pending | [260415-n2v-refactor-tool-registration-wiring-extrac](./quick/260415-n2v-refactor-tool-registration-wiring-extrac/) |
 
 ---
 *Last updated: 2026-04-12 after v1.0 milestone archival*

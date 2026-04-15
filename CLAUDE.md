@@ -1,112 +1,107 @@
-<!-- GSD:project-start source:PROJECT.md -->
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 用中文对话,文档生成用英文
+
 ## Project
 
-**AgentScope Skill/Tool/MCP Validation Platform**
-
-A FastAPI-based agent testing shell for personal R&D validation, built around `agentscope-runtime` with `uv` project management. The platform creates an agent per client request and supports streaming chat responses so we can quickly test skill calls, tool calls, MCP calls, and context handling behavior. It also explores resume/session recovery with both JSON-file and Redis backends.
-
-**Core Value:** The platform must provide a stable, repeatable call chain where one chat session can reliably trigger and complete skill/tool/MCP interactions.
+**AgentScope Skill/Tool/MCP Validation Platform** — a FastAPI-based agent testing shell for personal R&D validation, built around `agentscope-runtime` with `uv` project management. The platform creates an agent per client request with SSE streaming to test skill calls, tool calls, MCP calls, and session persistence (JSON-file and Redis backends).
 
 ### Constraints
 
-- **Runtime Dependency**: Core runtime should rely on `agentscope-runtime` — this is the primary framework under evaluation.
-- **API Form**: Must expose chat via FastAPI with streaming responses — enables direct conversational testing.
-- **State Model**: Prefer near-stateless server design — avoid unnecessary in-memory coupling.
-- **Session Backends**: Resume must support both JSON-file and Redis storage — required for comparative validation.
-- **Environment**: Model/provider config comes from `.env` — keep config externalized.
-- **Tooling**: Use `uv` for project/dependency management — standardize local workflow.
-- **Versioning**: Track progress with git commits — preserve development checkpoints.
-<!-- GSD:project-end -->
+- Core runtime relies on `agentscope-runtime` — the primary framework under evaluation
+- Chat exposed via FastAPI with SSE streaming responses
+- Near-stateless server design — one active bootstrapped session per pod
+- Session resume supports both JSON-file and Redis backends
+- Model/provider config externalized to `.env`
+- Use `uv` for all dependency/project management
 
-<!-- GSD:stack-start source:research/STACK.md -->
-## Technology Stack
+## Development Commands
 
-## Recommended Stack
-### Core Technologies
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| Python | 3.11 | Primary runtime | Widest ecosystem support for FastAPI + MCP SDKs; stable async support without the edge-case churn of 3.12/3.13 for toolchain compatibility. |
-| FastAPI | 0.135.3 | API framework with streaming | Officially supports SSE and streaming JSON lines needed for chat streaming validation; high-performance ASGI with strong typing. |
-| Starlette | >=0.46.0 (via FastAPI) | ASGI toolkit underlying FastAPI | Required for proper streaming behavior with `yield` and exception-group handling in streaming responses. |
-| Uvicorn | 0.44.0 | ASGI server | Standard ASGI server for FastAPI; stable and lightweight for local R&D loops. |
-| agentscope-runtime | 1.1.3 | Agent runtime under test | Primary framework being validated; official docs specify Python 3.10+ and CLI/env config support. |
-| Model Context Protocol SDK (Python) | 1.27.0 | MCP client/server | Official MCP SDK for tool/resource/prompt protocols; Tier-1 SDK in official MCP docs. |
-| Redis | 7.x | Session persistence backend | Industry standard for resumable sessions; supported by redis-py 7.x. |
-### Supporting Libraries
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| pydantic | 2.12.5 | Request/response validation | Use for strict typing and schema validation of chat and tool payloads. |
-| pydantic-settings | 2.13.1 | `.env` configuration | Use to load provider/model config from `.env` into typed settings. |
-| redis | 7.4.0 | Redis client | Use for Redis-backed session resume and state snapshots. |
-| orjson | 3.x | Fast JSON serialization | Use when streaming large response payloads or storing session blobs to reduce overhead. |
-| sse-starlette | 2.x | SSE utilities | Use if you need explicit SSE event formatting beyond FastAPI’s built-in support. |
-### Development Tools
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| uv | Python package manager | Use `uv sync` and `uv run` for reproducible local flows; latest is 0.11.6. |
-| ruff | Linting + formatting | Fast checks to keep experimentation code clean; keep config minimal. |
-| pytest | Test runner | Use for validating call-chain stability in API flows. |
-## Installation
-# Core
-# Supporting
-# Dev dependencies
-## Alternatives Considered
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| FastAPI | Starlette-only | Use Starlette-only if you need full control and minimal framework overhead. |
-| Uvicorn | Hypercorn | Use Hypercorn if you need HTTP/2 or advanced ASGI features. |
-| Redis (redis-py) | Valkey + valkey-py | Use Valkey if you want a fully open-source Redis-compatible backend. |
-| MCP SDK (modelcontextprotocol) | modelcontextprotocol-client | Use client-only package if you only need MCP client features and want a smaller dependency. |
-## What NOT to Use
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| Flask + Gunicorn | WSGI stack blocks async streaming patterns needed for tool/MCP flows | FastAPI + Uvicorn (ASGI) |
-| Pydantic v1 | FastAPI now targets Pydantic v2; v1 adds incompatibilities and migration drag | Pydantic 2.x |
-| In-memory session cache only | Breaks resume semantics and cross-request reproducibility | JSON-file backend or Redis |
-## Stack Patterns by Variant
-- Use JSON-file persistence + local MCP servers
-- Because it removes network dependencies while still validating tool/MCP call chains
-- Use Redis + periodic snapshotting of agent state
-- Because it mimics production-like session persistence and recovery
-## Version Compatibility
-| Package A | Compatible With | Notes |
-|-----------|-----------------|-------|
-| fastapi@0.135.3 | starlette>=0.46.0 | Required for streaming with `yield` and SSE support. |
-| pydantic@2.12.5 | fastapi@0.135.3 | FastAPI release notes set minimum Pydantic v2 bounds in 2026. |
-| agentscope-runtime@1.1.3 | python>=3.10 | Official install docs specify Python 3.10+. |
-## Sources
-- https://fastapi.tiangolo.com/release-notes/ — FastAPI 0.135.3, SSE and streaming updates (MEDIUM)
-- https://pypi.org/pypi/uv/json — uv latest version 0.11.6 (MEDIUM)
-- https://pypi.org/pypi/pydantic/json — Pydantic 2.12.5 latest stable (MEDIUM)
-- https://pypi.org/pypi/uvicorn/json — Uvicorn 0.44.0 latest (MEDIUM)
-- https://pypi.org/pypi/redis/json — redis-py 7.4.0 latest (MEDIUM)
-- https://runtime.agentscope.io/en/install.html — agentscope-runtime install + Python 3.10+ (MEDIUM)
-- https://runtime.agentscope.io/en/cli.html — agentscope-runtime env/CLI config (MEDIUM)
-- https://modelcontextprotocol.io/docs/sdk — MCP SDK Tier list (MEDIUM)
-- https://pypi.org/pypi/modelcontextprotocol/json — MCP Python SDK 1.27.0 (MEDIUM)
-- https://pypi.org/pypi/modelcontextprotocol-client/json — MCP client-only package 0.1.3 (LOW)
-<!-- GSD:stack-end -->
+```bash
+# Install dependencies
+uv sync
 
-<!-- GSD:conventions-start source:CONVENTIONS.md -->
-## Conventions
+# Start the service (127.0.0.1:8000)
+bash scripts/run_service.sh
 
-Conventions not yet established. Will populate as patterns emerge during development.
-<!-- GSD:conventions-end -->
+# Run all tests
+uv run pytest tests/ -x -v
 
-<!-- GSD:architecture-start source:ARCHITECTURE.md -->
+# Run a single test file
+uv run pytest tests/test_session.py -x -v
+
+# Run a single test function
+uv run pytest tests/test_session.py::test_session_save_load -x -v
+
+# Run demo scripts (service must be running)
+uv run scripts/demos/demo_tool.py
+uv run scripts/demos/demo_skill.py
+uv run scripts/demos/demo_mcp.py
+uv run scripts/demos/demo_resume.py
+```
+
 ## Architecture
 
-Architecture not yet mapped. Follow existing patterns found in the codebase.
-<!-- GSD:architecture-end -->
+### Dual-Path Request Model
 
-<!-- GSD:skills-start source:skills/ -->
-## Project Skills
+The system has two distinct request paths that converge at the agent query layer:
 
-No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`, or `.github/skills/` with a `SKILL.md` index file.
-<!-- GSD:skills-end -->
+1. **Legacy path** (`POST /process` without matching session_id): creates an ephemeral agent per request using the global toolkit. Config resolved from request `agent_config` with `.env` fallback.
 
-<!-- GSD:workflow-start source:GSD defaults -->
+2. **Bootstrap path** (`POST /sessions/bootstrap` → `POST /process` with session_id): creates a persistent `SessionRuntime` that owns its own toolkit, agent, memory, skill registry, and MCP clients. Only one active bootstrapped session per pod (`_active_runtime` singleton in `session_runtime.py`).
+
+3. **Shutdown** (`POST /sessions/{session_id}/shutdown`): closes MCP clients and clears the runtime.
+
+### Key Flow: `POST /process`
+
+`src/agent/query.py:chat_query` → validates session_id → checks for matching `SessionRuntime` → if found, reuses its agent; if not, creates ephemeral agent with global toolkit → streams via `stream_printing_messages` → saves memory to session backend.
+
+### Session Persistence
+
+`src/agent/session.py` provides a backend factory (`get_session_backend()`) that returns either `JSONSession` (files in `./sessions/`) or `RedisSession` (key prefix `agentops:`), selected by `SESSION_BACKEND` env var. Session IDs are validated against path traversal and format rules.
+
+### Skill System
+
+Skills are declared as directories with a `SKILL.md` containing YAML frontmatter (name, description, scripts). Two execution modes:
+- `python_callable`: imports and calls a Python function directly
+- `python_file`: runs a script via subprocess with JSON stdin
+
+Skills are registered on the session toolkit with lazy/eager activation. The `activate_skill` tool reveals skill instructions to the agent at runtime. See `src/agent/skill_runtime.py` and `skills/example_skill/SKILL.md`.
+
+### MCP Integration
+
+Bootstrap accepts MCP server configs of two types:
+- `StdioMCPServerConfig` → `StdIOStatefulClient` (subprocess-based)
+- `HttpMCPServerConfig` → `HttpStatefulClient` (SSE or streamable_http)
+
+A startup MCP server (`src/mcp/server.py` via FastMCP) provides a `get_time` tool and is started in the app lifespan.
+
+### Configuration Resolution
+
+`src/core/config.py:resolve_effective_config` merges per-request `AgentConfig` overrides with `.env` defaults field-by-field. Settings are loaded once via `lru_cache` in `src/core/settings.py`.
+
+## Testing Patterns
+
+- All tests auto-mock the startup MCP client via `conftest.py:_mock_mcp_client` (patches `StdIOStatefulClient` to avoid subprocess dependency)
+- Each test gets `configured_env` fixture with test env vars and `clear_settings_cache` to reset the `lru_cache`
+- Redis tests use `fakeredis` — no real Redis needed
+- `pythonpath = ["."]` in `pyproject.toml` enables `src.` imports
+
+## Technology Stack
+
+| Component | Version | Purpose |
+|-----------|---------|---------|
+| Python | >=3.11 | Runtime |
+| agentscope-runtime | 1.1.3 | Agent framework under test |
+| FastAPI | 0.135.3 | HTTP/SSE server (via agentscope-runtime) |
+| pydantic-settings | >=2.0 | `.env` config loading |
+| python-frontmatter | >=1.1.0 | SKILL.md parsing |
+| pytest | 9.0.3 | Test runner (dev) |
+| httpx | 0.28.1 | HTTP client for demos (dev) |
+| fakeredis | >=2.31.0 | Redis mock for tests (dev) |
+
 ## GSD Workflow Enforcement
 
 Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
@@ -117,13 +112,3 @@ Use these entry points:
 - `/gsd-execute-phase` for planned phase work
 
 Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
-<!-- GSD:workflow-end -->
-
-
-
-<!-- GSD:profile-start -->
-## Developer Profile
-
-> Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
-> This section is managed by `generate-claude-profile` -- do not edit manually.
-<!-- GSD:profile-end -->

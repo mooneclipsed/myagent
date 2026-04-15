@@ -9,6 +9,12 @@ from agentscope.tool import Toolkit, ToolResponse
 
 from src.core.config import ToolConfig
 from src.tools import TOOL_REGISTRY, ToolRegistryError, register_configured_tools
+from src.tools.registry import (
+    TOOL_REGISTRY as REGISTRY_TOOL_REGISTRY,
+    ToolRegistryError as RegistryToolRegistryError,
+    create_base_toolkit as registry_create_base_toolkit,
+    register_configured_tools as registry_register_configured_tools,
+)
 
 
 class TestToolRegistration:
@@ -99,6 +105,11 @@ class TestToolResponseFormat:
 class TestToolRegistry:
     """Tests for name-based tool registry and register_configured_tools."""
 
+    def test_registry_module_exports_match_package_exports(self):
+        assert REGISTRY_TOOL_REGISTRY is TOOL_REGISTRY
+        assert registry_register_configured_tools is register_configured_tools
+        assert RegistryToolRegistryError is ToolRegistryError
+
     def test_registry_contains_all_example_tools(self):
         assert "get_weather" in TOOL_REGISTRY
         assert "calculate" in TOOL_REGISTRY
@@ -108,6 +119,13 @@ class TestToolRegistry:
     def test_registry_values_are_callable(self):
         for name, func in TOOL_REGISTRY.items():
             assert callable(func), f"{name} is not callable"
+
+    def test_registry_create_base_toolkit_registers_default_tools(self):
+        tk = registry_create_base_toolkit(include_legacy_example_skill_support=False)
+        tool_names = list(tk.tools.keys())
+        assert "get_weather" in tool_names
+        assert "calculate" in tool_names
+        assert "run_platform_report" not in tool_names
 
     def test_register_configured_tools_adds_to_toolkit(self):
         tk = Toolkit()

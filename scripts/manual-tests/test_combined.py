@@ -3,7 +3,7 @@
 Single session bootstrapped with ALL three capability types:
   - Local tool: calculate
   - MCP server: weather-mcp (stdio, get_weather)
-  - Skill: hello-skill (lazy, run script via shell)
+  - Skill: hello (lazy, structured greeting tool)
 
 The agent receives different natural language requests and must
 route each to the correct capability without being told which to use.
@@ -19,9 +19,10 @@ from _helpers import check_service_running, bootstrap, chat, shutdown, check
 
 SESSION_ID = "test-agent-combined"
 
-MCP_SERVER_DIR = os.path.expanduser("~/mcp-server")
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MCP_SERVER_DIR = os.path.join(REPO_ROOT, "mcp-server")
 WEATHER_SCRIPT = os.path.join(MCP_SERVER_DIR, "weather_mcp.py")
-HELLO_SKILL_DIR = os.path.expanduser("~/skills_test/hello-skill")
+HELLO_SKILL_DIR = os.path.join(REPO_ROOT, "skills", "hello")
 
 
 def test_agent_routes_to_tool():
@@ -41,14 +42,14 @@ def test_agent_routes_to_mcp():
 
 
 def test_agent_routes_to_skill():
-    """Greeting request → agent should activate hello-skill and run script."""
+    """Greeting request → agent should activate hello and run script."""
     result = chat(
         SESSION_ID,
-        "帮我用 hello-skill 和 Charlie 打个招呼，先激活技能再执行。",
+        "帮我用 hello skill 和 Charlie 打个招呼，先激活技能再执行。",
     )
     check(
         "Charlie" in result.text or "Hello" in result.text,
-        "routed to hello-skill script",
+        "routed to hello skill script",
         result.text[:150],
     )
 
@@ -95,7 +96,7 @@ def main():
     skill_names = [s["name"] for s in body.get("skills", [])]
     check("calculate" in tool_names, "bootstrap: calculate tool registered")
     check("weather-mcp" in mcp_names, "bootstrap: weather-mcp registered")
-    check("hello-skill" in skill_names, "bootstrap: hello-skill registered")
+    check("hello" in skill_names, "bootstrap: hello registered")
 
     try:
         test_agent_routes_to_tool()

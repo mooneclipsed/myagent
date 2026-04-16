@@ -18,6 +18,7 @@ TESTS = [
     ("test_mcp_http.py",  "MCP HTTP (agent invocation)"),
     ("test_skill.py",     "Skill activation & script (agent invocation)"),
     ("test_combined.py",  "Combined tool+MCP+skill routing"),
+    ("test_b2b_reactagent.py", "B2B reactagent happy path"),
 ]
 
 

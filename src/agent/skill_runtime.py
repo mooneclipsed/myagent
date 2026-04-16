@@ -12,7 +12,13 @@ from pathlib import Path
 
 import frontmatter
 from agentscope.message import TextBlock
-from agentscope.tool import ToolResponse, Toolkit, execute_shell_command, view_text_file
+from agentscope.tool import (
+    ToolResponse,
+    Toolkit,
+    execute_shell_command,
+    view_text_file,
+    write_text_file,
+)
 
 from src.core.config import SkillConfig, SkillScriptConfig, SkillSummary
 
@@ -95,14 +101,27 @@ def build_skill_group_name(skill_name: str) -> str:
 def make_repo_file_reader() -> callable:
     """Create a repo-bounded file-reading tool wrapper."""
 
-    async def read_local_text_file(file_path: str, ranges: list[int] | None = None) -> ToolResponse:
+    async def read_file(file_path: str, ranges: list[int] | None = None) -> ToolResponse:
         return await view_text_file(file_path=file_path, ranges=ranges)
 
-    read_local_text_file.__name__ = "read_local_text_file"
-    read_local_text_file.__doc__ = (
-        "Read a local text file from the repository to inspect skill instructions or related resources."
-    )
-    return read_local_text_file
+    read_file.__name__ = "read_file"
+    read_file.__doc__ = "Read a local text file from the repository."
+    return read_file
+
+
+def make_repo_file_editor() -> callable:
+    """Create a repo-bounded file-writing tool wrapper."""
+
+    async def edit_file(
+        file_path: str,
+        content: str,
+        ranges: list[int] | None = None,
+    ) -> ToolResponse:
+        return await write_text_file(file_path=file_path, content=content, ranges=ranges)
+
+    edit_file.__name__ = "edit_file"
+    edit_file.__doc__ = "Write or update a local text file in the repository."
+    return edit_file
 
 
 def make_shell_runner() -> callable:
@@ -260,6 +279,7 @@ def activate_skill_factory(toolkit: Toolkit, registry: SkillRuntimeRegistry):
 def register_local_runtime_tools(toolkit: Toolkit) -> None:
     """Register local file and shell capability tools for the session runtime."""
     toolkit.register_tool_function(make_repo_file_reader(), group_name="basic")
+    toolkit.register_tool_function(make_repo_file_editor(), group_name="basic")
     toolkit.register_tool_function(make_shell_runner(), group_name="basic")
 
 

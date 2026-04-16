@@ -6,8 +6,8 @@ the agent can discover and call tools served over network transport.
 Prerequisite:
   - bash scripts/run_service.sh
   - Start MCP HTTP servers in separate terminals:
-      uv run ~/mcp-server/weather_mcp.py http           # port 8765
-      uv run ~/mcp-server/hiking_spot_mcp.py http        # port 8766
+      uv run mcp-server/weather_mcp.py http      # port 8765
+      uv run mcp-server/hiking_spot_mcp.py http  # port 8766
 """
 
 import sys
@@ -28,7 +28,7 @@ def check_mcp_http_server(url: str, label: str) -> None:
         httpx.get(url, timeout=2.0)
     except httpx.ConnectError:
         print(f"ERROR: {label} not reachable at {url}", file=sys.stderr)
-        print(f"Start it: uv run ~/mcp-server/{label.replace('-', '_')}.py http", file=sys.stderr)
+        print(f"Start it: uv run mcp-server/{label.replace('-', '_')}.py http", file=sys.stderr)
         sys.exit(1)
     except Exception:
         pass  # Non-200 on GET is fine for MCP endpoints

@@ -1,11 +1,11 @@
 """Test: Agent discovers, activates, and executes skills.
 
-The agent is bootstrapped with hello-skill (lazy activation).
+The agent is bootstrapped with hello (lazy activation).
 Through natural conversation the agent should:
   1. Discover the skill exists
   2. Activate it to read instructions
-  3. Execute say_hello.py via run_local_shell
-  4. Read skill resources via read_local_text_file
+  3. Execute the structured tool `say_hello`
+  4. Read skill resources via `read_file`
 
 Strong proof strategy:
 - Response contains script-unique markers
@@ -23,7 +23,11 @@ from _helpers import check_service_running, bootstrap, chat, shutdown, check
 
 SESSION_ID = "test-agent-skill"
 
-HELLO_SKILL_DIR = os.path.expanduser("~/skills_test/hello-skill")
+HELLO_SKILL_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "skills",
+    "hello",
+)
 MARKER_FILE = "/Users/chengtong/OpenSource/myagent/scripts/manual-tests/files/hello_skill_invocations.log"
 
 
@@ -41,11 +45,11 @@ def truncate_marker_file() -> None:
 
 
 def test_agent_discovers_skill():
-    """Ask what skills are available → agent should reveal hello-skill exists."""
+    """Ask what skills are available → agent should reveal hello exists."""
     result = chat(SESSION_ID, "你现在有哪些可用的技能？")
     check(
-        "hello-skill" in result.text or result.has_evidence_of("hello-skill"),
-        "agent discovered hello-skill",
+        "hello" in result.text or result.has_evidence_of("hello"),
+        "agent discovered hello",
         result.text,
     )
 
@@ -55,7 +59,7 @@ def test_agent_activates_and_uses_skill():
     before = read_marker_lines()
     result = chat(
         SESSION_ID,
-        "帮我用 hello-skill 和 Alice 打个招呼。"
+        "帮我用 hello skill 和 Alice 打个招呼。"
         "先激活这个技能，然后根据技能说明执行对应的脚本。",
     )
     after = read_marker_lines()
@@ -91,7 +95,7 @@ def test_agent_reads_skill_resources():
     """Ask about skill usage → agent should read resources/usage.md."""
     result = chat(
         SESSION_ID,
-        "hello-skill 的 resources 目录下有一个 usage.md，帮我读取一下它的内容。",
+        "hello skill 的 resources 目录下有一个 usage.md，帮我读取一下它的内容。",
     )
     check(
         "say_hello.py" in result.text or "chengtong" in result.text,
@@ -146,7 +150,7 @@ def main():
         ],
     })
     skill_names = [s["name"] for s in body.get("skills", [])]
-    check("hello-skill" in skill_names, "bootstrap registered hello-skill (lazy)")
+    check("hello" in skill_names, "bootstrap registered hello (lazy)")
 
     try:
         test_agent_discovers_skill()

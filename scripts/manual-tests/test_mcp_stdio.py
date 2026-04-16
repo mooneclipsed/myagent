@@ -17,7 +17,8 @@ from _helpers import check_service_running, bootstrap, chat, shutdown, check
 
 SESSION_ID = "test-agent-mcp-stdio"
 
-MCP_SERVER_DIR = os.path.expanduser("~/mcp-server")
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MCP_SERVER_DIR = os.path.join(REPO_ROOT, "mcp-server")
 WEATHER_SCRIPT = os.path.join(MCP_SERVER_DIR, "weather_mcp.py")
 HIKING_SCRIPT = os.path.join(MCP_SERVER_DIR, "hiking_spot_mcp.py")
 

@@ -4,7 +4,7 @@ import logging
 import os
 from collections.abc import Callable
 
-from agentscope.tool import Toolkit
+from agentscope.tool import Toolkit, execute_shell_command, view_text_file, write_text_file
 
 from src.core.config import ToolConfig, ToolSummary
 from src.tools.examples import (
@@ -52,6 +52,9 @@ TOOL_REGISTRY: dict[str, Callable[..., object]] = {
     "calculate": calculate,
     "run_platform_report": run_platform_report,
     "summarize_platform_callable": summarize_platform_callable,
+    "execute_shell_command": execute_shell_command,
+    "view_text_file": view_text_file,
+    "write_text_file": write_text_file,
 }
 
 

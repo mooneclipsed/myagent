@@ -1,13 +1,20 @@
 """Tests for session bootstrap MCP runtime lifecycle and routing."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+import asyncio
+import json
+from unittest.mock import AsyncMock, patch
 
+import agentscope
 import pytest
 from agentscope.message import Msg
+from agentscope.tracing._extractor import _get_common_attributes
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from src.agent.session_runtime import close_all_session_runtimes, get_session_runtime
-from src.main import app
 from tests.test_chat_stream import _parse_sse_events
+
 
 
 async def _mock_stream(*args, **kwargs):
@@ -213,6 +220,86 @@ def test_process_reuses_bootstrapped_session_agent(client, valid_payload):
     assert "completed" in statuses
 
 
+def test_process_rebinds_agentscope_run_context_for_bootstrapped_session(client, valid_payload):
+    session_id = "bootstrap-process-trace-bind"
+    response = client.post("/sessions/bootstrap", json={"session_id": session_id, "skills": [], "mcp_servers": []})
+    assert response.status_code == 200
+
+    captured = {}
+
+    async def _mock_stream_runtime(*args, **kwargs):
+        captured["run_id"] = agentscope._config.run_id
+        coroutine_task = kwargs["coroutine_task"]
+        coroutine_task.close()
+        msg = Msg(
+            name="agentops",
+            content=[{"type": "text", "text": "ok"}],
+            role="assistant",
+        )
+        yield msg, True
+
+    with patch("src.agent.query.stream_printing_messages", _mock_stream_runtime):
+        process_response = client.post(
+            "/process",
+            json={
+                **valid_payload,
+                "session_id": session_id,
+            },
+        )
+
+    assert process_response.status_code == 200
+    assert captured["run_id"] == session_id
+
+
+def test_process_exports_span_with_session_conversation_id(client, monkeypatch, valid_payload):
+    session_id = "bootstrap-process-trace-span"
+    monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
+
+    from src.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    with patch("src.agent.session_runtime.agentscope.init"):
+        response = client.post(
+            "/sessions/bootstrap",
+            json={"session_id": session_id, "skills": [], "mcp_servers": []},
+        )
+
+    assert response.status_code == 200, response.text
+
+    exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+    async def _mock_stream_runtime(*args, **kwargs):
+        with tracer_provider.get_tracer("tests.trace").start_as_current_span(
+            "test-span-bound",
+            attributes=_get_common_attributes(),
+        ):
+            coroutine_task = kwargs["coroutine_task"]
+            coroutine_task.close()
+            msg = Msg(
+                name="agentops",
+                content=[{"type": "text", "text": "ok"}],
+                role="assistant",
+            )
+            yield msg, True
+
+    with patch("src.agent.query.ot_trace.get_tracer_provider", return_value=tracer_provider):
+        with patch("src.agent.query.stream_printing_messages", _mock_stream_runtime):
+            process_response = client.post(
+                "/process",
+                json={
+                    **valid_payload,
+                    "session_id": session_id,
+                },
+            )
+
+    assert process_response.status_code == 200
+    spans = exporter.get_finished_spans()
+    assert any(json.loads(span.attributes["gen_ai.conversation.id"]) == session_id for span in spans)
+
+
 def test_process_rejects_agent_config_for_bootstrapped_session(client, valid_payload):
     bootstrap_payload = {"session_id": "bootstrap-process-002", "skills": [], "mcp_servers": []}
     response = client.post("/sessions/bootstrap", json=bootstrap_payload)
@@ -290,3 +377,43 @@ def test_bootstrap_with_empty_tools_succeeds(client):
     response = client.post("/sessions/bootstrap", json=payload)
     assert response.status_code == 200
     assert response.json()["tools"] == []
+
+
+def test_bootstrap_with_builtin_tools_registers_agentscope_tools(client):
+    payload = {
+        "session_id": "bootstrap-builtins-001",
+        "tools": [
+            {"name": "execute_shell_command"},
+            {"name": "view_text_file"},
+            {"name": "write_text_file"},
+        ],
+    }
+    response = client.post("/sessions/bootstrap", json=payload)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    tool_names = [t["name"] for t in body["tools"]]
+    assert "execute_shell_command" in tool_names
+    assert "view_text_file" in tool_names
+    assert "write_text_file" in tool_names
+
+
+def test_bootstrap_initializes_agentscope_studio_when_configured(client, monkeypatch):
+    monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
+
+    from src.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    with patch("src.agent.session_runtime.agentscope.init") as mock_init:
+        response = client.post(
+            "/sessions/bootstrap",
+            json={"session_id": "bootstrap-studio-001", "skills": [], "mcp_servers": []},
+        )
+
+    assert response.status_code == 200, response.text
+    mock_init.assert_called_once_with(
+        project="agentops",
+        studio_url="http://127.0.0.1:3000",
+        tracing_url="http://127.0.0.1:3000/v1/traces",
+        run_id="bootstrap-studio-001",
+    )

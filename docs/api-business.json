@@ -1,0 +1,235 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "description": "Business API reference only.",
+  "endpoints": [
+    {
+      "path": "/sessions/bootstrap",
+      "method": "POST",
+      "purpose": "Create a session-scoped runtime with optional tools, skills, MCP servers, and model overrides.",
+      "input": {
+        "content_type": "application/json",
+        "fields": {
+          "session_id": {
+            "type": "string|null",
+            "required": false,
+            "description": "Optional session identifier."
+          },
+          "agent_config": {
+            "type": "object|null",
+            "required": false,
+            "description": "Optional model settings.",
+            "fields": {
+              "model_name": "string|null",
+              "api_key": "string|null",
+              "base_url": "string|null"
+            }
+          },
+          "tools": {
+            "type": "array",
+            "required": false,
+            "description": "Optional list of tools to enable.",
+            "items": {
+              "name": "string"
+            }
+          },
+          "skills": {
+            "type": "array",
+            "required": false,
+            "description": "Optional list of skills to load.",
+            "items": {
+              "skill_dir": "string",
+              "activation_mode": "lazy|eager",
+              "expose_structured_tools": "boolean"
+            }
+          },
+          "mcp_servers": {
+            "type": "array",
+            "required": false,
+            "description": "Optional list of MCP servers.",
+            "items": {
+              "stdio": {
+                "type": "stdio",
+                "name": "string",
+                "command": "string",
+                "args": "string[]|null",
+                "env": "object|null",
+                "cwd": "string|null"
+              },
+              "http": {
+                "type": "http",
+                "name": "string",
+                "transport": "sse|streamable_http",
+                "url": "string",
+                "headers": "object|null",
+                "timeout": "number",
+                "sse_read_timeout": "number"
+              }
+            }
+          }
+        }
+      },
+      "output": {
+        "200": {
+          "content_type": "application/json",
+          "fields": {
+            "session_id": "string",
+            "status": "ready",
+            "tools": "array",
+            "skills": "array",
+            "mcp_servers": "array"
+          }
+        },
+        "422": {
+          "content_type": "application/json",
+          "fields": {
+            "detail": "validation error"
+          }
+        }
+      }
+    },
+    {
+      "path": "/sessions/{session_id}/shutdown",
+      "method": "POST",
+      "purpose": "Close an existing bootstrapped session runtime.",
+      "input": {
+        "path_params": {
+          "session_id": {
+            "type": "string",
+            "required": true,
+            "description": "Session identifier."
+          }
+        },
+        "body": null
+      },
+      "output": {
+        "200": {
+          "content_type": "application/json",
+          "fields": {
+            "session_id": "string",
+            "status": "closed"
+          }
+        },
+        "422": {
+          "content_type": "application/json",
+          "fields": {
+            "detail": "validation error"
+          }
+        }
+      }
+    },
+    {
+      "path": "/process",
+      "method": "POST",
+      "purpose": "Send a runtime-hosted agent request.",
+      "input": {
+        "content_type": "application/json",
+        "fields": {
+          "input": {
+            "type": "array",
+            "required": true,
+            "description": "List of messages."
+          },
+          "stream": {
+            "type": "boolean",
+            "required": false,
+            "description": "Whether to stream responses."
+          },
+          "session_id": {
+            "type": "string|null",
+            "required": false,
+            "description": "Optional session identifier."
+          },
+          "user_id": {
+            "type": "string|null",
+            "required": false,
+            "description": "Optional user identifier."
+          },
+          "model": {
+            "type": "string|null",
+            "required": false,
+            "description": "Optional model name."
+          },
+          "temperature": "number|null",
+          "top_p": "number|null",
+          "max_tokens": "integer|null",
+          "stop": "string|string[]|null",
+          "seed": "integer|null",
+          "tools": "array|null"
+        }
+      },
+      "output": {
+        "200": {
+          "content_type": "application/json",
+          "fields": {
+            "result": "agent runtime response payload"
+          }
+        },
+        "422": {
+          "content_type": "application/json",
+          "fields": {
+            "detail": "validation error"
+          }
+        }
+      }
+    },
+    {
+      "path": "/chat",
+      "method": "POST",
+      "purpose": "Send a direct chat request and receive Server-Sent Events for lifecycle and message updates.",
+      "input": {
+        "content_type": "application/json",
+        "fields": {
+          "input": {
+            "type": "array",
+            "required": true,
+            "description": "List of chat messages.",
+            "items": {
+              "role": "string",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "string"
+                }
+              ]
+            }
+          },
+          "session_id": {
+            "type": "string|null",
+            "required": false,
+            "description": "Optional session identifier."
+          },
+          "agent_config": {
+            "type": "object|null",
+            "required": false,
+            "description": "Optional model settings.",
+            "fields": {
+              "model_name": "string|null",
+              "api_key": "string|null",
+              "base_url": "string|null"
+            }
+          }
+        }
+      },
+      "output": {
+        "200": {
+          "content_type": "text/event-stream",
+          "event_fields": {
+            "status": "created|in_progress|completed|failed",
+            "session_id": "string|null",
+            "object": "string|null",
+            "role": "string|null",
+            "name": "string|null",
+            "content": "array|string|null",
+            "text": "string|null",
+            "delta": {
+              "text": "string"
+            },
+            "error": {
+              "message": "string"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

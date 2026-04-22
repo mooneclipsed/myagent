@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
     REDIS_PASSWORD: str | None = None
     STUDIO_URL: str | None = None
+    AGENT_CONSOLE_OUTPUT_ENABLED: bool = False
 
 
 @lru_cache(maxsize=1)

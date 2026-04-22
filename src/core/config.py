@@ -147,6 +147,7 @@ class SessionBootstrapRequest(BaseModel):
 
     session_id: str | None = None
     agent_config: AgentConfig | None = None
+    system_prompt: str | None = None
     tools: list[ToolConfig] = Field(default_factory=list)
     skills: list[SkillConfig] = Field(default_factory=list)
     mcp_servers: list[MCPServerConfig] = Field(default_factory=list)

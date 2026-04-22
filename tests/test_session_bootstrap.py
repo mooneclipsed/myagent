@@ -146,6 +146,17 @@ def test_bootstrap_conflict_when_another_session_active(client):
     assert "already owns this pod runtime" in response_b.json()["detail"]
 
 
+def test_bootstrap_without_system_prompt_uses_default_prompt(client):
+    payload = {"session_id": "bootstrap-default-prompt", "skills": [], "mcp_servers": []}
+
+    response = client.post("/sessions/bootstrap", json=payload)
+
+    assert response.status_code == 200, response.text
+    runtime = get_session_runtime("bootstrap-default-prompt")
+    assert runtime is not None
+    assert runtime.agent.sys_prompt == "You are a helpful assistant."
+
+
 def test_bootstrap_same_session_returns_existing_runtime(client):
     payload = {"session_id": "bootstrap-session-same", "skills": [], "mcp_servers": []}
 
@@ -155,6 +166,54 @@ def test_bootstrap_same_session_returns_existing_runtime(client):
     assert response_a.status_code == 200
     assert response_b.status_code == 200
     assert response_a.json()["session_id"] == response_b.json()["session_id"]
+
+
+def test_bootstrap_with_blank_system_prompt_uses_default_prompt(client):
+    payload = {
+        "session_id": "bootstrap-blank-prompt",
+        "system_prompt": "   ",
+        "skills": [],
+        "mcp_servers": [],
+    }
+
+    response = client.post("/sessions/bootstrap", json=payload)
+
+    assert response.status_code == 200, response.text
+    runtime = get_session_runtime("bootstrap-blank-prompt")
+    assert runtime is not None
+    assert runtime.agent.sys_prompt == "You are a helpful assistant."
+
+
+def test_build_react_agent_enables_console_output_from_settings(configured_env, clear_settings_cache, monkeypatch):
+    monkeypatch.setenv("AGENT_CONSOLE_OUTPUT_ENABLED", "true")
+
+    from src.agent.session_runtime import build_react_agent
+    from src.core.settings import get_settings
+    from agentscope.memory import InMemoryMemory
+    from agentscope.tool import Toolkit
+
+    get_settings.cache_clear()
+
+    agent = build_react_agent(
+        resolved_config={
+            "model_name": "test-model",
+            "api_key": "test-key",
+            "base_url": "http://localhost:9999/v1",
+        },
+        memory=InMemoryMemory(),
+        toolkit=Toolkit(),
+    )
+
+    assert agent._disable_console_output is False
+
+
+def test_thinking_formatter_warning_filter_is_installed_on_agentscope_logger():
+    import logging
+    from src.agent.session_runtime import _AgentScopeThinkingWarningFilter
+
+    logger = logging.getLogger("as")
+
+    assert any(isinstance(item, _AgentScopeThinkingWarningFilter) for item in logger.filters)
 
 
 def test_bootstrap_failure_rolls_back_connected_clients(client):

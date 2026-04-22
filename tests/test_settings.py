@@ -58,6 +58,7 @@ def test_get_settings_loads_values_once_with_all_required_keys(configured_env, c
     assert settings_first.MODEL_NAME == "test-model"
     assert settings_first.MODEL_API_KEY == "test-key"
     assert settings_first.MODEL_BASE_URL == "http://localhost:9999/v1"
+    assert settings_first.AGENT_CONSOLE_OUTPUT_ENABLED is False
 
 
 def test_settings_loading_does_not_require_env_example_file(configured_env, clear_settings_cache, tmp_path, monkeypatch):

@@ -38,6 +38,25 @@ from src.tools import ToolRegistryError, register_configured_tools
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+
+
+class _AgentScopeThinkingWarningFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not (
+            record.msg == "Unsupported block type %s in the message, skipped."
+            and record.args == ("thinking",)
+        )
+
+
+def _suppress_agentscope_thinking_warnings() -> None:
+    target_logger = logging.getLogger("as")
+    if not any(isinstance(item, _AgentScopeThinkingWarningFilter) for item in target_logger.filters):
+        target_logger.addFilter(_AgentScopeThinkingWarningFilter())
+
+
+_suppress_agentscope_thinking_warnings()
+
 
 def log_tracing_state(context: str) -> None:
     """Log the current OpenTelemetry provider and configured span processors."""
@@ -144,8 +163,20 @@ def build_react_agent(
     resolved_config: dict,
     memory: InMemoryMemory,
     toolkit: Toolkit,
+    system_prompt: str | None = None,
 ) -> ReActAgent:
     """Create a ReActAgent bound to the given memory and toolkit."""
+    effective_system_prompt = (system_prompt or "").strip() or DEFAULT_SYSTEM_PROMPT
+    settings = get_settings()
+    formatter = OpenAIChatFormatter()
+    logger.info(
+        "Building ReActAgent: model=%s base_url=%s system_prompt_len=%d console_output=%s formatter=%s",
+        resolved_config["model_name"],
+        resolved_config["base_url"],
+        len(effective_system_prompt),
+        settings.AGENT_CONSOLE_OUTPUT_ENABLED,
+        type(formatter).__name__,
+    )
     agent = ReActAgent(
         name="agentops",
         model=OpenAIChatModel(
@@ -154,12 +185,14 @@ def build_react_agent(
             client_kwargs={"base_url": resolved_config["base_url"]},
             stream=True,
         ),
-        sys_prompt="You are a helpful assistant.",
-        formatter=OpenAIChatFormatter(),
+        sys_prompt=effective_system_prompt,
+        formatter=formatter,
         memory=memory,
         toolkit=toolkit,
     )
-    agent.set_console_output_enabled(enabled=False)
+    agent.set_console_output_enabled(
+        enabled=settings.AGENT_CONSOLE_OUTPUT_ENABLED,
+    )
     return agent
 
 
@@ -243,6 +276,7 @@ async def bootstrap_session_runtime(
                 resolved_config=resolved_config,
                 memory=memory,
                 toolkit=session_toolkit,
+                system_prompt=request.system_prompt,
             )
         except Exception as exc:
             await close_mcp_clients(mcp_clients)

@@ -300,6 +300,25 @@ def test_process_exports_span_with_session_conversation_id(client, monkeypatch, 
     assert any(json.loads(span.attributes["gen_ai.conversation.id"]) == session_id for span in spans)
 
 
+def test_bootstrap_with_skills_also_registers_local_runtime_tools(client):
+    skill_dir = str((__import__("pathlib").Path(__file__).resolve().parents[1] / "skills" / "hello").resolve())
+    response = client.post(
+        "/sessions/bootstrap",
+        json={
+            "session_id": "bootstrap-skill-local-tools-001",
+            "skills": [{"skill_dir": skill_dir, "activation_mode": "lazy"}],
+            "mcp_servers": [],
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    runtime = get_session_runtime("bootstrap-skill-local-tools-001")
+    assert runtime is not None
+    assert "read_file" in runtime.toolkit.tools
+    assert "edit_file" in runtime.toolkit.tools
+    assert "run_local_shell" in runtime.toolkit.tools
+
+
 def test_process_rejects_agent_config_for_bootstrapped_session(client, valid_payload):
     bootstrap_payload = {"session_id": "bootstrap-process-002", "skills": [], "mcp_servers": []}
     response = client.post("/sessions/bootstrap", json=bootstrap_payload)

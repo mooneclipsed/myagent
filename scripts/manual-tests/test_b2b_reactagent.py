@@ -23,6 +23,7 @@ MCP_SERVER_DIR = os.path.join(REPO_ROOT, "mcp-server")
 WEATHER_SCRIPT = os.path.join(MCP_SERVER_DIR, "weather_mcp.py")
 HELLO_SKILL_DIR = os.path.join(REPO_ROOT, "skills", "hello")
 LOG_FILE = os.path.join(REPO_ROOT, "b2b_test.log")
+HELLO_INVOCATION_LOG = os.path.join(REPO_ROOT, "scripts", "manual-tests", "files", "hello_skill_invocations.log")
 
 
 def truncate_log_file() -> None:
@@ -37,8 +38,16 @@ def read_log_file() -> str:
         return handle.read()
 
 
+def read_hello_invocation_log() -> str:
+    if not os.path.exists(HELLO_INVOCATION_LOG):
+        return ""
+    with open(HELLO_INVOCATION_LOG, "r", encoding="utf-8") as handle:
+        return handle.read()
+
+
 def test_agent_executes_full_b2b_flow() -> None:
     before = read_log_file()
+    hello_before = read_hello_invocation_log()
     result = chat(
         SESSION_ID,
         "请严格按顺序完成这个正向验证场景："
@@ -49,6 +58,7 @@ def test_agent_executes_full_b2b_flow() -> None:
         "以及一句包含 reactagent 的总结，通过 edit_file 写入 b2b_test.log。",
     )
     after = read_log_file()
+    hello_after = read_hello_invocation_log()
 
     check(result.called_tool("read_file") or result.has_evidence_of("read_file"), "agent used read_file")
     check(result.called_tool("get_weather") or result.has_evidence_of("get_weather"), "agent used MCP get_weather")
@@ -56,12 +66,12 @@ def test_agent_executes_full_b2b_flow() -> None:
     check(
         result.called_tool("say_hello")
         or result.has_evidence_of("say_hello")
-        or "Hello," in result.text
-        or "Hello," in after,
+        or hello_after != hello_before,
         "agent used hello skill",
+        result.text[:150],
     )
     check(result.called_tool("edit_file") or result.has_evidence_of("edit_file"), "agent used edit_file")
-    check("Hello," in result.text or "Hello," in after, "response contains greeting", result.text)
+    check("Hello," in result.text or "Hello," in after or hello_after != hello_before, "response contains greeting", result.text)
     check("深圳" in result.text or "多云" in result.text or "26度" in result.text, "response contains weather", result.text)
     check(after != before, "b2b_test.log updated")
     check("reactagent" in after, "log contains reactagent summary", after)

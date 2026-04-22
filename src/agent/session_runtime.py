@@ -18,7 +18,11 @@ from agentscope.model import OpenAIChatModel
 from agentscope.tool import Toolkit
 
 from src.agent.session import generate_session_id, get_session_backend, validate_session_id
-from src.agent.skill_runtime import SkillRuntimeRegistry, register_configured_skills
+from src.agent.skill_runtime import (
+    SkillRuntimeRegistry,
+    register_configured_skills,
+    register_local_runtime_tools,
+)
 from src.core.config import (
     HttpMCPServerConfig,
     MCPServerConfig,
@@ -213,6 +217,7 @@ async def bootstrap_session_runtime(
             tool_summaries = register_configured_tools(session_toolkit, request.tools)
         except ToolRegistryError as exc:
             raise SessionRuntimeValidationError(str(exc)) from exc
+        register_local_runtime_tools(session_toolkit)
         skill_registry = register_configured_skills(
             toolkit=session_toolkit,
             skill_configs=request.skills,

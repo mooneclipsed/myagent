@@ -13,7 +13,7 @@ register_session_routes(app)
 # Import agent package and register query handlers explicitly
 import src.agent
 
-src.agent.register_query_handlers()
+src.agent.register_query_handlers(app)
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8000)

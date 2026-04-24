@@ -86,7 +86,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - `src/main.py` builds the `AgentApp`, installs lifespan hooks, registers session routes, and imports `src.agent` to register query handlers.
 - `src/app/lifespan.py` prepares JSON session storage, checks Redis when enabled, registers the always-on local MCP client, and closes session runtimes plus MCP clients on shutdown.
-- `src/agent/query.py` owns both `/process` and `/chat`; both go through the shared execution helpers `_build_query_execution_context()` and `_stream_agent_messages()`.
+- `src/agent/query.py` owns `/process` plus the shared chat execution helpers `_build_query_execution_context()` and `_stream_agent_messages()`, while `src/app/session_routes.py` registers the explicit `/chat`, bootstrap, and shutdown HTTP routes.
 - `src/agent/session.py` handles persisted conversation state with `JSONSession` or `RedisSession`.
 - `src/agent/session_runtime.py` handles the in-memory bootstrapped runtime for the active session, including the agent, toolkit, dynamic skills, and per-session MCP clients. Only one bootstrapped runtime can be active at once.
 - `src/tools/registry.py` is the name-based tool registry used during session bootstrap.

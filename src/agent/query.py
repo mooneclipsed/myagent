@@ -1,4 +1,4 @@
-"""Streaming query handlers for runtime-hosted /process and direct /chat."""
+"""Streaming query handlers and shared HTTP chat helpers."""
 
 import json
 import logging
@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from opentelemetry import trace as ot_trace
 
 from agentscope.memory import InMemoryMemory
+from agentscope_runtime.engine import AgentApp
 from agentscope.message import Msg
 from agentscope.pipeline import stream_printing_messages
 
@@ -21,7 +22,6 @@ from src.agent.session_runtime import (
     log_tracing_state,
 )
 from src.core.config import AgentConfig, resolve_effective_config
-from src.main import app
 from src.tools import toolkit
 
 logger = logging.getLogger(__name__)
@@ -149,16 +149,18 @@ def _msg_to_payload(msg: Msg, last: bool, session_id: str | None) -> dict[str, A
     return payload
 
 
-@app.query(framework="agentscope")
 async def chat_query(self, msgs, request=None, **kwargs):
     """Handle runtime-hosted /process queries with optional session persistence."""
     async for item in _stream_agent_messages(msgs, request):
         yield item
 
 
-@app.post("/chat")
+def register_query_handlers(app: AgentApp) -> None:
+    app.query(framework="agentscope")(chat_query)
+
+
 async def chat_via_agentscope(request: Request):
-    """Handle direct AgentScope chat requests while preserving an SSE contract."""
+    """Handle direct chat requests while preserving an SSE contract."""
     try:
         body = await request.json()
     except Exception as exc:

@@ -1,8 +1,9 @@
-"""Session bootstrap and shutdown routes for dynamic MCP runtimes."""
+"""Explicit HTTP routes for chat and session-scoped runtimes."""
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from agentscope_runtime.engine import AgentApp
 
+from src.agent.query import chat_via_agentscope
 from src.agent.session import validate_session_id
 from src.agent.session_runtime import (
     SessionBootstrapError,
@@ -20,7 +21,9 @@ from src.core.config import (
 
 
 def register_session_routes(app: AgentApp) -> None:
-    """Register bootstrap and shutdown endpoints on the AgentApp."""
+    """Register explicit chat and session lifecycle endpoints on the AgentApp."""
+
+    app.post("/chat")(chat_via_agentscope)
 
     @app.post(
         "/sessions/bootstrap",

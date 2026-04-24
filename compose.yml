@@ -1,0 +1,15 @@
+services:
+  myagent:
+    build:
+      context: .
+    ports:
+      - "8211:8211"
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8211
+      SESSION_BACKEND: json
+      SESSION_DIR: /app/sessions
+    volumes:
+      - ./sessions:/app/sessions

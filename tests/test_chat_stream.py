@@ -89,6 +89,22 @@ def test_process_returns_sse_stream(client, valid_payload):
     assert "data:" in response.text, "Response body should contain SSE data lines"
 
 
+def test_chat_returns_sse_stream(client, valid_payload):
+    mock_handler = _make_mock_handler(["Hello"])
+    from src.main import app
+
+    with patch.object(app._runner, "query_handler", mock_handler):
+        response = client.post("/chat", json=valid_payload)
+
+    assert response.status_code == 200, (
+        f"Expected 200, got {response.status_code}: {response.text[:200]}"
+    )
+    assert "text/event-stream" in response.headers.get("content-type", ""), (
+        f"Expected text/event-stream, got {response.headers.get('content-type')}"
+    )
+    assert "data:" in response.text, "Response body should contain SSE data lines"
+
+
 # ---------------------------------------------------------------------------
 # Test 2: SSE stream contains full lifecycle events
 # ---------------------------------------------------------------------------

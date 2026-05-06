@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     MODEL_NAME: str
     MODEL_API_KEY: str
     MODEL_BASE_URL: str
+    PORT: int = 8000
     SESSION_DIR: str = "./sessions"
     SESSION_BACKEND: str = "json"  # "json" or "redis" (D-03)
     REDIS_HOST: str = "localhost"

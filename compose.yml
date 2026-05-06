@@ -3,12 +3,12 @@ services:
     build:
       context: .
     ports:
-      - "8211:8211"
+      - "${PORT:-8000}:${PORT:-8000}"
     env_file:
       - .env
     environment:
       HOST: 0.0.0.0
-      PORT: 8211
+      PORT: ${PORT:-8000}
       SESSION_BACKEND: json
       SESSION_DIR: /app/sessions
     volumes:

@@ -4,8 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_LINK_MODE=copy \
     PATH="/root/.local/bin:$PATH" \
-    HOST=0.0.0.0 \
-    PORT=8211
+    HOST=0.0.0.0
 
 WORKDIR /app
 

@@ -228,8 +228,9 @@ async def bootstrap_session_runtime(
 
         resolved_config = resolve_effective_config(request.agent_config)
 
-        studio_url = get_settings().STUDIO_URL
-        if studio_url:
+        settings = get_settings()
+        studio_url = settings.STUDIO_URL
+        if settings.STUDIO_ENABLED and studio_url:
             tracing_url = studio_url.rstrip("/") + "/v1/traces"
             agentscope.init(
                 project="agentops",

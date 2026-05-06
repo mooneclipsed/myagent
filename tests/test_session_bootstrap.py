@@ -476,6 +476,7 @@ def test_bootstrap_with_builtin_tools_registers_agentscope_tools(client):
 
 
 def test_bootstrap_initializes_agentscope_studio_when_configured(client, monkeypatch):
+    monkeypatch.setenv("STUDIO_ENABLED", "true")
     monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
 
     from src.core.settings import get_settings
@@ -495,3 +496,20 @@ def test_bootstrap_initializes_agentscope_studio_when_configured(client, monkeyp
         tracing_url="http://127.0.0.1:3000/v1/traces",
         run_id="bootstrap-studio-001",
     )
+
+
+def test_bootstrap_skips_agentscope_studio_when_disabled(client, monkeypatch):
+    monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
+
+    from src.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    with patch("src.agent.session_runtime.agentscope.init") as mock_init:
+        response = client.post(
+            "/sessions/bootstrap",
+            json={"session_id": "bootstrap-studio-disabled-001", "skills": [], "mcp_servers": []},
+        )
+
+    assert response.status_code == 200, response.text
+    mock_init.assert_not_called()

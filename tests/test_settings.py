@@ -58,6 +58,7 @@ def test_get_settings_loads_values_once_with_all_required_keys(configured_env, c
     assert settings_first.MODEL_NAME == "test-model"
     assert settings_first.MODEL_API_KEY == "test-key"
     assert settings_first.MODEL_BASE_URL == "http://localhost:9999/v1"
+    assert settings_first.STUDIO_ENABLED is False
     assert settings_first.AGENT_CONSOLE_OUTPUT_ENABLED is False
 
 

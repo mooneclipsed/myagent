@@ -20,7 +20,7 @@ from agentscope.tool import (
     write_text_file,
 )
 
-from src.core.config import SkillConfig, SkillScriptConfig, SkillSummary
+from ..core.config import SkillConfig, SkillScriptConfig, SkillSummary
 
 
 @dataclass

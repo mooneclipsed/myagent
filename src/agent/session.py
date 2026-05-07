@@ -13,7 +13,7 @@ import uuid
 
 from agentscope.session import JSONSession, RedisSession
 
-from src.core.settings import get_settings
+from ..core.settings import get_settings
 
 logger = logging.getLogger(__name__)
 

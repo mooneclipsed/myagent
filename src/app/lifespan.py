@@ -7,9 +7,9 @@ from contextlib import asynccontextmanager
 from agentscope.mcp import StdIOStatefulClient
 from fastapi import FastAPI
 
-from src.agent.session_runtime import close_all_session_runtimes
-from src.core.settings import get_settings
-from src.tools import _mcp_clients, toolkit
+from ..agent.session_runtime import close_all_session_runtimes
+from ..core.settings import get_settings
+from ..tools import _mcp_clients, toolkit
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ async def app_lifespan(_: FastAPI):
         logger.info("Session directory ready: %s", session_dir)
 
     if settings.SESSION_BACKEND == "redis":
-        from src.agent.session import get_session_backend
+        from ..agent.session import get_session_backend
 
         backend = get_session_backend()
         redis_client = backend.get_client()
@@ -55,7 +55,7 @@ async def app_lifespan(_: FastAPI):
 
     await close_all_session_runtimes()
 
-    from src.agent.session import _session_backend, reset_session_backend
+    from ..agent.session import _session_backend, reset_session_backend
 
     if _session_backend is not None and hasattr(_session_backend, "close"):
         try:

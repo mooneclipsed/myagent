@@ -6,8 +6,8 @@ from collections.abc import Callable
 
 from agentscope.tool import Toolkit, execute_shell_command, view_text_file, write_text_file
 
-from src.core.config import ToolConfig, ToolSummary
-from src.tools.examples import (
+from ..core.config import ToolConfig, ToolSummary
+from .examples import (
     calculate,
     get_weather,
     run_platform_report,

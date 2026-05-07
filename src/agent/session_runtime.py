@@ -17,13 +17,13 @@ from agentscope.mcp import HttpStatefulClient, StatefulClientBase, StdIOStateful
 from agentscope.model import OpenAIChatModel
 from agentscope.tool import Toolkit
 
-from src.agent.session import generate_session_id, get_session_backend, validate_session_id
-from src.agent.skill_runtime import (
+from .session import generate_session_id, get_session_backend, validate_session_id
+from .skill_runtime import (
     SkillRuntimeRegistry,
     register_configured_skills,
     register_local_runtime_tools,
 )
-from src.core.config import (
+from ..core.config import (
     HttpMCPServerConfig,
     MCPServerConfig,
     MCPServerSummary,
@@ -33,8 +33,8 @@ from src.core.config import (
     ToolSummary,
     resolve_effective_config,
 )
-from src.core.settings import get_settings
-from src.tools import ToolRegistryError, register_configured_tools
+from ..core.settings import get_settings
+from ..tools import ToolRegistryError, register_configured_tools
 
 logger = logging.getLogger(__name__)
 

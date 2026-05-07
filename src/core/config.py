@@ -13,7 +13,7 @@ from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from src.core.settings import get_settings
+from .settings import get_settings
 
 logger = logging.getLogger(__name__)
 

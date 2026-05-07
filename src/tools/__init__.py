@@ -2,7 +2,7 @@
 
 from agentscope.mcp import StdIOStatefulClient
 
-from src.tools.registry import (
+from .registry import (
     TOOL_REGISTRY,
     ToolRegistryError,
     create_base_toolkit,

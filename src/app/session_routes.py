@@ -1,11 +1,11 @@
 """Explicit HTTP routes for chat and session-scoped runtimes."""
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException
 from agentscope_runtime.engine import AgentApp
 
-from src.agent.query import chat_via_agentscope
-from src.agent.session import validate_session_id
-from src.agent.session_runtime import (
+from ..agent.query import chat_via_agentscope
+from ..agent.session import validate_session_id
+from ..agent.session_runtime import (
     SessionBootstrapError,
     SessionRuntimeConflictError,
     SessionRuntimeNotFoundError,
@@ -13,7 +13,7 @@ from src.agent.session_runtime import (
     bootstrap_session_runtime,
     shutdown_session_runtime,
 )
-from src.core.config import (
+from ..core.config import (
     SessionBootstrapRequest,
     SessionBootstrapResponse,
     SessionShutdownResponse,

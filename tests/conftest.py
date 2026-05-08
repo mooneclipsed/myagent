@@ -9,7 +9,7 @@ from src.agent.session_runtime import close_all_session_runtimes
 
 @pytest.fixture(autouse=True)
 def _clear_session_runtimes():
-    """Clear active session runtime before and after each test."""
+    """Clear active runtime profile before and after each test."""
     asyncio.run(close_all_session_runtimes())
     yield
     asyncio.run(close_all_session_runtimes())

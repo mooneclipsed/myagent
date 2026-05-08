@@ -141,11 +141,11 @@ class SkillSummary(BaseModel):
 
 
 class SessionBootstrapRequest(BaseModel):
-    """Bootstrap request for creating a session-scoped agent runtime."""
+    """Bootstrap request for creating a runtime-scoped agent profile."""
 
     model_config = ConfigDict(extra="forbid")
 
-    session_id: str | None = None
+    runtime_id: str
     agent_config: AgentConfig | None = None
     system_prompt: str | None = None
     tools: list[ToolConfig] = Field(default_factory=list)
@@ -154,11 +154,11 @@ class SessionBootstrapRequest(BaseModel):
 
 
 class SessionBootstrapResponse(BaseModel):
-    """Bootstrap response for a ready session runtime."""
+    """Bootstrap response for a ready runtime profile."""
 
     model_config = ConfigDict(extra="forbid")
 
-    session_id: str
+    runtime_id: str
     status: Literal["ready"] = "ready"
     tools: list[ToolSummary] = Field(default_factory=list)
     skills: list[SkillSummary] = Field(default_factory=list)
@@ -166,11 +166,11 @@ class SessionBootstrapResponse(BaseModel):
 
 
 class SessionShutdownResponse(BaseModel):
-    """Response returned after closing a bootstrapped session runtime."""
+    """Response returned after closing a bootstrapped runtime profile."""
 
     model_config = ConfigDict(extra="forbid")
 
-    session_id: str
+    runtime_id: str
     status: Literal["closed"] = "closed"
 
 

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import asyncio
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,7 +19,7 @@ from .session import get_session_backend, validate_session_id
 from .session_runtime import (
     bind_agentscope_run_context,
     build_react_agent,
-    get_session_runtime,
+    get_runtime_profile,
     log_tracing_state,
 )
 from ..core.config import AgentConfig, resolve_effective_config
@@ -30,29 +31,67 @@ logger = logging.getLogger(__name__)
 @dataclass
 class QueryExecutionContext:
     session_id: str | None
+    runtime_id: str | None
     agent: Any
     use_session_run_context: bool = False
     tracing_enabled: bool = False
 
 
+_session_locks: dict[str, asyncio.Lock] = {}
+_session_locks_guard = asyncio.Lock()
+
+
+async def _get_session_lock(session_id: str) -> asyncio.Lock:
+    async with _session_locks_guard:
+        lock = _session_locks.get(session_id)
+        if lock is None:
+            lock = asyncio.Lock()
+            _session_locks[session_id] = lock
+        return lock
+
+
 async def _build_query_execution_context(request: Any) -> QueryExecutionContext:
     session_id = None
+    runtime_id = None
     runtime = None
 
     if request and hasattr(request, "session_id") and request.session_id:
         raw_session_id = request.session_id
         if validate_session_id(raw_session_id):
             session_id = raw_session_id
-            runtime = get_session_runtime(session_id)
+        elif request and hasattr(request, "runtime_id") and request.runtime_id:
+            raise ValueError("Invalid session_id format.")
+
+    if request and hasattr(request, "runtime_id") and request.runtime_id:
+        raw_runtime_id = request.runtime_id
+        if not validate_session_id(raw_runtime_id):
+            raise ValueError("Invalid runtime_id format.")
+        runtime_id = raw_runtime_id
+        runtime = get_runtime_profile(runtime_id)
+        if runtime is None:
+            raise ValueError(f"No active runtime found for '{runtime_id}'.")
 
     if runtime is not None:
         if request and hasattr(request, "agent_config") and request.agent_config:
             raise ValueError(
-                "Bootstrapped sessions do not accept agent_config on /process. Re-bootstrap the session instead.",
+                "Bootstrapped runtimes do not accept agent_config on /process. Re-bootstrap the runtime instead.",
             )
+        memory = InMemoryMemory()
+        if session_id:
+            await get_session_backend().load_session_state(
+                session_id=session_id,
+                memory=memory,
+            )
+        agent = build_react_agent(
+            resolved_config=runtime.resolved_config,
+            memory=memory,
+            toolkit=runtime.toolkit,
+            system_prompt=runtime.system_prompt,
+        )
         return QueryExecutionContext(
             session_id=session_id,
-            agent=runtime.agent,
+            runtime_id=runtime_id,
+            agent=agent,
             use_session_run_context=True,
             tracing_enabled=bool(runtime.resolved_config),
         )
@@ -74,12 +113,28 @@ async def _build_query_execution_context(request: Any) -> QueryExecutionContext:
         memory=memory,
         toolkit=toolkit,
     )
-    return QueryExecutionContext(session_id=session_id, agent=agent)
+    return QueryExecutionContext(session_id=session_id, runtime_id=runtime_id, agent=agent)
 
 
 async def _stream_agent_messages(msgs, request: Any):
+    session_id = None
+    if request and hasattr(request, "session_id") and request.session_id and validate_session_id(request.session_id):
+        session_id = request.session_id
+    lock = await _get_session_lock(session_id) if session_id else None
+
+    if lock is None:
+        async for item in _stream_agent_messages_locked(msgs, request):
+            yield item
+    else:
+        async with lock:
+            async for item in _stream_agent_messages_locked(msgs, request):
+                yield item
+
+
+async def _stream_agent_messages_locked(msgs, request: Any):
     execution = await _build_query_execution_context(request)
-    log_tracing_state(f"query-start:{execution.session_id or 'no-session'}")
+    trace_label = execution.session_id or execution.runtime_id or "no-session"
+    log_tracing_state(f"query-start:{trace_label}")
 
     try:
         if execution.use_session_run_context and execution.session_id:
@@ -106,12 +161,12 @@ async def _stream_agent_messages(msgs, request: Any):
                 flushed = force_flush()
                 logger.info(
                     "Tracing force_flush [%s]: %r",
-                    execution.session_id or "no-session",
+                    trace_label,
                     flushed,
                 )
-            log_tracing_state(f"query-end:{execution.session_id or 'no-session'}")
+            log_tracing_state(f"query-end:{trace_label}")
         except Exception as exc:  # pragma: no cover - diagnostics only
-            logger.warning("Tracing flush failed for %s: %s", execution.session_id, exc)
+            logger.warning("Tracing flush failed for %s: %s", trace_label, exc)
 
         if execution.session_id:
             try:
@@ -177,6 +232,7 @@ async def chat_via_agentscope(request: Request):
 
     class RequestShim:
         def __init__(self, payload: dict[str, Any]):
+            self.runtime_id = payload.get("runtime_id")
             self.session_id = payload.get("session_id")
             self.agent_config = payload.get("agent_config")
 

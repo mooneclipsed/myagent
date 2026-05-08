@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.agent.session_runtime import get_session_runtime
+from src.agent.session_runtime import get_runtime_profile
 
 SELECTED_SKILLS = [
     "doc-coauthoring",
@@ -18,7 +18,7 @@ SELECTED_SKILLS = [
 def test_bootstrap_selected_official_skills(client):
     base = Path(__file__).resolve().parents[1] / "skills"
     payload = {
-        "session_id": "bootstrap-official-skills-001",
+        "runtime_id": "bootstrap-official-skills-001",
         "skills": [
             {
                 "skill_dir": str((base / name).resolve()),
@@ -30,7 +30,7 @@ def test_bootstrap_selected_official_skills(client):
         "mcp_servers": [],
     }
 
-    response = client.post("/sessions/bootstrap", json=payload)
+    response = client.post("/runtimes/bootstrap", json=payload)
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -38,7 +38,7 @@ def test_bootstrap_selected_official_skills(client):
     assert all(item["activation_mode"] == "lazy" for item in body["skills"])
     assert all(item["structured_tools"] == [] for item in body["skills"])
 
-    runtime = get_session_runtime("bootstrap-official-skills-001")
+    runtime = get_runtime_profile("bootstrap-official-skills-001")
     assert runtime is not None
     assert set(runtime.skill_registry.skills) == set(SELECTED_SKILLS)
     assert "list_available_skills" in runtime.toolkit.tools
@@ -47,5 +47,5 @@ def test_bootstrap_selected_official_skills(client):
     assert "edit_file" in runtime.toolkit.tools
     assert "run_local_shell" in runtime.toolkit.tools
 
-    shutdown = client.post("/sessions/bootstrap-official-skills-001/shutdown")
+    shutdown = client.post("/runtimes/bootstrap-official-skills-001/shutdown")
     assert shutdown.status_code == 200, shutdown.text

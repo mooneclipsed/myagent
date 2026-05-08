@@ -1,4 +1,4 @@
-"""Session-scoped runtime registry for bootstrapped agents, skills, and MCP clients."""
+"""Runtime-scoped registry for bootstrapped config, skills, and MCP clients."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from agentscope.mcp import HttpStatefulClient, StatefulClientBase, StdIOStateful
 from agentscope.model import OpenAIChatModel
 from agentscope.tool import Toolkit
 
-from .session import generate_session_id, get_session_backend, validate_session_id
+from .session import validate_session_id
 from .skill_runtime import (
     SkillRuntimeRegistry,
     register_configured_skills,
@@ -111,19 +111,19 @@ def bind_agentscope_run_context(
 
 
 class SessionRuntimeError(RuntimeError):
-    """Base error for session runtime operations."""
+    """Base error for runtime profile operations."""
 
 
 class SessionRuntimeConflictError(SessionRuntimeError):
-    """Raised when another active session already owns the runtime."""
+    """Raised when a runtime id is already bootstrapped in this pod."""
 
 
 class SessionRuntimeNotFoundError(SessionRuntimeError):
-    """Raised when the requested session runtime does not exist."""
+    """Raised when the requested runtime profile does not exist."""
 
 
 class SessionRuntimeValidationError(SessionRuntimeError):
-    """Raised when a supplied session identifier is invalid."""
+    """Raised when a supplied runtime identifier is invalid."""
 
 
 class SessionBootstrapError(SessionRuntimeError):
@@ -132,12 +132,11 @@ class SessionBootstrapError(SessionRuntimeError):
 
 @dataclass
 class SessionRuntime:
-    """In-memory runtime for the currently active bootstrapped session."""
+    """In-memory profile for the bootstrapped pod runtime."""
 
-    session_id: str
+    runtime_id: str
     toolkit: Toolkit
-    agent: ReActAgent
-    memory: InMemoryMemory
+    system_prompt: str | None = None
     skill_registry: SkillRuntimeRegistry = field(default_factory=SkillRuntimeRegistry)
     mcp_clients: list[StatefulClientBase] = field(default_factory=list)
     resolved_config: dict = field(default_factory=dict)
@@ -197,13 +196,19 @@ def build_react_agent(
 
 
 def get_active_session_runtime() -> SessionRuntime | None:
-    """Return the currently active bootstrapped session runtime if any."""
+    """Return the currently active bootstrapped runtime profile if any."""
     return _active_runtime
 
 
 def get_session_runtime(session_id: str | None) -> SessionRuntime | None:
-    """Return the active runtime if its session_id matches."""
-    if session_id and _active_runtime and _active_runtime.session_id == session_id:
+    """Return no runtime for legacy session-id lookups."""
+    _ = session_id
+    return None
+
+
+def get_runtime_profile(runtime_id: str | None) -> SessionRuntime | None:
+    """Return the active runtime profile if its runtime_id matches."""
+    if runtime_id and _active_runtime and _active_runtime.runtime_id == runtime_id:
         return _active_runtime
     return None
 
@@ -211,19 +216,17 @@ def get_session_runtime(session_id: str | None) -> SessionRuntime | None:
 async def bootstrap_session_runtime(
     request: SessionBootstrapRequest,
 ) -> tuple[SessionRuntime, bool]:
-    """Create and register the single active session runtime."""
+    """Create and register the single active pod runtime profile."""
     global _active_runtime
 
-    session_id = request.session_id or generate_session_id()
-    if not validate_session_id(session_id):
-        raise SessionRuntimeValidationError("Invalid session_id format.")
+    runtime_id = request.runtime_id
+    if not validate_session_id(runtime_id):
+        raise SessionRuntimeValidationError("Invalid runtime_id format.")
 
     async with _runtime_lock:
         if _active_runtime is not None:
-            if _active_runtime.session_id == session_id:
-                return _active_runtime, False
             raise SessionRuntimeConflictError(
-                f"Active session '{_active_runtime.session_id}' already owns this pod runtime.",
+                f"Active runtime '{_active_runtime.runtime_id}' already owns this pod.",
             )
 
         resolved_config = resolve_effective_config(request.agent_config)
@@ -236,16 +239,11 @@ async def bootstrap_session_runtime(
                 project="agentops",
                 studio_url=studio_url,
                 tracing_url=tracing_url,
-                run_id=session_id,
+                run_id=runtime_id,
             )
-            logger.info("AgentScope Studio connected: %s (run_id=%s)", studio_url, session_id)
-            log_tracing_state(f"bootstrap:{session_id}")
+            logger.info("AgentScope Studio connected: %s (run_id=%s)", studio_url, runtime_id)
+            log_tracing_state(f"bootstrap:{runtime_id}")
 
-        memory = InMemoryMemory()
-        await get_session_backend().load_session_state(
-            session_id=session_id,
-            memory=memory,
-        )
         session_toolkit = Toolkit()
         try:
             tool_summaries = register_configured_tools(session_toolkit, request.tools)
@@ -273,22 +271,15 @@ async def bootstrap_session_runtime(
                 mcp_clients.append(client)
                 summaries.append(current_summary)
 
-            agent = build_react_agent(
-                resolved_config=resolved_config,
-                memory=memory,
-                toolkit=session_toolkit,
-                system_prompt=request.system_prompt,
-            )
         except Exception as exc:
             await close_mcp_clients(mcp_clients)
             detail = format_bootstrap_error(current_summary)
             raise SessionBootstrapError(detail) from exc
 
         _active_runtime = SessionRuntime(
-            session_id=session_id,
+            runtime_id=runtime_id,
             toolkit=session_toolkit,
-            agent=agent,
-            memory=memory,
+            system_prompt=request.system_prompt,
             skill_registry=skill_registry,
             mcp_clients=mcp_clients,
             resolved_config=resolved_config,
@@ -300,13 +291,18 @@ async def bootstrap_session_runtime(
 
 
 async def shutdown_session_runtime(session_id: str) -> None:
-    """Close and clear the active runtime for the given session id."""
+    """Close and clear the active runtime for legacy session-route callers."""
+    await shutdown_runtime_profile(session_id)
+
+
+async def shutdown_runtime_profile(runtime_id: str) -> None:
+    """Close and clear the active runtime for the given runtime id."""
     global _active_runtime
 
     async with _runtime_lock:
-        if _active_runtime is None or _active_runtime.session_id != session_id:
+        if _active_runtime is None or _active_runtime.runtime_id != runtime_id:
             raise SessionRuntimeNotFoundError(
-                f"No active session runtime found for '{session_id}'.",
+                f"No active runtime found for '{runtime_id}'.",
             )
         runtime = _active_runtime
         _active_runtime = None
@@ -315,7 +311,7 @@ async def shutdown_session_runtime(session_id: str) -> None:
 
 
 async def close_all_session_runtimes() -> None:
-    """Close any active session runtime during application shutdown."""
+    """Close any active runtime profile during application shutdown."""
     global _active_runtime
 
     async with _runtime_lock:

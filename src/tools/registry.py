@@ -66,7 +66,7 @@ def register_configured_tools(
     target_toolkit: Toolkit,
     tool_configs: list[ToolConfig],
 ) -> list[ToolSummary]:
-    """Register requested tools on a session-owned toolkit by name lookup.
+    """Register requested tools on a runtime-owned toolkit by name lookup.
 
     Validates all names before registering any (fail-fast). Returns summaries.
     Raises ToolRegistryError if any requested tool name is not in TOOL_REGISTRY.

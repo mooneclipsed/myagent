@@ -296,7 +296,7 @@ def register_configured_skills(
     toolkit: Toolkit,
     skill_configs: list[SkillConfig],
 ) -> SkillRuntimeRegistry:
-    """Register skill catalog entries and structured tools on a session-owned toolkit."""
+    """Register skill catalog entries and structured tools on a runtime-owned toolkit."""
     registry = SkillRuntimeRegistry()
 
     for skill_config in skill_configs:

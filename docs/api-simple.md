@@ -4,16 +4,16 @@ Base URL: `http://127.0.0.1:8000`
 
 This document lists only the business APIs, with a short purpose, the main input fields, and the main output shape.
 
-## POST `/sessions/bootstrap`
+## POST `/runtimes/bootstrap`
 
 **Purpose**  
-Create a session-scoped runtime with optional tools, skills, MCP servers, and model overrides.
+Create the pod runtime profile with optional tools, skills, MCP servers, and model overrides.
 
 **Input**  
 `application/json`
 
 Main fields:
-- `session_id` — optional session identifier
+- `runtime_id` — required runtime identifier supplied by the caller
 - `agent_config` — optional model settings
   - `model_name`
   - `api_key`
@@ -30,7 +30,7 @@ Main fields:
 
 **Output**  
 - `200 application/json`
-  - `session_id`
+  - `runtime_id`
   - `status` = `ready`
   - `tools` — enabled tool summaries
   - `skills` — loaded skill summaries
@@ -38,20 +38,20 @@ Main fields:
 - `422 application/json`
   - Validation error payload
 
-## POST `/sessions/{session_id}/shutdown`
+## POST `/runtimes/{runtime_id}/shutdown`
 
 **Purpose**  
-Close an existing bootstrapped session runtime.
+Close the existing bootstrapped runtime profile.
 
 **Input**  
 Path parameter:
-- `session_id`
+- `runtime_id`
 
 No request body.
 
 **Output**  
 - `200 application/json`
-  - `session_id`
+  - `runtime_id`
   - `status` = `closed`
 - `422 application/json`
   - Validation error payload
@@ -67,7 +67,8 @@ Send a runtime-hosted agent request. This is the main AgentScope-compatible proc
 Main fields:
 - `input` — required list of messages
 - `stream` — whether to stream responses
-- `session_id` — optional session identifier
+- `runtime_id` — optional runtime profile identifier
+- `session_id` — optional conversation identifier used for memory persistence; AgentScope Runtime generates one when omitted
 - `user_id` — optional user identifier
 - `model` — optional model name
 - `temperature`, `top_p`, `max_tokens`, `stop`, `seed` — optional generation settings
@@ -91,7 +92,8 @@ Main fields:
 - `input` — required list of chat messages
   - `role`
   - `content` — usually a list like `[{"type": "text", "text": "Hello"}]`
-- `session_id` — optional session identifier
+- `runtime_id` — optional runtime profile identifier
+- `session_id` — optional conversation identifier used for memory persistence
 - `agent_config` — optional model settings
   - `model_name`
   - `api_key`

@@ -21,7 +21,7 @@ async def _mock_stream(*args, **kwargs):
 
 def test_bootstrap_returns_skill_summary_and_process_completes(client, valid_payload):
     bootstrap_payload = {
-        "session_id": "skill-process-001",
+        "runtime_id": "skill-process-runtime-001",
         "skills": [
             {
                 "skill_dir": "skills/example_skill",
@@ -32,7 +32,7 @@ def test_bootstrap_returns_skill_summary_and_process_completes(client, valid_pay
         "mcp_servers": [],
     }
 
-    bootstrap_response = client.post("/sessions/bootstrap", json=bootstrap_payload)
+    bootstrap_response = client.post("/runtimes/bootstrap", json=bootstrap_payload)
     assert bootstrap_response.status_code == 200, bootstrap_response.text
     body = bootstrap_response.json()
     assert body["skills"] == [
@@ -49,6 +49,7 @@ def test_bootstrap_returns_skill_summary_and_process_completes(client, valid_pay
     with patch("src.agent.query.stream_printing_messages", _mock_stream):
         process_payload = {
             **valid_payload,
+            "runtime_id": "skill-process-runtime-001",
             "session_id": "skill-process-001",
         }
         process_response = client.post("/process", json=process_payload)

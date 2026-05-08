@@ -2,21 +2,21 @@
 
 ## Purpose
 
-This document explains the runtime design used for dynamic MCP bootstrap in the current codebase. The design is implementation-oriented and describes how session-scoped MCP resources are created, reused, and cleaned up without mutating the process-wide shared toolkit.
+This document explains the runtime design used for dynamic MCP bootstrap in the current codebase. The design is implementation-oriented and describes how runtime-scoped MCP resources are created, reused, and cleaned up without mutating the process-wide shared toolkit.
 
-The focus here is the MCP runtime path. Session bootstrap can conceptually receive model, tool, skill, and MCP configuration together, but this document only covers the MCP-related runtime design.
+The focus here is the MCP runtime path. Runtime bootstrap can conceptually receive model, tool, skill, and MCP configuration together, but this document only covers the MCP-related runtime design.
 
 ## Chosen Model
 
 The implemented model is:
 
-- **single active session runtime per pod**
-- **session-owned toolkit**
+- **single active runtime profile per pod**
+- **runtime-owned toolkit**
 - **legacy global toolkit retained for non-bootstrap callers**
 
-This means the process can hold one active bootstrapped session runtime in memory at a time. That runtime owns its own `Toolkit`, `ReActAgent`, memory instance, and MCP client list.
+This means the process can hold one active bootstrapped runtime profile in memory at a time. That runtime owns its own `Toolkit` and MCP client list. Each `/process` request builds a temporary agent with conversation memory keyed by `session_id`.
 
-The session-scoped runtime is implemented in `src/agent/session_runtime.py`.
+The runtime-scoped profile is implemented in `src/agent/session_runtime.py`.
 
 ## Why Dynamic MCP Is Not Written Into the Global Toolkit
 
@@ -27,16 +27,16 @@ The codebase already has a module-level shared toolkit in `src/tools/__init__.py
 - the legacy `/process` path
 - the startup-time example MCP server used for backward compatibility
 
-Dynamic MCP configuration is not added to that global toolkit because bootstrap-time MCP servers are session-owned resources rather than process defaults.
+Dynamic MCP configuration is not added to that global toolkit because bootstrap-time MCP servers are runtime-owned resources rather than process defaults.
 
-Using a session-owned toolkit has several advantages:
+Using a runtime-owned toolkit has several advantages:
 
 1. **Isolation**
-   - Dynamic MCP registrations belong only to the active session runtime.
+   - Dynamic MCP registrations belong only to the active runtime profile.
    - They do not leak into unrelated requests.
 
 2. **Clear ownership**
-   - The same runtime object owns the toolkit, the agent, and the MCP clients.
+   - The same runtime profile owns the toolkit and the MCP clients.
    - Shutdown and teardown logic can close exactly the resources created during bootstrap.
 
 3. **Safe rollback**
@@ -86,17 +86,16 @@ The main change is not the transport layer. The main change is **when and how th
 
 This allows the bootstrap path to reuse the same default tool and skill registration logic without writing session-scoped MCP configuration into the global singleton.
 
-### 2. Session Runtime Registry
+### 2. Runtime Profile Registry
 
 `src/agent/session_runtime.py` owns the in-memory runtime state.
 
 Important elements:
 
 - `SessionRuntime`
-  - `session_id`
+  - `runtime_id`
   - `toolkit`
-  - `agent`
-  - `memory`
+  - `system_prompt`
   - `mcp_clients`
   - `resolved_config`
   - `mcp_servers`
@@ -107,18 +106,18 @@ Important elements:
 
 - lifecycle helpers
   - `bootstrap_session_runtime(...)`
-  - `shutdown_session_runtime(...)`
+  - `shutdown_runtime_profile(...)`
   - `close_all_session_runtimes()`
-  - `get_session_runtime(...)`
+  - `get_runtime_profile(...)`
 
-This is intentionally a **single-active-session** implementation. It matches the current runtime assumption of one active session per pod.
+This is intentionally a **single-active-runtime** implementation. It matches the deployment assumption of one `runtime_id` per pod.
 
-### 3. Session Routes
+### 3. Runtime Routes
 
 `src/app/session_routes.py` adds two APIs:
 
-- `POST /sessions/bootstrap`
-- `POST /sessions/{session_id}/shutdown`
+- `POST /runtimes/bootstrap`
+- `POST /runtimes/{runtime_id}/shutdown`
 
 These routes are registered from `src/main.py` and live alongside the existing `/process` endpoint.
 
@@ -128,35 +127,33 @@ These routes are registered from `src/main.py` and live alongside the existing `
 
 Behavior:
 
-- if `session_id` matches an active bootstrapped runtime, use the prebuilt `runtime.agent`
+- if `runtime_id` matches the active bootstrapped runtime, build a temporary agent from the runtime profile and the request `session_id` memory
 - otherwise, fall back to the legacy per-request path
 
-This preserves backward compatibility while enabling a reusable bootstrapped runtime for dynamic MCP sessions.
+This preserves backward compatibility while enabling reusable runtime-level config and isolated conversation memory.
 
 ## End-to-End Flow
 
 ## Bootstrap
 
-`POST /sessions/bootstrap`
+`POST /runtimes/bootstrap`
 
 Input:
 
-- optional `session_id`
+- required `runtime_id`
 - optional `agent_config`
 - `mcp_servers`
 
 The bootstrap handler does the following:
 
-1. Validate the requested `session_id`
-2. Enforce the single-active-session rule
+1. Validate the requested `runtime_id`
+2. Enforce the single-active-runtime-per-pod rule
 3. Resolve the effective model configuration
-4. Load saved session memory from the configured session backend
-5. Build a fresh session-owned toolkit via `create_base_toolkit()`
-6. Create MCP clients from request configuration
-7. Connect each MCP client
-8. Register MCP tools into the session-owned toolkit
-9. Create a `ReActAgent` bound to that toolkit and memory
-10. Publish the runtime only after all MCP initialization steps succeed
+4. Build a fresh runtime-owned toolkit
+5. Create MCP clients from request configuration
+6. Connect each MCP client
+7. Register MCP tools into the runtime-owned toolkit
+8. Publish the runtime profile only after all MCP initialization steps succeed
 
 If any MCP server fails during connect or registration:
 
@@ -172,26 +169,31 @@ This is a fail-fast bootstrap design.
 
 When a request includes `session_id`:
 
-- the handler checks whether that `session_id` maps to the active session runtime
-- if yes, it reuses the bootstrapped `ReActAgent`
-- if no, it follows the legacy path and creates a temporary per-request agent using the shared global toolkit
+- the handler uses it as the conversation memory key
+- same-`session_id` requests are serialized to avoid memory lost updates
 
-When a bootstrapped runtime is reused, dynamic MCP tools are already present because the reused agent is bound to the session-owned toolkit.
+When a request includes `runtime_id`:
+
+- the handler checks whether that `runtime_id` maps to the active pod runtime
+- if yes, it loads memory by `session_id`, builds a temporary `ReActAgent` with the runtime toolkit/config, runs it, then saves memory
+- if no `runtime_id` is provided, it follows the legacy path and creates a temporary per-request agent using the shared global toolkit
+
+When a bootstrapped runtime is reused, dynamic MCP tools are already present because the temporary agent is bound to the runtime-owned toolkit.
 
 This is the key reason dynamic MCP does not need to be visible in the global toolkit: the agent does not ask the process for tools at runtime. It reads its own toolkit.
 
 ## Shutdown
 
-`POST /sessions/{session_id}/shutdown`
+`POST /runtimes/{runtime_id}/shutdown`
 
-Shutdown closes the active runtime for that session by:
+Shutdown closes the active runtime profile by:
 
-1. validating the session id
+1. validating the runtime id
 2. locating the active runtime
 3. closing all runtime-owned MCP clients in LIFO order
 4. clearing the active runtime from memory
 
-Unknown session ids return `404`.
+Unknown runtime ids return `404`.
 
 ## Pod Teardown
 
@@ -199,11 +201,11 @@ Application teardown is handled in `src/app/lifespan.py`.
 
 The shutdown order is:
 
-1. close all bootstrapped session runtimes
+1. close all bootstrapped runtime profiles
 2. close the configured session backend if needed
 3. close the legacy startup MCP clients tracked in `_mcp_clients`
 
-This keeps dynamic session-scoped resources separate from the startup-time example MCP path.
+This keeps dynamic runtime-scoped resources separate from the startup-time example MCP path.
 
 ## Supported MCP Types and Config Shapes
 

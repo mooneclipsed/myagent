@@ -1,4 +1,4 @@
-"""Explicit HTTP routes for chat and session-scoped runtimes."""
+"""Explicit HTTP routes for chat and runtime lifecycle."""
 
 from fastapi import HTTPException
 from agentscope_runtime.engine import AgentApp
@@ -11,7 +11,7 @@ from ..agent.session_runtime import (
     SessionRuntimeNotFoundError,
     SessionRuntimeValidationError,
     bootstrap_session_runtime,
-    shutdown_session_runtime,
+    shutdown_runtime_profile,
 )
 from ..core.config import (
     SessionBootstrapRequest,
@@ -26,9 +26,9 @@ def register_session_routes(app: AgentApp) -> None:
     app.post("/chat")(chat_via_agentscope)
 
     @app.post(
-        "/sessions/bootstrap",
+        "/runtimes/bootstrap",
         response_model=SessionBootstrapResponse,
-        tags=["session-api"],
+        tags=["runtime-api"],
     )
     async def bootstrap_session(
         request: SessionBootstrapRequest,
@@ -43,24 +43,24 @@ def register_session_routes(app: AgentApp) -> None:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
         return SessionBootstrapResponse(
-            session_id=runtime.session_id,
+            runtime_id=runtime.runtime_id,
             tools=runtime.tool_summaries,
             skills=runtime.skill_summaries,
             mcp_servers=runtime.mcp_servers,
         )
 
     @app.post(
-        "/sessions/{session_id}/shutdown",
+        "/runtimes/{runtime_id}/shutdown",
         response_model=SessionShutdownResponse,
-        tags=["session-api"],
+        tags=["runtime-api"],
     )
-    async def shutdown_session(session_id: str) -> SessionShutdownResponse:
-        if not validate_session_id(session_id):
-            raise HTTPException(status_code=400, detail="Invalid session_id format.")
+    async def shutdown_session(runtime_id: str) -> SessionShutdownResponse:
+        if not validate_session_id(runtime_id):
+            raise HTTPException(status_code=400, detail="Invalid runtime_id format.")
 
         try:
-            await shutdown_session_runtime(session_id)
+            await shutdown_runtime_profile(runtime_id)
         except SessionRuntimeNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-        return SessionShutdownResponse(session_id=session_id)
+        return SessionShutdownResponse(runtime_id=runtime_id)

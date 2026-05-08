@@ -5,17 +5,17 @@ import pytest
 # Fixtures configured_env and clear_settings_cache are provided by conftest.py
 
 
-def test_startup_fails_when_MODEL_PROVIDER_missing(configured_env, clear_settings_cache, monkeypatch):
+def test_startup_uses_default_MODEL_PROVIDER_when_missing(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.delenv("MODEL_PROVIDER", raising=False)
 
     from fastapi.testclient import TestClient
+    from src.core.settings import get_settings
     from src.main import app
 
-    with pytest.raises(Exception) as exc_info:
-        with TestClient(app):
-            pass
+    with TestClient(app):
+        pass
 
-    assert "MODEL_PROVIDER" in str(exc_info.value)
+    assert get_settings().MODEL_PROVIDER == "openai"
 
 
 def test_startup_fails_when_MODEL_NAME_missing(configured_env, clear_settings_cache, monkeypatch):

@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    MODEL_PROVIDER: str
+    MODEL_PROVIDER: str = "openai"
     MODEL_NAME: str
     MODEL_API_KEY: str
     MODEL_BASE_URL: str

@@ -3,15 +3,14 @@ import pytest
 # Fixtures configured_env and clear_settings_cache are provided by conftest.py
 
 
-def test_missing_MODEL_PROVIDER_raises_validation_error(configured_env, clear_settings_cache, monkeypatch):
+def test_missing_MODEL_PROVIDER_defaults_to_openai(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.delenv("MODEL_PROVIDER", raising=False)
 
     from src.core.settings import get_settings
 
-    with pytest.raises(Exception) as exc_info:
-        get_settings()
+    settings = get_settings()
 
-    assert "MODEL_PROVIDER" in str(exc_info.value)
+    assert settings.MODEL_PROVIDER == "openai"
 
 
 def test_missing_MODEL_NAME_raises_validation_error(configured_env, clear_settings_cache, monkeypatch):

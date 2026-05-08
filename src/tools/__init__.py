@@ -1,6 +1,4 @@
-"""Shared toolkit exports and legacy MCP client tracking."""
-
-from agentscope.mcp import StdIOStatefulClient
+"""Shared toolkit exports."""
 
 from .registry import (
     TOOL_REGISTRY,
@@ -14,9 +12,6 @@ from .registry import (
 # Shared toolkit singleton (legacy compatibility path)
 toolkit = create_base_toolkit(include_legacy_example_skill_support=True)
 
-# Module-level list to track legacy startup MCP clients for LIFO shutdown
-_mcp_clients: list[StdIOStatefulClient] = []
-
 __all__ = [
     "TOOL_REGISTRY",
     "ToolRegistryError",
@@ -25,5 +20,4 @@ __all__ = [
     "register_default_tools",
     "register_legacy_example_skill_support",
     "toolkit",
-    "_mcp_clients",
 ]

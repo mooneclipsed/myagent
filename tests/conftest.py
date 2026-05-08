@@ -2,27 +2,17 @@
 
 import asyncio
 import pytest
-from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from src.agent.session_runtime import close_all_session_runtimes
-from src.tools import _mcp_clients
 
 
 @pytest.fixture(autouse=True)
-def _mock_mcp_client():
-    """Auto-mock startup MCP client for all tests to avoid subprocess dependency."""
-    _mcp_clients.clear()
+def _clear_session_runtimes():
+    """Clear active session runtime before and after each test."""
     asyncio.run(close_all_session_runtimes())
-    with patch("src.app.lifespan.StdIOStatefulClient") as MockMCP:
-        mock_client = AsyncMock()
-        mock_client.name = "mock-mcp"
-        mock_client.is_connected = True
-        mock_client.list_tools = AsyncMock(return_value=[])
-        MockMCP.return_value = mock_client
-        yield
+    yield
     asyncio.run(close_all_session_runtimes())
-    _mcp_clients.clear()
 
 
 @pytest.fixture

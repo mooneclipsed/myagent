@@ -1,15 +1,13 @@
-"""FastAPI lifespan hook for startup validation and MCP client lifecycle."""
+"""FastAPI lifespan hook for startup validation and runtime cleanup."""
 
 import logging
 import os
 from contextlib import asynccontextmanager
 
-from agentscope.mcp import StdIOStatefulClient
 from fastapi import FastAPI
 
 from ..agent.session_runtime import close_all_session_runtimes
 from ..core.settings import get_settings
-from ..tools import _mcp_clients, toolkit
 
 logger = logging.getLogger(__name__)
 
@@ -37,20 +35,6 @@ async def app_lifespan(_: FastAPI):
                 f"Ensure Redis is running at {settings.REDIS_HOST}:{settings.REDIS_PORT}"
             ) from e
 
-    mcp_client = StdIOStatefulClient(
-        name="example-mcp",
-        command="python",
-        args=["-m", "src.mcp.server"],
-    )
-    await mcp_client.connect()
-    await toolkit.register_mcp_client(
-        mcp_client,
-        group_name="basic",
-        namesake_strategy="raise",
-    )
-    _mcp_clients.append(mcp_client)
-    logger.info("MCP client connected and registered: example-mcp")
-
     yield
 
     await close_all_session_runtimes()
@@ -65,10 +49,4 @@ async def app_lifespan(_: FastAPI):
             logger.warning("Error closing session backend: %s", e)
         reset_session_backend()
 
-    for client in reversed(_mcp_clients):
-        try:
-            await client.close(ignore_errors=True)
-        except Exception as e:
-            logger.warning("Error closing MCP client %s: %s", client.name, e)
-    _mcp_clients.clear()
-    logger.info("All MCP clients closed")
+    logger.info("Application lifespan cleanup complete")

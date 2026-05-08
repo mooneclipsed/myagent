@@ -7,7 +7,6 @@ These tests verify MCP client connection lifecycle and FastMCP-backed server sha
 import asyncio
 import inspect
 
-import pytest
 from agentscope.mcp import StdIOStatefulClient
 from agentscope.tool import Toolkit
 from mcp.server.fastmcp import FastMCP
@@ -39,35 +38,19 @@ class TestMCPClientLifecycle:
         mock_client.connect.assert_awaited_once()
         mock_client.close.assert_awaited_once_with(ignore_errors=True)
 
-    def test_mcp_clients_tracked_for_lifo_close(self):
-        """MCP clients are tracked in _mcp_clients list for LIFO shutdown."""
-        from src.tools import _mcp_clients
-
-        _mcp_clients.clear()
-        assert len(_mcp_clients) == 0
-
     def test_lifo_close_order(self):
         """MCP clients must be closed in reverse order of registration."""
-        from src.tools import _mcp_clients
-
-        _mcp_clients.clear()
+        from src.agent.session_runtime import close_mcp_clients
 
         client1 = AsyncMock()
         client1.name = "first"
         client2 = AsyncMock()
         client2.name = "second"
 
-        _mcp_clients.extend([client1, client2])
-
-        async def close_all():
-            for client in reversed(_mcp_clients):
-                await client.close(ignore_errors=True)
-
-        asyncio.run(close_all())
+        asyncio.run(close_mcp_clients([client1, client2]))
 
         client2.close.assert_awaited_once_with(ignore_errors=True)
         client1.close.assert_awaited_once_with(ignore_errors=True)
-        _mcp_clients.clear()
 
 
 class TestMCPServerModule:

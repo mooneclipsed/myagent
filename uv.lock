@@ -1601,6 +1601,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-frontmatter" },
     { name = "qwenpaw-skillscanner" },
+    { name = "requests" },
 ]
 
 [package.dev-dependencies]
@@ -1617,6 +1618,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.0" },
     { name = "python-frontmatter", specifier = ">=1.1.0" },
     { name = "qwenpaw-skillscanner", directory = "third_party/skillScanner" },
+    { name = "requests", specifier = ">=2.33.1" },
 ]
 
 [package.metadata.requires-dev]

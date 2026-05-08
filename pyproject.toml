@@ -9,6 +9,7 @@ dependencies = [
     "pydantic-settings>=2.0",
     "python-frontmatter>=1.1.0",
     "qwenpaw-skillscanner",
+    "requests>=2.33.1",
 ]
 
 [tool.uv.sources]

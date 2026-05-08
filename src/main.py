@@ -2,6 +2,7 @@ from agentscope_runtime.engine import AgentApp
 
 from . import agent
 from .app.lifespan import app_lifespan
+from .app.skill_routes import register_skill_routes
 from .app.session_routes import register_session_routes
 from .core.settings import get_settings
 
@@ -11,6 +12,7 @@ app = AgentApp(
     lifespan=app_lifespan,
 )
 register_session_routes(app)
+register_skill_routes(app)
 
 agent.register_query_handlers(app)
 

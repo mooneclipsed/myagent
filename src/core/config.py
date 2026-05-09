@@ -28,6 +28,16 @@ class AgentConfig(BaseModel):
     base_url: Optional[str] = None
 
 
+class MemoryCompressionConfig(BaseModel):
+    """Runtime memory compression settings for AgentScope ReActAgent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool | None = None
+    trigger_tokens: int | None = Field(default=None, gt=0)
+    keep_recent: int | None = Field(default=None, ge=1)
+
+
 class SkillScriptConfig(BaseModel):
     """Structured script capability declared by a skill bundle."""
 
@@ -147,6 +157,7 @@ class SessionBootstrapRequest(BaseModel):
 
     runtime_id: str
     agent_config: AgentConfig | None = None
+    memory_compression: MemoryCompressionConfig | None = None
     system_prompt: str | None = None
     tools: list[ToolConfig] = Field(default_factory=list)
     skills: list[SkillConfig] = Field(default_factory=list)

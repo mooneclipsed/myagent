@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import agentscope
 import pytest
+from agentscope.model import ChatResponse
 from agentscope.message import Msg
 from agentscope.tracing._extractor import _get_common_attributes
 from opentelemetry.sdk.trace import TracerProvider
@@ -206,6 +207,122 @@ def test_build_react_agent_enables_console_output_from_settings(configured_env, 
     assert agent._disable_console_output is False
 
 
+def test_bootstrap_stores_memory_compression_config(client):
+    payload = {
+        "runtime_id": "bootstrap-compression-config",
+        "memory_compression": {
+            "enabled": True,
+            "trigger_tokens": 12345,
+            "keep_recent": 7,
+        },
+        "skills": [],
+        "mcp_servers": [],
+    }
+
+    response = client.post("/runtimes/bootstrap", json=payload)
+
+    assert response.status_code == 200, response.text
+    runtime = get_runtime_profile("bootstrap-compression-config")
+    assert runtime is not None
+    assert runtime.memory_compression is not None
+    assert runtime.memory_compression.enabled is True
+    assert runtime.memory_compression.trigger_tokens == 12345
+    assert runtime.memory_compression.keep_recent == 7
+
+
+def test_build_react_agent_uses_bootstrap_memory_compression(configured_env, clear_settings_cache):
+    from agentscope.memory import InMemoryMemory
+    from agentscope.tool import Toolkit
+
+    from src.agent.session_runtime import build_react_agent
+    from src.core.config import MemoryCompressionConfig
+
+    agent = build_react_agent(
+        resolved_config={
+            "model_name": "gpt-4o",
+            "api_key": "test-key",
+            "base_url": "http://localhost:9999/v1",
+        },
+        memory=InMemoryMemory(),
+        toolkit=Toolkit(),
+        memory_compression=MemoryCompressionConfig(
+            enabled=True,
+            trigger_tokens=12345,
+            keep_recent=7,
+        ),
+    )
+
+    assert agent.compression_config is not None
+    assert agent.compression_config.enable is True
+    assert agent.compression_config.trigger_threshold == 12345
+    assert agent.compression_config.keep_recent == 7
+    assert agent.compression_config.agent_token_counter.model_name == "gpt-4o"
+    assert agent.compression_config.compression_model.stream is False
+
+
+def test_compression_fallback_model_wraps_plain_text_summary():
+    from src.agent.session_runtime import CompressionFallbackModel
+
+    class PlainTextModel:
+        model_name = "test-model"
+        stream = False
+
+        def __init__(self):
+            self.calls = 0
+
+        async def __call__(self, messages, structured_model=None, **kwargs):
+            self.calls += 1
+            if structured_model is not None:
+                raise ValueError("structured output unsupported")
+            return ChatResponse(
+                content=[{"type": "text", "text": "## Continuation Summary\nRemember ALPHA."}],
+                metadata=None,
+            )
+
+    async def _run():
+        base_model = PlainTextModel()
+        model = CompressionFallbackModel(base_model)
+        response = await model(
+            [{"role": "user", "content": "summarize"}],
+            structured_model=object,
+        )
+        assert base_model.calls == 2
+        assert response.metadata["task_overview"].startswith("## Continuation Summary")
+        assert "ALPHA" in response.metadata["context_to_preserve"]
+
+    asyncio.run(_run())
+
+
+def test_bootstrap_memory_compression_overrides_env_defaults(client, monkeypatch):
+    monkeypatch.setenv("AGENT_MEMORY_COMPRESSION_ENABLED", "true")
+    monkeypatch.setenv("AGENT_MEMORY_COMPRESSION_TRIGGER_TOKENS", "60000")
+    monkeypatch.setenv("AGENT_MEMORY_COMPRESSION_KEEP_RECENT", "8")
+
+    from src.core.settings import get_settings
+
+    get_settings.cache_clear()
+
+    response = client.post(
+        "/runtimes/bootstrap",
+        json={
+            "runtime_id": "bootstrap-compression-override",
+            "memory_compression": {
+                "enabled": False,
+                "trigger_tokens": 1000,
+                "keep_recent": 2,
+            },
+            "skills": [],
+            "mcp_servers": [],
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    runtime = get_runtime_profile("bootstrap-compression-override")
+    assert runtime is not None
+    assert runtime.memory_compression is not None
+    assert runtime.memory_compression.enabled is False
+
+
 def test_thinking_formatter_warning_filter_is_installed_on_agentscope_logger():
     import logging
     from src.agent.session_runtime import _AgentScopeThinkingWarningFilter
@@ -279,6 +396,52 @@ def test_process_uses_bootstrapped_runtime_profile_with_session_memory(client, v
     events = _parse_sse_events(process_response.text)
     statuses = [e.get("status") for e in events if "status" in e]
     assert "completed" in statuses
+
+
+def test_process_passes_runtime_memory_compression_to_agent(client, valid_payload):
+    response = client.post(
+        "/runtimes/bootstrap",
+        json={
+            "runtime_id": "bootstrap-process-compression",
+            "memory_compression": {
+                "enabled": True,
+                "trigger_tokens": 12345,
+                "keep_recent": 7,
+            },
+            "skills": [],
+            "mcp_servers": [],
+        },
+    )
+    assert response.status_code == 200, response.text
+
+    async def _mock_stream_runtime(*args, **kwargs):
+        coroutine_task = kwargs["coroutine_task"]
+        coroutine_task.close()
+        msg = Msg(
+            name="agentops",
+            content=[{"type": "text", "text": "ok"}],
+            role="assistant",
+        )
+        yield msg, True
+
+    with (
+        patch("src.agent.query.stream_printing_messages", _mock_stream_runtime),
+        patch("src.agent.query.build_react_agent", wraps=__import__("src.agent.query", fromlist=["build_react_agent"]).build_react_agent) as mock_build,
+    ):
+        process_response = client.post(
+            "/process",
+            json={
+                **valid_payload,
+                "runtime_id": "bootstrap-process-compression",
+                "session_id": "conversation-process-compression",
+            },
+        )
+
+    assert process_response.status_code == 200
+    build_kwargs = mock_build.call_args.kwargs
+    assert build_kwargs["memory_compression"].enabled is True
+    assert build_kwargs["memory_compression"].trigger_tokens == 12345
+    assert build_kwargs["memory_compression"].keep_recent == 7
 
 
 def test_process_rebinds_agentscope_run_context_for_bootstrapped_session(client, valid_payload):

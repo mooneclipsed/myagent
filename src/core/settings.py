@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     STUDIO_ENABLED: bool = False
     STUDIO_URL: str | None = None
     AGENT_CONSOLE_OUTPUT_ENABLED: bool = False
+    AGENT_MEMORY_COMPRESSION_ENABLED: bool = False
+    AGENT_MEMORY_COMPRESSION_TRIGGER_TOKENS: int = 60000
+    AGENT_MEMORY_COMPRESSION_KEEP_RECENT: int = 8
 
 
 @lru_cache(maxsize=1)

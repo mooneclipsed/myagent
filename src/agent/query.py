@@ -87,6 +87,7 @@ async def _build_query_execution_context(request: Any) -> QueryExecutionContext:
             memory=memory,
             toolkit=runtime.toolkit,
             system_prompt=runtime.system_prompt,
+            memory_compression=runtime.memory_compression,
         )
         return QueryExecutionContext(
             session_id=session_id,

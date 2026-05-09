@@ -18,6 +18,10 @@ Main fields:
   - `model_name`
   - `api_key`
   - `base_url`
+- `memory_compression` — optional runtime-level AgentScope memory compression settings
+  - `enabled`
+  - `trigger_tokens`
+  - `keep_recent`
 - `tools` — optional list of tools to enable
   - `name`
 - `skills` — optional list of skills to load

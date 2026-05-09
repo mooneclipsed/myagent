@@ -142,6 +142,7 @@ Input:
 
 - required `runtime_id`
 - optional `agent_config`
+- optional `memory_compression`
 - `mcp_servers`
 
 The bootstrap handler does the following:
@@ -149,11 +150,12 @@ The bootstrap handler does the following:
 1. Validate the requested `runtime_id`
 2. Enforce the single-active-runtime-per-pod rule
 3. Resolve the effective model configuration
-4. Build a fresh runtime-owned toolkit
-5. Create MCP clients from request configuration
-6. Connect each MCP client
-7. Register MCP tools into the runtime-owned toolkit
-8. Publish the runtime profile only after all MCP initialization steps succeed
+4. Resolve runtime-level memory compression settings
+5. Build a fresh runtime-owned toolkit
+6. Create MCP clients from request configuration
+7. Connect each MCP client
+8. Register MCP tools into the runtime-owned toolkit
+9. Publish the runtime profile only after all MCP initialization steps succeed
 
 If any MCP server fails during connect or registration:
 

@@ -3,9 +3,13 @@
 from fastapi import HTTPException
 from agentscope_runtime.engine import AgentApp
 
-from ..agent.query import chat_via_agentscope
-from ..agent.session import validate_session_id
-from ..agent.session_runtime import (
+from ..application.chat_service import chat_via_agentscope
+from ..config.schemas import (
+    SessionBootstrapRequest,
+    SessionBootstrapResponse,
+    SessionShutdownResponse,
+)
+from ..runtime.session_runtime import (
     SessionBootstrapError,
     SessionRuntimeConflictError,
     SessionRuntimeNotFoundError,
@@ -13,11 +17,7 @@ from ..agent.session_runtime import (
     bootstrap_session_runtime,
     shutdown_runtime_profile,
 )
-from ..core.config import (
-    SessionBootstrapRequest,
-    SessionBootstrapResponse,
-    SessionShutdownResponse,
-)
+from ..sessions.backend import validate_session_id
 
 
 def register_session_routes(app: AgentApp) -> None:

@@ -6,8 +6,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from ..agent.session_runtime import close_all_session_runtimes
-from ..core.settings import get_settings
+from ..config.settings import get_settings
+from ..runtime.session_runtime import close_all_session_runtimes
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ async def app_lifespan(_: FastAPI):
         logger.info("Session directory ready: %s", session_dir)
 
     if settings.SESSION_BACKEND == "redis":
-        from ..agent.session import get_session_backend
+        from ..sessions.backend import get_session_backend
 
         backend = get_session_backend()
         redis_client = backend.get_client()
@@ -39,7 +39,7 @@ async def app_lifespan(_: FastAPI):
 
     await close_all_session_runtimes()
 
-    from ..agent.session import _session_backend, reset_session_backend
+    from ..sessions.backend import _session_backend, reset_session_backend
 
     if _session_backend is not None and hasattr(_session_backend, "close"):
         try:

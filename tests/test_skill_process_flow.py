@@ -46,7 +46,7 @@ def test_bootstrap_returns_skill_summary_and_process_completes(client, valid_pay
         }
     ]
 
-    with patch("src.agent.query.stream_printing_messages", _mock_stream):
+    with patch("src.application.chat_service.stream_printing_messages", _mock_stream):
         process_payload = {
             **valid_payload,
             "runtime_id": "skill-process-runtime-001",

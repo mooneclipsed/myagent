@@ -4,7 +4,7 @@ from pathlib import Path
 
 from agentscope.tool import Toolkit, ToolResponse
 
-from src.agent.skill_runtime import (
+from src.runtime.skill_runtime import (
     activate_skill_factory,
     build_skill_group_name,
     load_skill_manifest,
@@ -12,7 +12,7 @@ from src.agent.skill_runtime import (
     register_configured_skills,
     register_local_runtime_tools,
 )
-from src.core.config import SkillConfig
+from src.config.schemas import SkillConfig
 from src.tools import create_base_toolkit
 
 

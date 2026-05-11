@@ -4,7 +4,7 @@ from zipfile import ZipFile
 import pytest
 import requests
 
-from src.skills_api import (
+from src.integrations.skill_api_client import (
     SkillApiClient,
     SkillDownloadError,
     download_and_extract_skill_version,
@@ -141,7 +141,7 @@ def test_download_and_extract_skill_version_function(tmp_path, monkeypatch):
             captured["args"] = (skill_id, version_id, skills_dir, download_dir)
             return "installed"
 
-    monkeypatch.setattr("src.skills_api.SkillApiClient", FakeClient)
+    monkeypatch.setattr("src.integrations.skill_api_client.SkillApiClient", FakeClient)
 
     result = download_and_extract_skill_version(
         1,
@@ -186,7 +186,7 @@ def test_download_and_extract_skill_version_reads_base_url_from_env(tmp_path, mo
             return "installed"
 
     monkeypatch.setenv("SKILLS_DOWNLOAD_URL", "http://env-skills.example")
-    monkeypatch.setattr("src.skills_api.SkillApiClient", FakeClient)
+    monkeypatch.setattr("src.integrations.skill_api_client.SkillApiClient", FakeClient)
 
     result = download_and_extract_skill_version(1, 3, skills_dir=tmp_path / "skills")
 

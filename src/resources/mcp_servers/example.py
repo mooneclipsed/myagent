@@ -1,7 +1,7 @@
 """Local example MCP server for end-to-end verification.
 
 Provides a single tool: get_time — returns the current date and time.
-Start via: python -m src.mcp.server
+Start via: python -m src.resources.mcp_servers.example
 No network dependencies — uses stdio transport only.
 """
 

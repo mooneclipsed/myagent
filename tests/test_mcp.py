@@ -40,7 +40,7 @@ class TestMCPClientLifecycle:
 
     def test_lifo_close_order(self):
         """MCP clients must be closed in reverse order of registration."""
-        from src.agent.session_runtime import close_mcp_clients
+        from src.runtime.session_runtime import close_mcp_clients
 
         client1 = AsyncMock()
         client1.name = "first"
@@ -57,24 +57,24 @@ class TestMCPServerModule:
     """Tests verifying the MCP server module is importable and well-formed."""
 
     def test_mcp_server_module_importable(self):
-        """src.mcp.server module can be imported without errors."""
-        import src.mcp.server
+        """src.resources.mcp_servers.example module can be imported without errors."""
+        import src.resources.mcp_servers.example
 
-        assert hasattr(src.mcp.server, "server")
-        assert hasattr(src.mcp.server, "get_time")
-        assert hasattr(src.mcp.server, "main")
+        assert hasattr(src.resources.mcp_servers.example, "server")
+        assert hasattr(src.resources.mcp_servers.example, "get_time")
+        assert hasattr(src.resources.mcp_servers.example, "main")
 
     def test_mcp_server_is_fastmcp(self):
-        """src.mcp.server exports a FastMCP server instance."""
-        import src.mcp.server
+        """src.resources.mcp_servers.example exports a FastMCP server instance."""
+        import src.resources.mcp_servers.example
 
-        assert isinstance(src.mcp.server.server, FastMCP)
+        assert isinstance(src.resources.mcp_servers.example.server, FastMCP)
 
     def test_get_time_tool_contract(self):
         """get_time remains a zero-argument tool function returning text."""
-        import src.mcp.server
+        import src.resources.mcp_servers.example
 
-        assert len(inspect.signature(src.mcp.server.get_time).parameters) == 0
-        result = src.mcp.server.get_time()
+        assert len(inspect.signature(src.resources.mcp_servers.example.get_time).parameters) == 0
+        result = src.resources.mcp_servers.example.get_time()
         assert isinstance(result, str)
         assert result.startswith("Current time:")

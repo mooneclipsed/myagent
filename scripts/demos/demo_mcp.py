@@ -1,7 +1,7 @@
 """Demo: Trigger an MCP tool call through the chat endpoint (DEV-03).
 
 Sends a time query that the ReActAgent should answer by calling
-the get_time MCP tool from src/mcp/server.py.
+the get_time MCP tool from src/resources/mcp_servers/example.py.
 
 Prerequisite: Service running at http://127.0.0.1:8000
 Start with: bash scripts/run_service.sh

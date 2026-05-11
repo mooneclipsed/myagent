@@ -1,10 +1,10 @@
 from agentscope_runtime.engine import AgentApp
 
-from . import agent
-from .app.lifespan import app_lifespan
-from .app.skill_routes import register_skill_routes
-from .app.session_routes import register_session_routes
-from .core.settings import get_settings
+from .api.lifespan import app_lifespan
+from .api.runtime_routes import register_session_routes
+from .api.skill_routes import register_skill_routes
+from .application.chat_service import register_query_handlers
+from .config.settings import get_settings
 
 app = AgentApp(
     app_name="agentops",
@@ -14,7 +14,7 @@ app = AgentApp(
 register_session_routes(app)
 register_skill_routes(app)
 
-agent.register_query_handlers(app)
+register_query_handlers(app)
 
 if __name__ == "__main__":
     settings = get_settings()

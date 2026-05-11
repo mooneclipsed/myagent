@@ -6,7 +6,7 @@ import pytest
 def test_missing_MODEL_PROVIDER_defaults_to_openai(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.delenv("MODEL_PROVIDER", raising=False)
 
-    from src.core.settings import get_settings
+    from src.config.settings import get_settings
 
     settings = get_settings()
 
@@ -16,7 +16,7 @@ def test_missing_MODEL_PROVIDER_defaults_to_openai(configured_env, clear_setting
 def test_missing_MODEL_NAME_raises_validation_error(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.delenv("MODEL_NAME", raising=False)
 
-    from src.core.settings import get_settings
+    from src.config.settings import get_settings
 
     with pytest.raises(Exception) as exc_info:
         get_settings()
@@ -27,7 +27,7 @@ def test_missing_MODEL_NAME_raises_validation_error(configured_env, clear_settin
 def test_missing_MODEL_API_KEY_raises_validation_error(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
 
-    from src.core.settings import get_settings
+    from src.config.settings import get_settings
 
     with pytest.raises(Exception) as exc_info:
         get_settings()
@@ -38,7 +38,7 @@ def test_missing_MODEL_API_KEY_raises_validation_error(configured_env, clear_set
 def test_missing_MODEL_BASE_URL_raises_validation_error(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.delenv("MODEL_BASE_URL", raising=False)
 
-    from src.core.settings import get_settings
+    from src.config.settings import get_settings
 
     with pytest.raises(Exception) as exc_info:
         get_settings()
@@ -47,7 +47,7 @@ def test_missing_MODEL_BASE_URL_raises_validation_error(configured_env, clear_se
 
 
 def test_get_settings_loads_values_once_with_all_required_keys(configured_env, clear_settings_cache):
-    from src.core.settings import get_settings
+    from src.config.settings import get_settings
 
     settings_first = get_settings()
     settings_second = get_settings()
@@ -65,7 +65,7 @@ def test_get_settings_loads_values_once_with_all_required_keys(configured_env, c
 def test_settings_loading_does_not_require_env_example_file(configured_env, clear_settings_cache, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
-    from src.core.settings import get_settings
+    from src.config.settings import get_settings
 
     settings = get_settings()
 

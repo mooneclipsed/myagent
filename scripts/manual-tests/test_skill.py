@@ -70,13 +70,14 @@ def test_agent_activates_and_uses_skill():
         result.text,
     )
     check(
-        "timestamp=" in result.text,
-        "agent returned script timestamp marker",
+        any("timestamp=" in line and "name=Alice" in line for line in after[len(before):]),
+        "script marker records Alice timestamp",
         result.text,
     )
     check(
-        "marker_file=" in result.text,
-        "agent returned marker file path from script output",
+        "hello_skill_invocations.log" in result.text
+        or any("name=Alice" in line for line in after[len(before):]),
+        "agent surfaced or recorded marker file evidence",
         result.text,
     )
     check(

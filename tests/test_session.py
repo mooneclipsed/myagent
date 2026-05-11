@@ -164,7 +164,7 @@ def test_no_session_id_backward_compatible(client, valid_payload):
 
 def test_session_id_path_traversal_rejected():
     """T-6-01: validate_session_id rejects path traversal attempts."""
-    from src.agent.session import validate_session_id
+    from src.sessions.backend import validate_session_id
 
     # Must reject path traversal patterns
     assert not validate_session_id("../etc/passwd")
@@ -274,8 +274,8 @@ def test_session_persists_to_redis(client, configured_env, clear_settings_cache,
     import fakeredis.aioredis
     from agentscope.session import RedisSession
 
-    from src.agent import session as session_mod
-    from src.agent.session import reset_session_backend
+    from src.sessions.backend import reset_session_backend
+    from src.sessions import backend as session_mod
 
     # Configure Redis backend
     monkeypatch.setenv("SESSION_BACKEND", "redis")
@@ -324,8 +324,8 @@ def test_session_resume_from_redis(client, configured_env, clear_settings_cache,
     import fakeredis.aioredis
     from agentscope.session import RedisSession
 
-    from src.agent import session as session_mod
-    from src.agent.session import reset_session_backend
+    from src.sessions.backend import reset_session_backend
+    from src.sessions import backend as session_mod
 
     monkeypatch.setenv("SESSION_BACKEND", "redis")
     monkeypatch.setenv("REDIS_HOST", "localhost")
@@ -394,7 +394,7 @@ def test_session_resume_from_redis(client, configured_env, clear_settings_cache,
 
 def test_json_backend_still_works(client, session_env, configured_env, clear_settings_cache, monkeypatch):
     """D-03: SESSION_BACKEND=json (default) still works after Phase 7 changes."""
-    from src.agent.session import get_session_backend, reset_session_backend
+    from src.sessions.backend import get_session_backend, reset_session_backend
 
     monkeypatch.setenv("SESSION_BACKEND", "json")
     reset_session_backend()
@@ -435,7 +435,7 @@ def test_redis_health_check_fails_on_unreachable(unreachable_error, configured_e
     import asyncio
     from unittest.mock import AsyncMock
 
-    from src.agent.session import reset_session_backend
+    from src.sessions.backend import reset_session_backend
 
     monkeypatch.setenv("SESSION_BACKEND", "redis")
     monkeypatch.setenv("REDIS_HOST", "localhost")

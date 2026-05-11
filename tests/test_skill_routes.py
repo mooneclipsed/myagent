@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from src.skills_api import SkillDownloadError, SkillInstallResult
+from src.integrations.skill_api_client import SkillDownloadError, SkillInstallResult
 
 
 def test_install_skill_version_endpoint(client):
@@ -14,7 +14,7 @@ def test_install_skill_version_endpoint(client):
         content_disposition="attachment; filename=skill_1_v3.zip",
     )
 
-    with patch("src.app.skill_routes.download_and_extract_skill_version", return_value=result) as install:
+    with patch("src.api.skill_routes.download_and_extract_skill_version", return_value=result) as install:
         response = client.post("/api/v1/skills/1/versions/3/install")
 
     assert response.status_code == 200, response.text
@@ -30,7 +30,7 @@ def test_install_skill_version_endpoint(client):
 
 def test_install_skill_version_endpoint_maps_remote_404(client):
     with patch(
-        "src.app.skill_routes.download_and_extract_skill_version",
+        "src.api.skill_routes.download_and_extract_skill_version",
         side_effect=SkillDownloadError("Version not found for this skill"),
     ):
         response = client.post("/api/v1/skills/1/versions/3/install")
@@ -41,7 +41,7 @@ def test_install_skill_version_endpoint_maps_remote_404(client):
 
 def test_install_skill_version_endpoint_maps_download_failure(client):
     with patch(
-        "src.app.skill_routes.download_and_extract_skill_version",
+        "src.api.skill_routes.download_and_extract_skill_version",
         side_effect=SkillDownloadError("SKILLS_DOWNLOAD_URL is not configured"),
     ):
         response = client.post("/api/v1/skills/1/versions/3/install")

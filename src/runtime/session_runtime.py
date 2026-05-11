@@ -21,13 +21,12 @@ from agentscope.message import TextBlock
 from agentscope.tool import Toolkit
 from agentscope.token import OpenAITokenCounter
 
-from .session import validate_session_id
 from .skill_runtime import (
     SkillRuntimeRegistry,
     register_configured_skills,
     register_local_runtime_tools,
 )
-from ..core.config import (
+from ..config.schemas import (
     HttpMCPServerConfig,
     MCPServerConfig,
     MCPServerSummary,
@@ -38,7 +37,8 @@ from ..core.config import (
     ToolSummary,
     resolve_effective_config,
 )
-from ..core.settings import get_settings
+from ..config.settings import get_settings
+from ..sessions.backend import validate_session_id
 from ..tools import ToolRegistryError, register_configured_tools
 
 logger = logging.getLogger(__name__)

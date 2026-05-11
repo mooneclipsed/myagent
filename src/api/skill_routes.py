@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from agentscope_runtime.engine import AgentApp
 from pydantic import BaseModel, ConfigDict
 
-from ..skills_api import SkillDownloadError, download_and_extract_skill_version
+from ..integrations.skill_api_client import SkillDownloadError, download_and_extract_skill_version
 
 
 class SkillInstallResponse(BaseModel):

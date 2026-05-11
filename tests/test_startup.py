@@ -9,7 +9,7 @@ def test_startup_uses_default_MODEL_PROVIDER_when_missing(configured_env, clear_
     monkeypatch.delenv("MODEL_PROVIDER", raising=False)
 
     from fastapi.testclient import TestClient
-    from src.core.settings import get_settings
+    from src.config.settings import get_settings
     from src.main import app
 
     with TestClient(app):
@@ -59,7 +59,7 @@ def test_startup_fails_when_MODEL_BASE_URL_missing(configured_env, clear_setting
 
 def test_startup_succeeds_with_required_keys_and_cached_settings(configured_env, clear_settings_cache):
     from fastapi.testclient import TestClient
-    from src.core.settings import get_settings
+    from src.config.settings import get_settings
     from src.main import app
 
     with TestClient(app):
@@ -85,7 +85,7 @@ def test_startup_path_does_not_depend_on_env_example_file(configured_env, clear_
 def test_main_uses_port_from_settings(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.setenv("PORT", "8211")
 
-    from src.core.settings import get_settings
+    from src.config.settings import get_settings
 
     get_settings.cache_clear()
     main = importlib.import_module("src.main")

@@ -15,14 +15,14 @@ from agentscope_runtime.engine import AgentApp
 from agentscope.message import Msg
 from agentscope.pipeline import stream_printing_messages
 
-from .session import get_session_backend, validate_session_id
-from .session_runtime import (
+from ..config.schemas import AgentConfig, resolve_effective_config
+from ..runtime.session_runtime import (
     bind_agentscope_run_context,
     build_react_agent,
     get_runtime_profile,
     log_tracing_state,
 )
-from ..core.config import AgentConfig, resolve_effective_config
+from ..sessions.backend import get_session_backend, validate_session_id
 from ..tools import toolkit
 
 logger = logging.getLogger(__name__)

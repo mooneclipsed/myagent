@@ -140,8 +140,8 @@ def extract_text(events: list[dict]) -> str:
 
 def bootstrap(session_id: str, payload: dict) -> dict:
     resp = httpx.post(
-        f"{SERVICE_URL}/sessions/bootstrap",
-        json={"session_id": session_id, **payload},
+        f"{SERVICE_URL}/runtimes/bootstrap",
+        json={"runtime_id": session_id, **payload},
         timeout=DEFAULT_TIMEOUT,
     )
     if resp.status_code != 200:
@@ -153,6 +153,7 @@ def bootstrap(session_id: str, payload: dict) -> dict:
 def chat(session_id: str, text: str, path: str | None = None) -> ChatResult:
     """Send a natural language message and return structured ChatResult."""
     payload = {
+        "runtime_id": session_id,
         "session_id": session_id,
         "input": [{"role": "user", "content": [{"type": "text", "text": text}]}],
     }
@@ -172,7 +173,7 @@ def chat(session_id: str, text: str, path: str | None = None) -> ChatResult:
 
 
 def shutdown(session_id: str) -> None:
-    resp = httpx.post(f"{SERVICE_URL}/sessions/{session_id}/shutdown", timeout=10.0)
+    resp = httpx.post(f"{SERVICE_URL}/runtimes/{session_id}/shutdown", timeout=10.0)
     if resp.status_code not in (200, 404):
         print(f"  WARNING: Shutdown returned {resp.status_code}", file=sys.stderr)
 

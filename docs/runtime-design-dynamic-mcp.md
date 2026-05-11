@@ -16,7 +16,7 @@ The implemented model is:
 
 This means the process can hold one active bootstrapped runtime profile in memory at a time. That runtime owns its own `Toolkit` and MCP client list. Each `/process` request builds a temporary agent with conversation memory keyed by `session_id`.
 
-The runtime-scoped profile is implemented in `src/agent/session_runtime.py`.
+The runtime-scoped profile is implemented in `src/runtime/session_runtime.py`.
 
 ## Why Dynamic MCP Is Not Written Into the Global Toolkit
 
@@ -66,8 +66,8 @@ The following existing framework pieces are still central:
 The codebase continues to rely on `AgentApp` as the HTTP/SSE shell:
 
 - `src/main.py`
-- `src/agent/query.py`
-- `src/app/lifespan.py`
+- `src/application/chat_service.py`
+- `src/api/lifespan.py`
 
 The main change is not the transport layer. The main change is **when and how the `ReActAgent` is created**:
 
@@ -88,7 +88,7 @@ This allows the bootstrap path to reuse the same default tool and skill registra
 
 ### 2. Runtime Profile Registry
 
-`src/agent/session_runtime.py` owns the in-memory runtime state.
+`src/runtime/session_runtime.py` owns the in-memory runtime state.
 
 Important elements:
 
@@ -114,7 +114,7 @@ This is intentionally a **single-active-runtime** implementation. It matches the
 
 ### 3. Runtime Routes
 
-`src/app/session_routes.py` adds two APIs:
+`src/api/runtime_routes.py` adds two APIs:
 
 - `POST /runtimes/bootstrap`
 - `POST /runtimes/{runtime_id}/shutdown`
@@ -123,7 +123,7 @@ These routes are registered from `src/main.py` and live alongside the existing `
 
 ### 4. Query Reuse Path
 
-`src/agent/query.py` keeps the existing `@app.query` handler but adds a runtime lookup step.
+`src/application/chat_service.py` keeps the existing `@app.query` handler but adds a runtime lookup step.
 
 Behavior:
 
@@ -199,7 +199,7 @@ Unknown runtime ids return `404`.
 
 ## Pod Teardown
 
-Application teardown is handled in `src/app/lifespan.py`.
+Application teardown is handled in `src/api/lifespan.py`.
 
 The shutdown order is:
 
@@ -226,13 +226,13 @@ Bootstrap config shape:
   "name": "time-mcp",
   "type": "stdio",
   "command": "python",
-  "args": ["-m", "src.mcp.server"],
+  "args": ["-m", "src.resources.mcp_servers.example"],
   "env": {"KEY": "VALUE"},
   "cwd": "/path/to/project"
 }
 ```
 
-Relevant fields currently supported in `src/core/config.py`:
+Relevant fields currently supported in `src/config/schemas.py`:
 
 - `name`
 - `type = "stdio"`
@@ -261,7 +261,7 @@ Bootstrap config shape:
 }
 ```
 
-Relevant fields currently supported in `src/core/config.py`:
+Relevant fields currently supported in `src/config/schemas.py`:
 
 - `name`
 - `type = "http"`
@@ -287,7 +287,7 @@ The current implementation deliberately does **not** include:
 - `HttpStatelessClient`
 - whitelist policy
 - optional/partial MCP bootstrap success
-- dynamic skill loading implementation
+- multi-runtime-per-pod registry
 
 ## Session Bootstrap as the Runtime Boundary
 
@@ -306,12 +306,12 @@ In the current implementation, MCP is the primary dynamic capability introduced 
 
 Implementation-relevant files in the current codebase:
 
-- `src/core/config.py`
+- `src/config/schemas.py`
 - `src/tools/__init__.py`
-- `src/agent/session_runtime.py`
-- `src/agent/query.py`
-- `src/app/session_routes.py`
-- `src/app/lifespan.py`
+- `src/runtime/session_runtime.py`
+- `src/application/chat_service.py`
+- `src/api/runtime_routes.py`
+- `src/api/lifespan.py`
 - `src/main.py`
 - `tests/test_session_bootstrap.py`
 - `scripts/demos/demo_bootstrap_mcp.py`

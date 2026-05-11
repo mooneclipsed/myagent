@@ -7,7 +7,7 @@ These tests verify tool registration, invocation, and response format.
 import pytest
 from agentscope.tool import Toolkit, ToolResponse
 
-from src.core.config import ToolConfig
+from src.config.schemas import ToolConfig
 from src.tools import TOOL_REGISTRY, ToolRegistryError, register_configured_tools
 from src.tools.registry import (
     TOOL_REGISTRY as REGISTRY_TOOL_REGISTRY,

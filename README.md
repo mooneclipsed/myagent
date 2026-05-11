@@ -121,19 +121,17 @@ uv run pytest tests/test_chat_stream.py -x -v
 
 ```
 src/
-  main.py              # AgentApp entry point
-  app/lifespan.py      # Startup validation + MCP lifecycle
-  agent/
-    query.py           # Streaming query handler (@app.query)
-    session.py         # Session backend factory (JSON/Redis)
-  core/
-    settings.py        # Pydantic settings from .env
-    config.py          # Agent config resolution
+  main.py              # AgentApp entry point and route wiring
+  api/                 # HTTP routes and application lifespan hooks
+  application/         # Chat/process orchestration use cases
+  runtime/             # Agent factory, runtime profile, dynamic skill/MCP wiring
+  integrations/        # Remote skill API and third-party service clients
+  config/              # Pydantic settings and request/response schemas
+  sessions/            # JSON/Redis session backend and id validation
+  resources/           # Runnable local resources, including example MCP servers
   tools/
     __init__.py        # Toolkit with registered tools + skill
     examples.py        # get_weather, calculate tools
-  mcp/
-    server.py          # Local MCP server (get_time tool)
 scripts/
   run_service.sh       # Service starter
   demos/               # Runnable demo scripts

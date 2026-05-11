@@ -5,7 +5,7 @@ from pathlib import Path
 
 from agentscope.tool import ToolResponse
 
-from src.agent.skill_runtime import make_repo_file_editor, make_repo_file_reader, make_shell_runner
+from src.runtime.skill_runtime import make_repo_file_editor, make_repo_file_reader, make_shell_runner
 
 
 def test_read_file_reads_repo_file():

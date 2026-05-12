@@ -18,7 +18,7 @@ from .skill_install_service import (
     ManagedSkillKey,
     ManagedSkillState,
     cleanup_removed_managed_skills,
-    sync_managed_skills,
+    prepare_remote_skills,
 )
 
 
@@ -215,7 +215,7 @@ def _prepare_runtime_spec(
     *,
     previous_managed_skills: dict[ManagedSkillKey, ManagedSkillState],
 ) -> tuple[RuntimeSpec, list[SkillDownloadSummary], dict[ManagedSkillKey, ManagedSkillState], list[ManagedSkillState]]:
-    sync_result = sync_managed_skills(
+    sync_result = prepare_remote_skills(
         requested=spec.skill_downloads,
         skills_download_url=spec.skills_download_url,
         previous_state=previous_managed_skills,

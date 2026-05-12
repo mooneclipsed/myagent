@@ -2,9 +2,9 @@
 
 import asyncio
 import json
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import HTTPException, Request
+from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 
 from agentscope_runtime.engine import AgentApp
@@ -12,7 +12,7 @@ from agentscope.message import Msg
 
 from ..adapters.agentscope.runtime import AgentScopeRuntime, agentscope_msg_to_chat_event
 from ..config.schemas import AgentConfig
-from ..core.interfaces import ChatMessage, ChatRequest
+from ..core.interfaces import ChatMessage, ChatRequest as RuntimeChatRequest
 from .runtime_service import (
     get_runtime_profile,
 )
@@ -23,6 +23,21 @@ from ..tools import toolkit
 _session_locks: dict[str, asyncio.Lock] = {}
 _session_locks_guard = asyncio.Lock()
 _runtime_adapter = AgentScopeRuntime()
+
+
+ContentBlock = dict[str, Any]
+
+
+class ChatInput(BaseModel):
+    role: Literal["user", "assistant"] = "user"
+    content: str | list[ContentBlock] = Field(default_factory=list)
+
+
+class ChatRequest(BaseModel):
+    runtime_id: str | None = None
+    session_id: str | None = None
+    agent_config: dict[str, Any] | None = None
+    input: list[ChatInput] = Field(min_length=1)
 
 
 async def _get_session_lock(session_id: str) -> asyncio.Lock:
@@ -88,7 +103,7 @@ async def _stream_agent_messages(msgs, request: Any):
 async def _stream_agent_messages_locked(msgs, request: Any):
     session_id, runtime_id, runtime, agent_config = _extract_request_context(request)
     config = AgentConfig(**agent_config) if agent_config else None
-    chat_request = ChatRequest(
+    chat_request = RuntimeChatRequest(
         messages=[_coerce_chat_message(item) for item in msgs],
         runtime_id=runtime_id,
         session_id=session_id,
@@ -150,50 +165,33 @@ def register_query_handlers(app: AgentApp) -> None:
     app.query(framework="agentscope")(chat_query)
 
 
-async def chat_via_agentscope(request: Request):
+async def chat_via_agentscope(request: ChatRequest):
     """Handle direct chat requests while preserving an SSE contract."""
-    try:
-        body = await request.json()
-    except Exception as exc:
-        raise HTTPException(status_code=422, detail="Invalid JSON body") from exc
-
-    input_items = body.get("input")
-    if not isinstance(input_items, list) or not input_items:
-        return StreamingResponse(
-            iter([
-                _sse_data({"status": "failed", "error": {"message": "input must be a non-empty list"}}),
-            ]),
-            media_type="text/event-stream",
-        )
-
-    class RequestShim:
-        def __init__(self, payload: dict[str, Any]):
-            self.runtime_id = payload.get("runtime_id")
-            self.session_id = payload.get("session_id")
-            self.agent_config = payload.get("agent_config")
-
     messages = []
-    for item in input_items:
-        role = item.get("role", "user")
-        content = item.get("content", [])
+    for item in request.input:
+        role = item.role
+        content = item.content
         if isinstance(content, list) and len(content) == 1 and content[0].get("type") == "text":
             messages.append(ChatMessage(role=role, content=content[0].get("text", ""), name=role))
         else:
             messages.append(ChatMessage(role=role, content=content, name=role))
 
-    request_shim = RequestShim(body)
-
     async def event_stream():
-        if request_shim.session_id:
-            session_id = request_shim.session_id if validate_session_id(request_shim.session_id) else None
+        if request.session_id:
+            session_id = request.session_id if validate_session_id(request.session_id) else None
         else:
             session_id = None
         yield _sse_data({"status": "created", **({"session_id": session_id} if session_id else {})})
         yield _sse_data({"status": "in_progress", **({"session_id": session_id} if session_id else {})})
         try:
-            async for msg, last in _stream_agent_messages(messages, request_shim):
-                event = agentscope_msg_to_chat_event(msg, last)
-                yield _sse_data(_chat_event_to_payload(event, session_id))
+            lock = await _get_session_lock(session_id) if session_id else None
+            if lock is None:
+                async for event in _stream_chat_request(messages, request, session_id):
+                    yield event
+            else:
+                async with lock:
+                    async for event in _stream_chat_request(messages, request, session_id):
+                        yield event
             yield _sse_data({"status": "completed", **({"session_id": session_id} if session_id else {})})
         except Exception as exc:
             yield _sse_data(
@@ -205,3 +203,24 @@ async def chat_via_agentscope(request: Request):
             )
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+async def _stream_chat_request(
+    messages: list[ChatMessage],
+    request: ChatRequest,
+    session_id: str | None,
+):
+    _session_id, runtime_id, runtime, agent_config = _extract_request_context(request)
+    chat_request = RuntimeChatRequest(
+        messages=messages,
+        runtime_id=runtime_id,
+        session_id=session_id,
+        agent_config=AgentConfig(**agent_config) if agent_config else None,
+    )
+    async for msg, last, _agent in _runtime_adapter.stream_with_profile(
+        profile=runtime,
+        request=chat_request,
+        default_toolkit=toolkit,
+    ):
+        event = agentscope_msg_to_chat_event(msg, last)
+        yield _sse_data(_chat_event_to_payload(event, session_id))

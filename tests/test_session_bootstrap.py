@@ -618,7 +618,6 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
 
     def fake_sync(**kwargs):
         from src.application.skill_install_service import (
-            ManagedSkillKey,
             ManagedSkillState,
             ManagedSkillSyncResult,
         )
@@ -637,7 +636,7 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
                 )
             ],
             state={
-                ManagedSkillKey(1, 1): ManagedSkillState(
+                (1, 1): ManagedSkillState(
                     skill_id=1,
                     version_id=1,
                     skill_dir=str(skill_dir),
@@ -645,7 +644,7 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
             },
         )
 
-    with patch("src.application.runtime_service.sync_managed_skills", fake_sync):
+    with patch("src.application.runtime_service.prepare_remote_skills", fake_sync):
         response = client.post(
             "/runtimes/bootstrap",
             json={
@@ -679,7 +678,7 @@ def test_bootstrap_download_failure_continues_with_runtime(client):
             ],
         )
 
-    with patch("src.application.runtime_service.sync_managed_skills", fake_sync):
+    with patch("src.application.runtime_service.prepare_remote_skills", fake_sync):
         response = client.post(
             "/runtimes/bootstrap",
             json={

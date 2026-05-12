@@ -24,16 +24,7 @@ from ..integrations.skill_api_client import (
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class ManagedSkillKey:
-    """Stable identity for a managed remote skill version."""
-
-    skill_id: int
-    version_id: int
-
-    @classmethod
-    def from_config(cls, config: SkillDownloadConfig) -> "ManagedSkillKey":
-        return cls(skill_id=config.skill_id, version_id=config.version_id)
+ManagedSkillKey = tuple[int, int]
 
 
 @dataclass
@@ -59,7 +50,7 @@ class ManagedSkillSyncResult:
 Downloader = Callable[[str, ManagedSkillKey, Path, Path], SkillInstallResult]
 
 
-def sync_managed_skills(
+def prepare_remote_skills(
     *,
     requested: list[SkillDownloadConfig],
     skills_download_url: str | None,
@@ -67,9 +58,16 @@ def sync_managed_skills(
     skills_dir: str | Path = DEFAULT_SKILLS_DIR,
     downloader: Downloader | None = None,
 ) -> ManagedSkillSyncResult:
-    """Install requested remote skills, preserving reusable versions and reporting per-skill failures."""
+    """Prepare remote skill downloads for a runtime bootstrap/reload.
+
+    Converts requested skill/version pairs into local SkillConfig entries by reusing
+    already-installed managed skills, downloading missing versions, and marking
+    unrequested previous versions for cleanup after a successful runtime swap.
+    Individual download failures are reported in summaries without blocking other
+    requested skills from being prepared.
+    """
     previous = previous_state or {}
-    requested_keys = _dedupe_requested(requested)
+    requested_keys = _filter_duplicate_skill_keys(requested)
     requested_set = set(requested_keys)
     previous_set = set(previous)
 
@@ -89,8 +87,8 @@ def sync_managed_skills(
             result.skills.append(SkillConfig(skill_dir=state.skill_dir))
             result.summaries.append(
                 SkillDownloadSummary(
-                    skill_id=key.skill_id,
-                    version_id=key.version_id,
+                    skill_id=key[0],
+                    version_id=key[1],
                     status="kept",
                     skill_dir=state.skill_dir,
                     zip_path=state.zip_path,
@@ -117,8 +115,8 @@ def sync_managed_skills(
                 continue
             skill_dir = _resolve_skill_dir(install.extracted_to)
             state = ManagedSkillState(
-                skill_id=key.skill_id,
-                version_id=key.version_id,
+                skill_id=key[0],
+                version_id=key[1],
                 skill_dir=str(skill_dir),
                 zip_path=str(install.zip_path),
             )
@@ -126,8 +124,8 @@ def sync_managed_skills(
             result.skills.append(SkillConfig(skill_dir=state.skill_dir))
             result.summaries.append(
                 SkillDownloadSummary(
-                    skill_id=key.skill_id,
-                    version_id=key.version_id,
+                    skill_id=key[0],
+                    version_id=key[1],
                     status="installed",
                     skill_dir=state.skill_dir,
                     zip_path=state.zip_path,
@@ -138,8 +136,8 @@ def sync_managed_skills(
         result.remove_after_runtime_swap.append(previous[key])
         result.summaries.append(
             SkillDownloadSummary(
-                skill_id=key.skill_id,
-                version_id=key.version_id,
+                skill_id=key[0],
+                version_id=key[1],
                 status="removed",
                 skill_dir=previous[key].skill_dir,
                 zip_path=previous[key].zip_path,
@@ -174,7 +172,8 @@ def _install_managed_skill(
     download_root: Path,
     downloader: Downloader | None,
 ) -> SkillInstallResult | SkillDownloadSummary:
-    skill_dir = managed_root / f"skill_{key.skill_id}_v{key.version_id}"
+    skill_id, version_id = key
+    skill_dir = managed_root / f"skill_{skill_id}_v{version_id}"
     try:
         if skill_dir.exists():
             shutil.rmtree(skill_dir)
@@ -187,13 +186,13 @@ def _install_managed_skill(
             shutil.rmtree(skill_dir, ignore_errors=True)
         logger.warning(
             "Managed skill install failed: skill_id=%s version_id=%s error=%s",
-            key.skill_id,
-            key.version_id,
+            skill_id,
+            version_id,
             exc,
         )
         return SkillDownloadSummary(
-            skill_id=key.skill_id,
-            version_id=key.version_id,
+            skill_id=skill_id,
+            version_id=version_id,
             status="failed",
             skill_dir=str(skill_dir),
             error=str(exc),
@@ -206,10 +205,11 @@ def _download_with_client(
     skill_dir: Path,
     download_root: Path,
 ) -> SkillInstallResult:
+    skill_id, version_id = key
     with SkillApiClient(base_url) as client:
         return client.download_and_extract_skill_version(
-            key.skill_id,
-            key.version_id,
+            skill_id,
+            version_id,
             skills_dir=skill_dir,
             download_dir=download_root,
         )
@@ -234,11 +234,11 @@ def _resolve_skill_dir(extracted_to: Path) -> Path:
     return extracted
 
 
-def _dedupe_requested(requested: list[SkillDownloadConfig]) -> list[ManagedSkillKey]:
+def _filter_duplicate_skill_keys(requested: list[SkillDownloadConfig]) -> list[ManagedSkillKey]:
     keys: list[ManagedSkillKey] = []
     seen: set[ManagedSkillKey] = set()
     for item in requested:
-        key = ManagedSkillKey.from_config(item)
+        key = (item.skill_id, item.version_id)
         if key in seen:
             continue
         seen.add(key)
@@ -249,14 +249,14 @@ def _dedupe_requested(requested: list[SkillDownloadConfig]) -> list[ManagedSkill
 def _append_failure(result: ManagedSkillSyncResult, key: ManagedSkillKey, exc: Exception) -> None:
     logger.warning(
         "Managed skill download configuration failed: skill_id=%s version_id=%s error=%s",
-        key.skill_id,
-        key.version_id,
+        key[0],
+        key[1],
         exc,
     )
     result.summaries.append(
         SkillDownloadSummary(
-            skill_id=key.skill_id,
-            version_id=key.version_id,
+            skill_id=key[0],
+            version_id=key[1],
             status="failed",
             error=str(exc),
         ),
@@ -264,4 +264,4 @@ def _append_failure(result: ManagedSkillSyncResult, key: ManagedSkillKey, exc: E
 
 
 def _sort_key(key: ManagedSkillKey) -> tuple[int, int]:
-    return key.skill_id, key.version_id
+    return key

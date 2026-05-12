@@ -105,6 +105,40 @@ def test_chat_returns_sse_stream(client, valid_payload):
     assert "data:" in response.text, "Response body should contain SSE data lines"
 
 
+def test_chat_accepts_string_content(client):
+    mock_handler = _make_mock_handler(["Hello"])
+    from src.main import app
+
+    payload = {
+        "input": [
+            {
+                "role": "user",
+                "content": "Hello, reply with one word.",
+            }
+        ]
+    }
+    with patch.object(app._runner, "query_handler", mock_handler):
+        response = client.post("/chat", json=payload)
+
+    assert response.status_code == 200, response.text
+    assert "text/event-stream" in response.headers.get("content-type", "")
+
+
+@pytest.mark.parametrize("role", ["system", "tool"])
+def test_chat_rejects_invalid_role(client, role):
+    payload = {
+        "input": [
+            {
+                "role": role,
+                "content": "Hello",
+            }
+        ]
+    }
+    response = client.post("/chat", json=payload)
+
+    assert response.status_code == 422
+
+
 # ---------------------------------------------------------------------------
 # Test 2: SSE stream contains full lifecycle events
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Explicit HTTP routes for remote skill installation."""
+"""HTTP endpoints for remote skill installation."""
 
 from fastapi import HTTPException
 from agentscope_runtime.engine import AgentApp

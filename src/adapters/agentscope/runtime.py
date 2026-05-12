@@ -26,7 +26,7 @@ from ...config.schemas import (
     resolve_effective_config,
 )
 from ...config.settings import get_settings
-from ...core.interfaces import AgentRuntime, ChatEvent, ChatMessage, ChatRequest, RuntimeSpec
+from ...core.interfaces import ChatEvent, ChatMessage, ChatRequest, RuntimeSpec
 from ...runtime.skill_runtime import (
     SkillRuntimeRegistry,
     register_configured_skills,

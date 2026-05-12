@@ -1,4 +1,4 @@
-"""FastAPI lifespan hook for startup validation and runtime cleanup."""
+"""FastAPI application lifecycle hook for startup validation and runtime cleanup."""
 
 import logging
 import os

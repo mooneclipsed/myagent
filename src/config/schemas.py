@@ -14,12 +14,10 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..capabilities.schemas import (
-    HttpMCPServerConfig,
     MCPServerConfig,
     MCPServerSummary,
     SkillConfig,
     SkillSummary,
-    StdioMCPServerConfig,
     ToolConfig,
     ToolSummary,
 )

@@ -9,7 +9,7 @@ from ..config.schemas import (
     SessionBootstrapResponse,
     SessionShutdownResponse,
 )
-from ..runtime.session_runtime import (
+from ..application.runtime_service import (
     SessionBootstrapError,
     SessionRuntimeConflictError,
     SessionRuntimeNotFoundError,

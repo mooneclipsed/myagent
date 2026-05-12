@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from ..config.settings import get_settings
-from ..runtime.session_runtime import close_all_session_runtimes
+from ..application.runtime_service import close_all_session_runtimes
 
 logger = logging.getLogger(__name__)
 

@@ -40,7 +40,7 @@ class TestMCPClientLifecycle:
 
     def test_lifo_close_order(self):
         """MCP clients must be closed in reverse order of registration."""
-        from src.runtime.session_runtime import close_mcp_clients
+        from src.adapters.agentscope.runtime import close_mcp_clients
 
         client1 = AsyncMock()
         client1.name = "first"

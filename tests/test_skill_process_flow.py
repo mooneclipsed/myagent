@@ -25,8 +25,6 @@ def test_bootstrap_returns_skill_summary_and_process_completes(client, valid_pay
         "skills": [
             {
                 "skill_dir": "skills/example_skill",
-                "activation_mode": "lazy",
-                "expose_structured_tools": True,
             }
         ],
         "mcp_servers": [],
@@ -36,17 +34,13 @@ def test_bootstrap_returns_skill_summary_and_process_completes(client, valid_pay
     assert bootstrap_response.status_code == 200, bootstrap_response.text
     body = bootstrap_response.json()
     assert body["skills"] == [
-        {
-            "name": "example-skill",
-            "activation_mode": "lazy",
-            "structured_tools": [
-                "run_platform_report",
-                "summarize_platform_callable",
-            ],
-        }
-    ]
+            {
+                "name": "example-skill",
+                "structured_tools": [],
+            }
+        ]
 
-    with patch("src.application.chat_service.stream_printing_messages", _mock_stream):
+    with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream):
         process_payload = {
             **valid_payload,
             "runtime_id": "skill-process-runtime-001",

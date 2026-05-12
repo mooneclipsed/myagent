@@ -1,44 +1,28 @@
 """Streaming query handlers and shared HTTP chat helpers."""
 
-import json
-import logging
 import asyncio
-from dataclasses import dataclass
+import json
 from typing import Any
 
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
-from opentelemetry import trace as ot_trace
 
-from agentscope.memory import InMemoryMemory
 from agentscope_runtime.engine import AgentApp
 from agentscope.message import Msg
-from agentscope.pipeline import stream_printing_messages
 
-from ..config.schemas import AgentConfig, resolve_effective_config
-from ..runtime.session_runtime import (
-    bind_agentscope_run_context,
-    build_react_agent,
+from ..adapters.agentscope.runtime import AgentScopeRuntime, agentscope_msg_to_chat_event
+from ..config.schemas import AgentConfig
+from ..core.interfaces import ChatMessage, ChatRequest
+from .runtime_service import (
     get_runtime_profile,
-    log_tracing_state,
 )
-from ..sessions.backend import get_session_backend, validate_session_id
+from ..sessions.backend import validate_session_id
 from ..tools import toolkit
-
-logger = logging.getLogger(__name__)
-
-
-@dataclass
-class QueryExecutionContext:
-    session_id: str | None
-    runtime_id: str | None
-    agent: Any
-    use_session_run_context: bool = False
-    tracing_enabled: bool = False
 
 
 _session_locks: dict[str, asyncio.Lock] = {}
 _session_locks_guard = asyncio.Lock()
+_runtime_adapter = AgentScopeRuntime()
 
 
 async def _get_session_lock(session_id: str) -> asyncio.Lock:
@@ -50,7 +34,7 @@ async def _get_session_lock(session_id: str) -> asyncio.Lock:
         return lock
 
 
-async def _build_query_execution_context(request: Any) -> QueryExecutionContext:
+def _extract_request_context(request: Any) -> tuple[str | None, str | None, Any, Any]:
     session_id = None
     runtime_id = None
     runtime = None
@@ -71,50 +55,19 @@ async def _build_query_execution_context(request: Any) -> QueryExecutionContext:
         if runtime is None:
             raise ValueError(f"No active runtime found for '{runtime_id}'.")
 
-    if runtime is not None:
-        if request and hasattr(request, "agent_config") and request.agent_config:
-            raise ValueError(
-                "Bootstrapped runtimes do not accept agent_config on /process. Re-bootstrap the runtime instead.",
-            )
-        memory = InMemoryMemory()
-        if session_id:
-            await get_session_backend().load_session_state(
-                session_id=session_id,
-                memory=memory,
-            )
-        agent = build_react_agent(
-            resolved_config=runtime.resolved_config,
-            memory=memory,
-            toolkit=runtime.toolkit,
-            system_prompt=runtime.system_prompt,
-            memory_compression=runtime.memory_compression,
-        )
-        return QueryExecutionContext(
-            session_id=session_id,
-            runtime_id=runtime_id,
-            agent=agent,
-            use_session_run_context=True,
-            tracing_enabled=bool(runtime.resolved_config),
-        )
+    agent_config = getattr(request, "agent_config", None) if request else None
+    return session_id, runtime_id, runtime, agent_config
 
-    agent_config = None
-    if request and hasattr(request, "agent_config") and request.agent_config:
-        agent_config = AgentConfig(**request.agent_config)
-    config = resolve_effective_config(agent_config)
 
-    memory = InMemoryMemory()
-    if session_id:
-        await get_session_backend().load_session_state(
-            session_id=session_id,
-            memory=memory,
-        )
-
-    agent = build_react_agent(
-        resolved_config=config,
-        memory=memory,
-        toolkit=toolkit,
-    )
-    return QueryExecutionContext(session_id=session_id, runtime_id=runtime_id, agent=agent)
+def _coerce_chat_message(item: Any) -> ChatMessage:
+    if isinstance(item, ChatMessage):
+        return item
+    if isinstance(item, Msg):
+        return ChatMessage(role=item.role, content=item.content, name=item.name)
+    role = getattr(item, "role", "user")
+    content = getattr(item, "content", item)
+    name = getattr(item, "name", role)
+    return ChatMessage(role=role, content=content, name=name)
 
 
 async def _stream_agent_messages(msgs, request: Any):
@@ -133,54 +86,20 @@ async def _stream_agent_messages(msgs, request: Any):
 
 
 async def _stream_agent_messages_locked(msgs, request: Any):
-    execution = await _build_query_execution_context(request)
-    trace_label = execution.session_id or execution.runtime_id or "no-session"
-    log_tracing_state(f"query-start:{trace_label}")
-
-    try:
-        if execution.use_session_run_context and execution.session_id:
-            with bind_agentscope_run_context(
-                execution.session_id,
-                trace_enabled=execution.tracing_enabled,
-            ):
-                async for msg, last in stream_printing_messages(
-                    agents=[execution.agent],
-                    coroutine_task=execution.agent(msgs),
-                ):
-                    yield msg, last
-        else:
-            async for msg, last in stream_printing_messages(
-                agents=[execution.agent],
-                coroutine_task=execution.agent(msgs),
-            ):
-                yield msg, last
-    finally:
-        try:
-            provider = ot_trace.get_tracer_provider()
-            force_flush = getattr(provider, "force_flush", None)
-            if callable(force_flush):
-                flushed = force_flush()
-                logger.info(
-                    "Tracing force_flush [%s]: %r",
-                    trace_label,
-                    flushed,
-                )
-            log_tracing_state(f"query-end:{trace_label}")
-        except Exception as exc:  # pragma: no cover - diagnostics only
-            logger.warning("Tracing flush failed for %s: %s", trace_label, exc)
-
-        if execution.session_id:
-            try:
-                await get_session_backend().save_session_state(
-                    session_id=execution.session_id,
-                    memory=execution.agent.memory,
-                )
-            except Exception as exc:
-                logger.warning(
-                    "Failed to save session state for %s: %s",
-                    execution.session_id,
-                    exc,
-                )
+    session_id, runtime_id, runtime, agent_config = _extract_request_context(request)
+    config = AgentConfig(**agent_config) if agent_config else None
+    chat_request = ChatRequest(
+        messages=[_coerce_chat_message(item) for item in msgs],
+        runtime_id=runtime_id,
+        session_id=session_id,
+        agent_config=config,
+    )
+    async for msg, last, _agent in _runtime_adapter.stream_with_profile(
+        profile=runtime,
+        request=chat_request,
+        default_toolkit=toolkit,
+    ):
+        yield msg, last
 
 
 def _sse_data(payload: dict[str, Any]) -> bytes:
@@ -200,6 +119,22 @@ def _msg_to_payload(msg: Msg, last: bool, session_id: str | None) -> dict[str, A
         if isinstance(first, dict) and first.get("type") == "text":
             payload["delta"] = {"text": first.get("text", "")}
             payload["text"] = first.get("text", "")
+    if session_id:
+        payload["session_id"] = session_id
+    return payload
+
+
+def _chat_event_to_payload(event, session_id: str | None) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "object": "message",
+        "role": event.role,
+        "name": event.name,
+        "content": event.content,
+        "status": "completed" if event.last else "in_progress",
+    }
+    if event.text is not None:
+        payload["delta"] = {"text": event.text}
+        payload["text"] = event.text
     if session_id:
         payload["session_id"] = session_id
     return payload
@@ -237,14 +172,14 @@ async def chat_via_agentscope(request: Request):
             self.session_id = payload.get("session_id")
             self.agent_config = payload.get("agent_config")
 
-    msgs = []
+    messages = []
     for item in input_items:
         role = item.get("role", "user")
         content = item.get("content", [])
         if isinstance(content, list) and len(content) == 1 and content[0].get("type") == "text":
-            msgs.append(Msg(role, content[0].get("text", ""), role))
+            messages.append(ChatMessage(role=role, content=content[0].get("text", ""), name=role))
         else:
-            msgs.append(Msg(role, content, role))
+            messages.append(ChatMessage(role=role, content=content, name=role))
 
     request_shim = RequestShim(body)
 
@@ -256,8 +191,9 @@ async def chat_via_agentscope(request: Request):
         yield _sse_data({"status": "created", **({"session_id": session_id} if session_id else {})})
         yield _sse_data({"status": "in_progress", **({"session_id": session_id} if session_id else {})})
         try:
-            async for msg, last in _stream_agent_messages(msgs, request_shim):
-                yield _sse_data(_msg_to_payload(msg, last, session_id))
+            async for msg, last in _stream_agent_messages(messages, request_shim):
+                event = agentscope_msg_to_chat_event(msg, last)
+                yield _sse_data(_chat_event_to_payload(event, session_id))
             yield _sse_data({"status": "completed", **({"session_id": session_id} if session_id else {})})
         except Exception as exc:
             yield _sse_data(

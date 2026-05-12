@@ -1,0 +1,2 @@
+"""AgentScope framework adapter."""
+

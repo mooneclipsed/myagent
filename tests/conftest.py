@@ -4,7 +4,7 @@ import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
-from src.runtime.session_runtime import close_all_session_runtimes
+from src.application.runtime_service import close_all_session_runtimes
 
 
 @pytest.fixture(autouse=True)

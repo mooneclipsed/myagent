@@ -13,7 +13,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from src.runtime.session_runtime import close_all_session_runtimes, get_runtime_profile
+from src.application.runtime_service import close_all_session_runtimes, get_runtime_profile
 from tests.test_chat_stream import _parse_sse_events
 
 
@@ -51,7 +51,7 @@ def test_bootstrap_stdio_session_success(client):
         ],
     }
 
-    with patch("src.runtime.session_runtime.StdIOStatefulClient") as mock_stdio:
+    with patch("src.adapters.agentscope.runtime.StdIOStatefulClient") as mock_stdio:
         mock_client = AsyncMock()
         mock_client.name = "time-mcp"
         mock_client.is_connected = True
@@ -90,7 +90,7 @@ def test_bootstrap_http_session_success(client):
         ],
     }
 
-    with patch("src.runtime.session_runtime.HttpStatefulClient") as mock_http:
+    with patch("src.adapters.agentscope.runtime.HttpStatefulClient") as mock_http:
         mock_client = AsyncMock()
         mock_client.name = "remote-mcp"
         mock_client.is_connected = True
@@ -187,7 +187,7 @@ def test_bootstrap_with_blank_system_prompt_uses_default_prompt(client):
 def test_build_react_agent_enables_console_output_from_settings(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.setenv("AGENT_CONSOLE_OUTPUT_ENABLED", "true")
 
-    from src.runtime.session_runtime import build_react_agent
+    from src.adapters.agentscope.agent_factory import build_react_agent
     from src.config.settings import get_settings
     from agentscope.memory import InMemoryMemory
     from agentscope.tool import Toolkit
@@ -234,7 +234,7 @@ def test_build_react_agent_uses_bootstrap_memory_compression(configured_env, cle
     from agentscope.memory import InMemoryMemory
     from agentscope.tool import Toolkit
 
-    from src.runtime.session_runtime import build_react_agent
+    from src.adapters.agentscope.agent_factory import build_react_agent
     from src.config.schemas import MemoryCompressionConfig
 
     agent = build_react_agent(
@@ -261,7 +261,7 @@ def test_build_react_agent_uses_bootstrap_memory_compression(configured_env, cle
 
 
 def test_compression_fallback_model_wraps_plain_text_summary():
-    from src.runtime.session_runtime import CompressionFallbackModel
+    from src.adapters.agentscope.agent_factory import CompressionFallbackModel
 
     class PlainTextModel:
         model_name = "test-model"
@@ -325,7 +325,7 @@ def test_bootstrap_memory_compression_overrides_env_defaults(client, monkeypatch
 
 def test_thinking_formatter_warning_filter_is_installed_on_agentscope_logger():
     import logging
-    from src.runtime.session_runtime import _AgentScopeThinkingWarningFilter
+    from src.adapters.agentscope.runtime import _AgentScopeThinkingWarningFilter
 
     logger = logging.getLogger("as")
 
@@ -352,7 +352,7 @@ def test_bootstrap_failure_rolls_back_connected_clients(client):
     second_client.is_connected = False
 
     with patch(
-        "src.runtime.session_runtime.StdIOStatefulClient",
+        "src.adapters.agentscope.runtime.StdIOStatefulClient",
         side_effect=[first_client, second_client],
     ):
         response = client.post("/runtimes/bootstrap", json=payload)
@@ -384,7 +384,7 @@ def test_process_uses_bootstrapped_runtime_profile_with_session_memory(client, v
         )
         yield msg, True
 
-    with patch("src.application.chat_service.stream_printing_messages", _mock_stream_runtime):
+    with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
         process_payload = {
             **valid_payload,
             "runtime_id": "bootstrap-process-001",
@@ -425,8 +425,8 @@ def test_process_passes_runtime_memory_compression_to_agent(client, valid_payloa
         yield msg, True
 
     with (
-        patch("src.application.chat_service.stream_printing_messages", _mock_stream_runtime),
-        patch("src.application.chat_service.build_react_agent", wraps=__import__("src.application.chat_service", fromlist=["build_react_agent"]).build_react_agent) as mock_build,
+        patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime),
+        patch("src.adapters.agentscope.agent_factory.build_react_agent", wraps=__import__("src.adapters.agentscope.agent_factory", fromlist=["build_react_agent"]).build_react_agent) as mock_build,
     ):
         process_response = client.post(
             "/process",
@@ -463,7 +463,7 @@ def test_process_rebinds_agentscope_run_context_for_bootstrapped_session(client,
         )
         yield msg, True
 
-    with patch("src.application.chat_service.stream_printing_messages", _mock_stream_runtime):
+    with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
         process_response = client.post(
             "/process",
             json={
@@ -486,7 +486,7 @@ def test_process_exports_span_with_session_conversation_id(client, monkeypatch, 
 
     get_settings.cache_clear()
 
-    with patch("src.runtime.session_runtime.agentscope.init"):
+    with patch("src.adapters.agentscope.runtime.agentscope.init"):
         response = client.post(
             "/runtimes/bootstrap",
             json={"runtime_id": runtime_id, "skills": [], "mcp_servers": []},
@@ -512,8 +512,8 @@ def test_process_exports_span_with_session_conversation_id(client, monkeypatch, 
             )
             yield msg, True
 
-    with patch("src.application.chat_service.ot_trace.get_tracer_provider", return_value=tracer_provider):
-        with patch("src.application.chat_service.stream_printing_messages", _mock_stream_runtime):
+    with patch("src.adapters.agentscope.runtime.ot_trace.get_tracer_provider", return_value=tracer_provider):
+        with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
             process_response = client.post(
                 "/process",
                 json={
@@ -534,7 +534,7 @@ def test_bootstrap_with_skills_also_registers_local_runtime_tools(client):
         "/runtimes/bootstrap",
         json={
             "runtime_id": "bootstrap-skill-local-tools-001",
-            "skills": [{"skill_dir": skill_dir, "activation_mode": "lazy"}],
+            "skills": [{"skill_dir": skill_dir}],
             "mcp_servers": [],
         },
     )
@@ -583,7 +583,7 @@ def test_process_without_session_id_uses_generated_conversation(client, valid_pa
         )
         yield msg, True
 
-    with patch("src.application.chat_service.stream_printing_messages", _mock_stream_runtime):
+    with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
         process_response = client.post(
             "/process",
             json={**valid_payload, "runtime_id": "bootstrap-process-generated-session"},
@@ -730,7 +730,7 @@ def test_bootstrap_initializes_agentscope_studio_when_configured(client, monkeyp
 
     get_settings.cache_clear()
 
-    with patch("src.runtime.session_runtime.agentscope.init") as mock_init:
+    with patch("src.adapters.agentscope.runtime.agentscope.init") as mock_init:
         response = client.post(
             "/runtimes/bootstrap",
             json={"runtime_id": "bootstrap-studio-001", "skills": [], "mcp_servers": []},
@@ -752,7 +752,7 @@ def test_bootstrap_skips_agentscope_studio_when_disabled(client, monkeypatch):
 
     get_settings.cache_clear()
 
-    with patch("src.runtime.session_runtime.agentscope.init") as mock_init:
+    with patch("src.adapters.agentscope.runtime.agentscope.init") as mock_init:
         response = client.post(
             "/runtimes/bootstrap",
             json={"runtime_id": "bootstrap-studio-disabled-001", "skills": [], "mcp_servers": []},

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.runtime.session_runtime import get_runtime_profile
+from src.application.runtime_service import get_runtime_profile
 
 SELECTED_SKILLS = [
     "doc-coauthoring",
@@ -22,8 +22,6 @@ def test_bootstrap_selected_official_skills(client):
         "skills": [
             {
                 "skill_dir": str((base / name).resolve()),
-                "activation_mode": "lazy",
-                "expose_structured_tools": True,
             }
             for name in SELECTED_SKILLS
         ],
@@ -35,14 +33,11 @@ def test_bootstrap_selected_official_skills(client):
     assert response.status_code == 200, response.text
     body = response.json()
     assert [item["name"] for item in body["skills"]] == SELECTED_SKILLS
-    assert all(item["activation_mode"] == "lazy" for item in body["skills"])
     assert all(item["structured_tools"] == [] for item in body["skills"])
 
     runtime = get_runtime_profile("bootstrap-official-skills-001")
     assert runtime is not None
     assert set(runtime.skill_registry.skills) == set(SELECTED_SKILLS)
-    assert "list_available_skills" in runtime.toolkit.tools
-    assert "activate_skill" in runtime.toolkit.tools
     assert "read_file" in runtime.toolkit.tools
     assert "edit_file" in runtime.toolkit.tools
     assert "run_local_shell" in runtime.toolkit.tools

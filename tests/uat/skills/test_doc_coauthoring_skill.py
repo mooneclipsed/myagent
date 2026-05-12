@@ -17,7 +17,7 @@ def main() -> None:
         session_id=SESSION_ID,
         skill_name="doc-coauthoring",
         prompt=(
-            "请先激活 doc-coauthoring skill，然后按照 skill 里的原始英文阶段名，"
+            "当前 runtime 已加载 doc-coauthoring skill，请按照 skill 里的原始英文阶段名，"
             "概括它的三阶段工作流。回答里必须原样包含 "
             "Context Gathering、Refinement & Structure、Reader Testing。"
         ),

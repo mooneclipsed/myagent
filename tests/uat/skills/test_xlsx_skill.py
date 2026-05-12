@@ -17,7 +17,7 @@ def main() -> None:
         session_id=SESSION_ID,
         skill_name="xlsx",
         prompt=(
-            "请先激活 xlsx skill，然后总结它对 Excel 交付最关键的两条要求，"
+            "当前 runtime 已加载 xlsx skill，请总结它对 Excel 交付最关键的两条要求，"
             "并说明为什么不要在 Python 里硬编码计算结果。回答里必须原样包含 "
             "Zero Formula Errors、Use Formulas, Not Hardcoded Values、LibreOffice。"
         ),

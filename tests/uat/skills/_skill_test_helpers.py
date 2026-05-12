@@ -1,6 +1,5 @@
-"""Shared helpers for manual skill integration tests under scripts/manual-tests/skills."""
+"""Shared helpers for UAT skill integration tests under tests/uat/skills."""
 
-import json
 import os
 import sys
 
@@ -41,7 +40,6 @@ def run_skill_test(
             "skills": [
                 {
                     "skill_dir": target_skill_dir,
-                    "activation_mode": "lazy",
                 }
             ],
             "mcp_servers": [],
@@ -52,12 +50,6 @@ def run_skill_test(
 
     try:
         result = chat(session_id, prompt)
-        activation_detail = json.dumps(result.tool_calls or result.events, ensure_ascii=False)[:200]
-        check(
-            result.called_tool("activate_skill") or result.has_evidence_of("activate_skill"),
-            "agent called activate_skill",
-            activation_detail,
-        )
         for snippet in expected_substrings:
             check(snippet in result.text, f"response contains {snippet}", result.text)
     finally:

@@ -17,7 +17,7 @@ def main() -> None:
         session_id=SESSION_ID,
         skill_name="docx",
         prompt=(
-            "请先激活 docx skill，然后直接根据它的 Quick Reference 告诉我："
+            "当前 runtime 已加载 docx skill，请直接根据它的 Quick Reference 告诉我："
             "读取或分析 .docx 内容、创建新文档、编辑现有文档，分别推荐什么路径。"
             "回答里必须原样包含 pandoc、docx-js、edit XML。"
         ),

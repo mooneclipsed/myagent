@@ -4,7 +4,7 @@ Same tests as stdio but through HTTP MCP servers. This validates
 the agent can discover and call tools served over network transport.
 
 Prerequisite:
-  - bash scripts/run_service.sh
+  - bash tests/uat/run_service.sh
   - Start MCP HTTP servers in separate terminals:
       uv run mcp-server/weather_mcp.py http      # port 8765
       uv run mcp-server/hiking_spot_mcp.py http  # port 8766

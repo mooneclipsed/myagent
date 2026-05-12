@@ -5,7 +5,7 @@ Natural language questions trigger the agent to discover and call
 the MCP-provided tools (get_weather, recommend_hiking_spots).
 
 Prerequisite:
-  - bash scripts/run_service.sh
+  - bash tests/uat/run_service.sh
   - uv in PATH (agent service spawns MCP subprocesses)
 """
 

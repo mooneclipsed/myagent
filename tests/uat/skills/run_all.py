@@ -1,4 +1,4 @@
-"""Run all manual skill tests under scripts/manual-tests/skills/."""
+"""Run all UAT skill tests under tests/uat/skills/."""
 
 import os
 import subprocess

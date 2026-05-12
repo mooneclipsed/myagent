@@ -4,7 +4,7 @@ The agent receives natural language questions and must DECIDE to use
 the registered tools. We verify the agent actually called the tool
 by checking for tool-specific content in the response.
 
-Prerequisite: bash scripts/run_service.sh
+Prerequisite: bash tests/uat/run_service.sh
 """
 
 import sys

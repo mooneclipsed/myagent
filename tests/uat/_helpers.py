@@ -103,7 +103,7 @@ def check_service_running() -> None:
     except httpx.ConnectError:
         print(
             "ERROR: Agent service is not running.\n"
-            "Start it with: bash scripts/run_service.sh",
+            "Start it with: bash tests/uat/run_service.sh",
             file=sys.stderr,
         )
         sys.exit(1)

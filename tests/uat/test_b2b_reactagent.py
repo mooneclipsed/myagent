@@ -5,10 +5,10 @@ Scenario:
   - MCP tool: get_weather (stdio)
   - Dynamic skill: hello
 
-The agent must read a file, query weather through MCP, activate/use hello,
+The agent must read a file, query weather through MCP, use hello,
 and persist the conversation summary to `b2b_test.log` via `edit_file`.
 
-Prerequisite: bash scripts/run_service.sh
+Prerequisite: bash tests/uat/run_service.sh
 """
 
 import os
@@ -23,7 +23,7 @@ MCP_SERVER_DIR = os.path.join(REPO_ROOT, "mcp-server")
 WEATHER_SCRIPT = os.path.join(MCP_SERVER_DIR, "weather_mcp.py")
 HELLO_SKILL_DIR = os.path.join(REPO_ROOT, "skills", "hello")
 LOG_FILE = os.path.join(REPO_ROOT, "b2b_test.log")
-HELLO_INVOCATION_LOG = os.path.join(REPO_ROOT, "scripts", "manual-tests", "files", "hello_skill_invocations.log")
+HELLO_INVOCATION_LOG = os.path.join(REPO_ROOT, "tests", "uat", "files", "hello_skill_invocations.log")
 
 
 def truncate_log_file() -> None:
@@ -53,7 +53,7 @@ def test_agent_executes_full_b2b_flow() -> None:
         "请严格按顺序完成这个正向验证场景："
         "先用 read_file 读取 skills/hello/resources/usage.md；"
         "再通过 MCP 的 get_weather 查询深圳天气；"
-        "然后激活 hello skill 并和我打招呼；"
+        "然后按照已加载的 hello skill 指引和我打招呼；"
         "最后把你读取到的 usage 内容、天气结果、你的问候语，"
         "以及一句包含 reactagent 的总结，通过 edit_file 写入 b2b_test.log。",
     )
@@ -62,7 +62,6 @@ def test_agent_executes_full_b2b_flow() -> None:
 
     check(result.called_tool("read_file") or result.has_evidence_of("read_file"), "agent used read_file")
     check(result.called_tool("get_weather") or result.has_evidence_of("get_weather"), "agent used MCP get_weather")
-    check(result.called_tool("activate_skill") or result.has_evidence_of("activate_skill"), "agent activated hello skill")
     check(
         result.called_tool("say_hello")
         or result.has_evidence_of("say_hello")
@@ -102,7 +101,6 @@ def main() -> None:
         "skills": [
             {
                 "skill_dir": HELLO_SKILL_DIR,
-                "activation_mode": "lazy",
             }
         ],
     })

@@ -17,7 +17,7 @@ def main() -> None:
         session_id=SESSION_ID,
         skill_name="frontend-design",
         prompt=(
-            "请先激活 frontend-design skill，然后给我一个用于做前端页面的设计检查清单。"
+            "当前 runtime 已加载 frontend-design skill，请给我一个用于做前端页面的设计检查清单。"
             "回答里必须原样包含 Typography、Color & Theme、Motion。"
         ),
         expected_substrings=["Typography", "Color & Theme", "Motion"],

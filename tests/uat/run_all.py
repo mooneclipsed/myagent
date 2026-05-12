@@ -1,7 +1,7 @@
 """Run all manual integration tests in sequence.
 
 Usage:
-    cd scripts/manual-tests
+    cd tests/uat
     python run_all.py                 # run all
     python run_all.py --skip-http-mcp # skip HTTP MCP (servers not running)
 """

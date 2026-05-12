@@ -17,7 +17,7 @@ def main() -> None:
         session_id=SESSION_ID,
         skill_name="webapp-testing",
         prompt=(
-            "请先激活 webapp-testing skill，然后告诉我测试本地 web app 时应该用什么框架、"
+            "当前 runtime 已加载 webapp-testing skill，请告诉我测试本地 web app 时应该用什么框架、"
             "什么 helper script，以及动态页面的关键等待条件。回答里必须原样包含 "
             "Playwright、scripts/with_server.py、networkidle。"
         ),

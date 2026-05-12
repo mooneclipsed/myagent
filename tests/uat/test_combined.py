@@ -3,12 +3,12 @@
 Single session bootstrapped with ALL three capability types:
   - Local tool: calculate
   - MCP server: weather-mcp (stdio, get_weather)
-  - Skill: hello (lazy, structured greeting tool)
+  - Skill: hello (bootstrapped skill with a bundled greeting script)
 
 The agent receives different natural language requests and must
 route each to the correct capability without being told which to use.
 
-Prerequisite: bash scripts/run_service.sh
+Prerequisite: bash tests/uat/run_service.sh
 """
 
 import sys
@@ -42,10 +42,10 @@ def test_agent_routes_to_mcp():
 
 
 def test_agent_routes_to_skill():
-    """Greeting request → agent should activate hello and run script."""
+    """Greeting request → agent should use loaded hello skill and run script."""
     result = chat(
         SESSION_ID,
-        "帮我用 hello skill 和 Charlie 打个招呼，先激活技能再执行。",
+        "帮我用已加载的 hello skill 和 Charlie 打个招呼，并用 run_local_shell 执行对应脚本。",
     )
     check(
         "Charlie" in result.text or "Hello" in result.text,
@@ -86,7 +86,6 @@ def main():
         "skills": [
             {
                 "skill_dir": HELLO_SKILL_DIR,
-                "activation_mode": "lazy",
             }
         ],
     })

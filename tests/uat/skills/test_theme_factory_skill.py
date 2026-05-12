@@ -17,7 +17,7 @@ def main() -> None:
         session_id=SESSION_ID,
         skill_name="theme-factory",
         prompt=(
-            "请先激活 theme-factory skill，然后总结它要求的主题应用流程，"
+            "当前 runtime 已加载 theme-factory skill，请总结它要求的主题应用流程，"
             "并告诉我主题展示文件和一个可选主题名。回答里必须原样包含 "
             "theme-showcase.pdf、Modern Minimalist、themes/。"
         ),

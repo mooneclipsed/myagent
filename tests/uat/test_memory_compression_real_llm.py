@@ -2,7 +2,7 @@
 
 Prerequisite:
   - Start the service with real model credentials:
-      bash scripts/run_service.sh
+      bash tests/uat/run_service.sh
   - Use the JSON session backend so this script can inspect the saved memory:
       SESSION_BACKEND=json
 
@@ -43,7 +43,7 @@ def check_service_running() -> None:
     except httpx.ConnectError:
         print(
             "ERROR: Agent service is not running.\n"
-            "Start it with: bash scripts/run_service.sh",
+            "Start it with: bash tests/uat/run_service.sh",
             file=sys.stderr,
         )
         sys.exit(1)

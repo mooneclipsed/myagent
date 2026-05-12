@@ -1,18 +1,18 @@
-"""Test: Agent discovers, activates, and executes skills.
+"""Test: Agent uses a bootstrapped skill and executes its script.
 
-The agent is bootstrapped with hello (lazy activation).
+The agent is bootstrapped with hello.
 Through natural conversation the agent should:
-  1. Discover the skill exists
-  2. Activate it to read instructions
-  3. Execute the structured tool `say_hello`
+  1. Understand the hello skill is available from bootstrap
+  2. Read skill instructions/resources when needed
+  3. Execute the bundled script with the native shell tool
   4. Read skill resources via `read_file`
 
 Strong proof strategy:
 - Response contains script-unique markers
-- Skill script appends to a marker file under scripts/manual-tests/files/
+- Skill script appends to a marker file under tests/uat/files/
 - Test verifies marker file contents changed after each script execution
 
-Prerequisite: bash scripts/run_service.sh
+Prerequisite: bash tests/uat/run_service.sh
 """
 
 import os
@@ -28,7 +28,8 @@ HELLO_SKILL_DIR = os.path.join(
     "skills",
     "hello",
 )
-MARKER_FILE = "/Users/chengtong/OpenSource/myagent/scripts/manual-tests/files/hello_skill_invocations.log"
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MARKER_FILE = os.path.join(REPO_ROOT, "tests", "uat", "files", "hello_skill_invocations.log")
 
 
 def read_marker_lines() -> list[str]:
@@ -44,23 +45,23 @@ def truncate_marker_file() -> None:
         pass
 
 
-def test_agent_discovers_skill():
-    """Ask what skills are available → agent should reveal hello exists."""
-    result = chat(SESSION_ID, "你现在有哪些可用的技能？")
+def test_agent_uses_loaded_skill_context():
+    """Ask about the loaded skill without encouraging filesystem-wide discovery."""
+    result = chat(SESSION_ID, "当前 runtime 已加载 hello skill。请简要说明这个 skill 的用途。")
     check(
         "hello" in result.text or result.has_evidence_of("hello"),
-        "agent discovered hello",
+        "agent recognized loaded hello skill",
         result.text,
     )
 
 
-def test_agent_activates_and_uses_skill():
-    """Ask agent to greet someone → agent should activate skill, then run script."""
+def test_agent_uses_skill_script():
+    """Ask agent to greet someone → agent should run the skill script."""
     before = read_marker_lines()
     result = chat(
         SESSION_ID,
         "帮我用 hello skill 和 Alice 打个招呼。"
-        "先激活这个技能，然后根据技能说明执行对应的脚本。",
+        "这个 skill 已经随 runtime 加载；请根据技能说明用 run_local_shell 执行 scripts/say_hello.py。",
     )
     after = read_marker_lines()
 
@@ -135,7 +136,7 @@ def test_agent_runs_script_with_different_args():
 
 def main():
     print("=" * 60)
-    print("TEST: Agent Skill Activation & Script Execution")
+    print("TEST: Agent Skill Loading & Script Execution")
     print("=" * 60)
     print(f"  Skill dir: {HELLO_SKILL_DIR}")
     print(f"  Marker file: {MARKER_FILE}")
@@ -146,16 +147,15 @@ def main():
         "skills": [
             {
                 "skill_dir": HELLO_SKILL_DIR,
-                "activation_mode": "lazy",
             }
         ],
     })
     skill_names = [s["name"] for s in body.get("skills", [])]
-    check("hello" in skill_names, "bootstrap registered hello (lazy)")
+    check("hello" in skill_names, "bootstrap registered hello")
 
     try:
-        test_agent_discovers_skill()
-        test_agent_activates_and_uses_skill()
+        test_agent_uses_loaded_skill_context()
+        test_agent_uses_skill_script()
         test_agent_reads_skill_resources()
         test_agent_runs_script_with_different_args()
     finally:

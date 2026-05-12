@@ -21,6 +21,8 @@ from src.config.schemas import AgentConfig, resolve_effective_config
 
 
 async def _mock_stream(*args, **kwargs):
+    coroutine_task = kwargs["coroutine_task"]
+    coroutine_task.close()
     msg = Msg(
         name="agentops",
         content=[{"type": "text", "text": "ok"}],

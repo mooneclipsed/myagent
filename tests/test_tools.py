@@ -20,14 +20,15 @@ from src.tools.registry import (
 class TestToolRegistration:
     """Tests for toolkit registration per D-01 (framework-native) and D-02 (startup-time)."""
 
-    def test_toolkit_has_example_tools(self):
-        """Toolkit singleton contains get_weather and calculate tools."""
+    def test_toolkit_has_default_tools(self):
+        """Toolkit singleton contains only default tools by default."""
         from src.tools import toolkit
 
         tool_names = list(toolkit.tools.keys())
         assert "get_weather" in tool_names, f"get_weather not in {tool_names}"
         assert "calculate" in tool_names, f"calculate not in {tool_names}"
-        assert "run_platform_report" in tool_names, f"run_platform_report not in {tool_names}"
+        assert "run_platform_report" not in tool_names
+        assert "example-skill" not in toolkit.skills
 
     def test_toolkit_is_singleton(self):
         """Toolkit imported from different paths is the same object (D-02: shared)."""

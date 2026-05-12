@@ -27,6 +27,53 @@ async def _mock_stream(*args, **kwargs):
     yield msg, True
 
 
+def test_stream_agent_messages_does_not_close_owned_coroutine():
+    from src.adapters.agentscope import runtime
+    from src.core.interfaces import ChatMessage
+
+    close_called = False
+
+    class AwaitableStub:
+        def __await__(self):
+            if False:
+                yield None
+            return None
+
+        def close(self):
+            nonlocal close_called
+            close_called = True
+
+    coroutine = AwaitableStub()
+
+    class AgentStub:
+        def __call__(self, msgs):
+            assert msgs[0].content == "hello"
+            return coroutine
+
+    async def _mock_stream_runtime(*args, **kwargs):
+        msg = Msg(
+            name="agentops",
+            content=[{"type": "text", "text": "ok"}],
+            role="assistant",
+        )
+        yield msg, True
+
+    async def _run():
+        with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
+            items = []
+            async for item in runtime._stream_agent_messages(
+                AgentStub(),
+                [ChatMessage(role="user", content="hello", name="user")],
+            ):
+                items.append(item)
+            return items
+
+    items = asyncio.run(_run())
+
+    assert len(items) == 1
+    assert close_called is False
+
+
 @pytest.fixture(autouse=True)
 def _clear_runtime_between_tests():
     import asyncio

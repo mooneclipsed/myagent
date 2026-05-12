@@ -10,7 +10,7 @@ from .registry import (
 )
 
 # Shared toolkit singleton (legacy compatibility path)
-toolkit = create_base_toolkit(include_legacy_example_skill_support=True)
+toolkit = create_base_toolkit(include_legacy_example_skill_support=False)
 
 __all__ = [
     "TOOL_REGISTRY",

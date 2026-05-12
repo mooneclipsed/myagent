@@ -146,6 +146,7 @@ class AgentScopeRuntime:
             skill_summaries=skill_registry.list_skill_summaries(),
             mcp_servers=summaries,
         )
+        _print_toolkit_loaded("Bootstrap", session_toolkit, runtime_id=spec.runtime_id)
         self._profile = profile
         return profile
 
@@ -185,6 +186,12 @@ class AgentScopeRuntime:
                     session_id=request.session_id,
                     memory=memory,
                 )
+            _print_toolkit_loaded(
+                "Chat",
+                profile.toolkit,
+                runtime_id=profile.runtime_id,
+                session_id=request.session_id,
+            )
             agent = agent_factory.build_react_agent(
                 resolved_config=profile.resolved_config,
                 memory=memory,
@@ -219,6 +226,12 @@ class AgentScopeRuntime:
                 memory=memory,
             )
 
+        _print_toolkit_loaded(
+            "Chat",
+            default_toolkit,
+            runtime_id=request.runtime_id,
+            session_id=request.session_id,
+        )
         agent = agent_factory.build_react_agent(
             resolved_config=resolved_config,
             memory=memory,
@@ -237,6 +250,23 @@ class AgentScopeRuntime:
 
 class AgentScopeBootstrapError(RuntimeError):
     """Raised when AgentScope runtime initialization fails."""
+
+
+def _print_toolkit_loaded(
+    phase: str,
+    toolkit: Toolkit,
+    *,
+    runtime_id: str | None,
+    session_id: str | None = None,
+) -> None:
+    loaded_skills = sorted(toolkit.skills.keys())
+    loaded_tools = sorted(toolkit.tools.keys())
+    context = f"runtime_id={runtime_id or 'none'}"
+    if session_id:
+        context = f"{context} session_id={session_id}"
+    message = f"{phase} toolkit loaded: {context} skills={loaded_skills} tools={loaded_tools}"
+    print(message)
+    logger.info(message)
 
 
 def log_tracing_state(context: str) -> None:
@@ -376,16 +406,11 @@ async def _stream_agent_messages(agent, messages: list[ChatMessage]):
     msgs = chat_messages_to_agentscope(messages)
     stream_messages = stream_printing_messages
     coroutine_task = agent(msgs)
-    try:
-        async for msg, last in stream_messages(
-            agents=[agent],
-            coroutine_task=coroutine_task,
-        ):
-            yield msg, last
-    finally:
-        close = getattr(coroutine_task, "close", None)
-        if callable(close):
-            close()
+    async for msg, last in stream_messages(
+        agents=[agent],
+        coroutine_task=coroutine_task,
+    ):
+        yield msg, last
 
 
 def _flush_tracing(trace_label: str) -> None:

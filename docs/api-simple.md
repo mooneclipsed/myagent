@@ -45,6 +45,64 @@ Main fields:
 - `422 application/json`
   - Validation error payload
 
+**Example**
+
+```json
+{
+  "runtime_id": "runtime-001",
+  "skills_download_url": "https://skills.example.com",
+  "skill_downloads": [
+    {
+      "skill_id": 1,
+      "version_id": 3
+    }
+  ],
+  "skills": [
+    {
+      "skill_dir": "skills/local_skill"
+    }
+  ],
+  "mcp_servers": []
+}
+```
+
+Example response:
+
+```json
+{
+  "runtime_id": "runtime-001",
+  "status": "ready",
+  "tools": [],
+  "skills": [
+    {
+      "name": "local-skill",
+      "structured_tools": []
+    },
+    {
+      "name": "remote-skill",
+      "structured_tools": []
+    }
+  ],
+  "skill_downloads": [
+    {
+      "skill_id": 1,
+      "version_id": 3,
+      "status": "installed",
+      "skill_dir": "skills/.managed/skill_1_v3",
+      "zip_path": "skills/.downloads/skill_1_v3.zip",
+      "error": null
+    }
+  ],
+  "mcp_servers": []
+}
+```
+
+Remote skill behavior:
+- `skill_downloads` is a desired-state list. Calling bootstrap while a runtime is already active reloads the runtime.
+- On reload, unchanged remote skills are kept, new remote skills are downloaded, and removed remote skills are deleted after the new runtime is ready.
+- A single remote skill download or extraction failure does not fail the whole bootstrap. The failed item is returned with `status = failed`, and successfully installed or local skills still load.
+- Managed remote skills are stored under `skills/.managed/`; downloaded ZIP files are stored under `skills/.downloads/`.
+
 ## POST `/runtimes/{runtime_id}/shutdown`
 
 **Purpose**  

@@ -1,0 +1,2 @@
+"""Framework-neutral capability declarations."""
+

@@ -11,7 +11,7 @@ D-04 (optional request config), D-06 (config trace logging).
 import logging
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..capabilities.schemas import (
     MCPServerConfig,
@@ -63,6 +63,13 @@ class SessionBootstrapRequest(BaseModel):
     skill_downloads: list[SkillDownloadConfig] = Field(default_factory=list)
     skills_download_url: str | None = None
     mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
+
+    @field_validator("runtime_id", mode="before")
+    @classmethod
+    def coerce_runtime_id(cls, value: object) -> object:
+        if isinstance(value, int):
+            return str(value)
+        return value
 
 
 class SessionBootstrapResponse(BaseModel):

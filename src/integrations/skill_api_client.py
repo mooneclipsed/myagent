@@ -48,12 +48,14 @@ class SkillApiClient:
         self,
         base_url: str,
         *,
-        timeout: float = 60,
+        timeout: float = 300,
         client: requests.Session | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self._client = client
+        if self._client is not None:
+            self._client.trust_env = False
         self._owns_client = client is None
 
     def __enter__(self) -> "SkillApiClient":
@@ -70,6 +72,7 @@ class SkillApiClient:
     def client(self) -> requests.Session:
         if self._client is None:
             self._client = requests.Session()
+            self._client.trust_env = False
         return self._client
 
     def download_skill_version(
@@ -89,7 +92,7 @@ class SkillApiClient:
             f"/versions/{quote(str(version_id))}/download"
         )
         try:
-            response = self.client.get(url, timeout=self.timeout)
+            response = self.client.get(url, timeout=self.timeout, verify=False)
         except requests.RequestException as exc:
             raise SkillDownloadError(str(exc)) from exc
 

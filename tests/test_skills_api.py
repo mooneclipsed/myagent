@@ -18,8 +18,8 @@ class FakeSession:
         self.requests = []
         self.closed = False
 
-    def get(self, url: str, timeout: float):
-        self.requests.append((url, timeout))
+    def get(self, url: str, timeout: float, verify: bool):
+        self.requests.append((url, timeout, verify))
         return self.response
 
     def close(self):
@@ -55,14 +55,24 @@ def test_download_skill_version_writes_zip(tmp_path):
     result = client.download_skill_version(1, 3, tmp_path)
 
     assert session.requests == [
-        ("http://skills.example/api/v1/skills/1/versions/3/download", 60)
+        ("http://skills.example/api/v1/skills/1/versions/3/download", 300, False)
     ]
+    assert session.trust_env is False
     assert result.skill_id == 1
     assert result.version_id == 3
     assert result.path == Path(tmp_path) / "skill_1_v3.zip"
     assert result.path.read_bytes() == b"zip-bytes"
     assert result.content_type == "application/zip"
     assert result.content_disposition == "attachment; filename=skill_1_v3.zip"
+
+
+def test_skill_api_client_disables_environment_proxy_for_owned_session():
+    client = SkillApiClient("http://skills.example")
+
+    try:
+        assert client.client.trust_env is False
+    finally:
+        client.close()
 
 
 def test_download_skill_version_raises_business_404(tmp_path):

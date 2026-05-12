@@ -160,6 +160,17 @@ def test_bootstrap_without_system_prompt_uses_default_prompt(client):
     assert runtime.system_prompt is None
 
 
+def test_bootstrap_accepts_numeric_runtime_id(client):
+    payload = {"runtime_id": 7459893631797690368, "skills": [], "mcp_servers": []}
+
+    response = client.post("/runtimes/bootstrap", json=payload)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["runtime_id"] == "7459893631797690368"
+    assert get_runtime_profile("7459893631797690368") is not None
+
+
 def test_bootstrap_same_runtime_reloads(client):
     payload = {"runtime_id": "bootstrap-session-same", "skills": [], "mcp_servers": []}
 

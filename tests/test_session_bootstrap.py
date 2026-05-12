@@ -135,7 +135,7 @@ def test_bootstrap_rejects_invalid_http_transport(client):
     assert response.status_code == 422
 
 
-def test_bootstrap_conflict_when_another_session_active(client):
+def test_bootstrap_reloads_when_another_runtime_is_active(client):
     payload_a = {"runtime_id": "bootstrap-session-a", "skills": [], "mcp_servers": []}
     payload_b = {"runtime_id": "bootstrap-session-b", "skills": [], "mcp_servers": []}
 
@@ -143,8 +143,10 @@ def test_bootstrap_conflict_when_another_session_active(client):
     response_b = client.post("/runtimes/bootstrap", json=payload_b)
 
     assert response_a.status_code == 200
-    assert response_b.status_code == 409
-    assert "already owns this pod" in response_b.json()["detail"]
+    assert response_b.status_code == 200
+    assert response_b.json()["runtime_id"] == "bootstrap-session-b"
+    assert get_runtime_profile("bootstrap-session-a") is None
+    assert get_runtime_profile("bootstrap-session-b") is not None
 
 
 def test_bootstrap_without_system_prompt_uses_default_prompt(client):
@@ -158,14 +160,15 @@ def test_bootstrap_without_system_prompt_uses_default_prompt(client):
     assert runtime.system_prompt is None
 
 
-def test_bootstrap_same_runtime_returns_conflict(client):
+def test_bootstrap_same_runtime_reloads(client):
     payload = {"runtime_id": "bootstrap-session-same", "skills": [], "mcp_servers": []}
 
     response_a = client.post("/runtimes/bootstrap", json=payload)
     response_b = client.post("/runtimes/bootstrap", json=payload)
 
     assert response_a.status_code == 200
-    assert response_b.status_code == 409
+    assert response_b.status_code == 200
+    assert response_b.json()["runtime_id"] == "bootstrap-session-same"
 
 
 def test_bootstrap_with_blank_system_prompt_uses_default_prompt(client):
@@ -545,6 +548,95 @@ def test_bootstrap_with_skills_also_registers_local_runtime_tools(client):
     assert "read_file" in runtime.toolkit.tools
     assert "edit_file" in runtime.toolkit.tools
     assert "run_local_shell" in runtime.toolkit.tools
+
+
+def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path):
+    skill_dir = tmp_path / "skills" / ".managed" / "skill_1_v1"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: downloaded-skill\ndescription: downloaded\n---\n",
+        encoding="utf-8",
+    )
+
+    def fake_sync(**kwargs):
+        from src.application.skill_install_service import (
+            ManagedSkillKey,
+            ManagedSkillState,
+            ManagedSkillSyncResult,
+        )
+        from src.capabilities.schemas import SkillConfig, SkillDownloadSummary
+
+        assert kwargs["skills_download_url"] == "http://skills.example"
+        return ManagedSkillSyncResult(
+            skills=[SkillConfig(skill_dir=str(skill_dir))],
+            summaries=[
+                SkillDownloadSummary(
+                    skill_id=1,
+                    version_id=1,
+                    status="installed",
+                    skill_dir=str(skill_dir),
+                    zip_path=str(tmp_path / "skills" / ".downloads" / "skill_1_v1.zip"),
+                )
+            ],
+            state={
+                ManagedSkillKey(1, 1): ManagedSkillState(
+                    skill_id=1,
+                    version_id=1,
+                    skill_dir=str(skill_dir),
+                )
+            },
+        )
+
+    with patch("src.application.runtime_service.sync_managed_skills", fake_sync):
+        response = client.post(
+            "/runtimes/bootstrap",
+            json={
+                "runtime_id": "bootstrap-download-skill-001",
+                "skills_download_url": "http://skills.example",
+                "skill_downloads": [{"skill_id": 1, "version_id": 1}],
+                "skills": [],
+                "mcp_servers": [],
+            },
+        )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["skills"] == [{"name": "downloaded-skill", "structured_tools": []}]
+    assert body["skill_downloads"][0]["status"] == "installed"
+
+
+def test_bootstrap_download_failure_continues_with_runtime(client):
+    def fake_sync(**kwargs):
+        from src.application.skill_install_service import ManagedSkillSyncResult
+        from src.capabilities.schemas import SkillDownloadSummary
+
+        return ManagedSkillSyncResult(
+            summaries=[
+                SkillDownloadSummary(
+                    skill_id=1,
+                    version_id=1,
+                    status="failed",
+                    error="download failed",
+                )
+            ],
+        )
+
+    with patch("src.application.runtime_service.sync_managed_skills", fake_sync):
+        response = client.post(
+            "/runtimes/bootstrap",
+            json={
+                "runtime_id": "bootstrap-download-skill-failure",
+                "skills_download_url": "http://skills.example",
+                "skill_downloads": [{"skill_id": 1, "version_id": 1}],
+                "skills": [],
+                "mcp_servers": [],
+            },
+        )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["skills"] == []
+    assert body["skill_downloads"][0]["status"] == "failed"
 
 
 def test_process_rejects_agent_config_for_bootstrapped_session(client, valid_payload):

@@ -15,14 +15,17 @@ from agentscope.pipeline import stream_printing_messages
 from agentscope.tool import Toolkit
 from opentelemetry import trace as ot_trace
 
-from ...config.schemas import (
+from ...capabilities.schemas import (
     HttpMCPServerConfig,
     MCPServerConfig,
     MCPServerSummary,
-    MemoryCompressionConfig,
+    SkillDownloadSummary,
     SkillSummary,
     StdioMCPServerConfig,
     ToolSummary,
+)
+from ...config.schemas import (
+    MemoryCompressionConfig,
     resolve_effective_config,
 )
 from ...config.settings import get_settings
@@ -69,6 +72,7 @@ class AgentScopeRuntimeProfile:
     resolved_config: dict = field(default_factory=dict)
     tool_summaries: list[ToolSummary] = field(default_factory=list)
     skill_summaries: list[SkillSummary] = field(default_factory=list)
+    skill_downloads: list[SkillDownloadSummary] = field(default_factory=list)
     mcp_servers: list[MCPServerSummary] = field(default_factory=list)
 
     async def close(self) -> None:

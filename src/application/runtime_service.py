@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
+from ..capabilities.schemas import SkillDownloadSummary
 from ..adapters.agentscope.runtime import (
     AgentScopeBootstrapError,
     AgentScopeRuntime,
@@ -13,6 +14,12 @@ from ..config.schemas import SessionBootstrapRequest
 from ..core.interfaces import RuntimeSpec
 from ..sessions.backend import validate_session_id
 from ..tools import ToolRegistryError
+from .skill_install_service import (
+    ManagedSkillKey,
+    ManagedSkillState,
+    cleanup_removed_managed_skills,
+    sync_managed_skills,
+)
 
 
 class SessionRuntimeError(RuntimeError):
@@ -36,6 +43,7 @@ class SessionBootstrapError(SessionRuntimeError):
 
 
 _active_runtime: AgentScopeRuntimeProfile | None = None
+_active_managed_skills: dict[ManagedSkillKey, ManagedSkillState] = {}
 _runtime_lock = asyncio.Lock()
 _runtime_adapter = AgentScopeRuntime()
 
@@ -49,6 +57,8 @@ def runtime_spec_from_bootstrap_request(request: SessionBootstrapRequest) -> Run
         system_prompt=request.system_prompt,
         tools=request.tools,
         skills=request.skills,
+        skill_downloads=request.skill_downloads,
+        skills_download_url=request.skills_download_url,
         mcp_servers=request.mcp_servers,
     )
 
@@ -87,17 +97,9 @@ async def initialize_runtime(spec: RuntimeSpec) -> tuple[AgentScopeRuntimeProfil
 
     async with _runtime_lock:
         if _active_runtime is not None:
-            raise SessionRuntimeConflictError(
-                f"Active runtime '{_active_runtime.runtime_id}' already owns this pod.",
-            )
+            return await _reload_runtime_locked(spec)
 
-        try:
-            runtime = await _runtime_adapter.initialize(spec)
-        except ToolRegistryError as exc:
-            raise SessionRuntimeValidationError(str(exc)) from exc
-        except AgentScopeBootstrapError as exc:
-            raise SessionBootstrapError(str(exc)) from exc
-
+        runtime = await _initialize_runtime_locked(spec)
         _active_runtime = runtime
         return _active_runtime, True
 
@@ -110,17 +112,11 @@ async def reload_runtime(spec: RuntimeSpec) -> tuple[AgentScopeRuntimeProfile, b
         raise SessionRuntimeValidationError("Invalid runtime_id format.")
 
     async with _runtime_lock:
-        previous = _active_runtime
-        try:
-            runtime = await _runtime_adapter.reload(spec)
-        except ToolRegistryError as exc:
-            raise SessionRuntimeValidationError(str(exc)) from exc
-        except AgentScopeBootstrapError as exc:
-            raise SessionBootstrapError(str(exc)) from exc
-        _active_runtime = runtime
+        runtime, previous, remove_after_swap = await _reload_runtime_locked(spec, include_previous=True)
 
     if previous is not None:
         await previous.close()
+    cleanup_removed_managed_skills(remove_after_swap)
 
     return runtime, True
 
@@ -132,7 +128,7 @@ async def shutdown_session_runtime(session_id: str) -> None:
 
 async def shutdown_runtime_profile(runtime_id: str) -> None:
     """Close and clear the active runtime for the given runtime id."""
-    global _active_runtime
+    global _active_runtime, _active_managed_skills
 
     async with _runtime_lock:
         if _active_runtime is None or _active_runtime.runtime_id != runtime_id:
@@ -140,18 +136,104 @@ async def shutdown_runtime_profile(runtime_id: str) -> None:
                 f"No active runtime found for '{runtime_id}'.",
             )
         runtime = _active_runtime
+        managed_skills = list(_active_managed_skills.values())
         _active_runtime = None
+        _active_managed_skills = {}
 
     await runtime.close()
+    cleanup_removed_managed_skills(managed_skills)
 
 
 async def close_all_session_runtimes() -> None:
     """Close any active runtime profile during application shutdown."""
-    global _active_runtime
+    global _active_runtime, _active_managed_skills
 
     async with _runtime_lock:
         runtime = _active_runtime
+        managed_skills = list(_active_managed_skills.values())
         _active_runtime = None
+        _active_managed_skills = {}
 
     if runtime is not None:
         await runtime.close()
+    cleanup_removed_managed_skills(managed_skills)
+
+
+async def _initialize_runtime_locked(spec: RuntimeSpec) -> AgentScopeRuntimeProfile:
+    global _active_managed_skills
+
+    prepared_spec, download_summaries, managed_state, _ = _prepare_runtime_spec(
+        spec,
+        previous_managed_skills={},
+    )
+    try:
+        runtime = await _runtime_adapter.initialize(prepared_spec)
+    except ToolRegistryError as exc:
+        raise SessionRuntimeValidationError(str(exc)) from exc
+    except AgentScopeBootstrapError as exc:
+        raise SessionBootstrapError(str(exc)) from exc
+
+    runtime.skill_downloads = download_summaries
+    _active_managed_skills = managed_state
+    return runtime
+
+
+async def _reload_runtime_locked(
+    spec: RuntimeSpec,
+    *,
+    include_previous: bool = False,
+):
+    global _active_runtime, _active_managed_skills
+
+    previous = _active_runtime
+    prepared_spec, download_summaries, managed_state, remove_after_swap = _prepare_runtime_spec(
+        spec,
+        previous_managed_skills=_active_managed_skills,
+    )
+    try:
+        runtime = await _runtime_adapter.reload(prepared_spec)
+    except ToolRegistryError as exc:
+        raise SessionRuntimeValidationError(str(exc)) from exc
+    except AgentScopeBootstrapError as exc:
+        raise SessionBootstrapError(str(exc)) from exc
+
+    runtime.skill_downloads = download_summaries
+    _active_runtime = runtime
+    _active_managed_skills = managed_state
+
+    if include_previous:
+        return runtime, previous, remove_after_swap
+
+    if previous is not None:
+        await previous.close()
+    cleanup_removed_managed_skills(remove_after_swap)
+    return runtime, True
+
+
+def _prepare_runtime_spec(
+    spec: RuntimeSpec,
+    *,
+    previous_managed_skills: dict[ManagedSkillKey, ManagedSkillState],
+) -> tuple[RuntimeSpec, list[SkillDownloadSummary], dict[ManagedSkillKey, ManagedSkillState], list[ManagedSkillState]]:
+    sync_result = sync_managed_skills(
+        requested=spec.skill_downloads,
+        skills_download_url=spec.skills_download_url,
+        previous_state=previous_managed_skills,
+    )
+    prepared_spec = RuntimeSpec(
+        runtime_id=spec.runtime_id,
+        agent_config=spec.agent_config,
+        memory_compression=spec.memory_compression,
+        system_prompt=spec.system_prompt,
+        tools=spec.tools,
+        skills=[*spec.skills, *sync_result.skills],
+        skill_downloads=spec.skill_downloads,
+        skills_download_url=spec.skills_download_url,
+        mcp_servers=spec.mcp_servers,
+    )
+    return (
+        prepared_spec,
+        sync_result.summaries,
+        sync_result.state,
+        sync_result.remove_after_runtime_swap,
+    )

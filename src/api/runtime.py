@@ -46,6 +46,7 @@ def register_runtime_routes(app: AgentApp) -> None:
             runtime_id=runtime.runtime_id,
             tools=runtime.tool_summaries,
             skills=runtime.skill_summaries,
+            skill_downloads=runtime.skill_downloads,
             mcp_servers=runtime.mcp_servers,
         )
 

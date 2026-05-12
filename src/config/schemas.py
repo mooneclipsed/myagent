@@ -17,6 +17,8 @@ from ..capabilities.schemas import (
     MCPServerConfig,
     MCPServerSummary,
     SkillConfig,
+    SkillDownloadConfig,
+    SkillDownloadSummary,
     SkillSummary,
     ToolConfig,
     ToolSummary,
@@ -58,6 +60,8 @@ class SessionBootstrapRequest(BaseModel):
     system_prompt: str | None = None
     tools: list[ToolConfig] = Field(default_factory=list)
     skills: list[SkillConfig] = Field(default_factory=list)
+    skill_downloads: list[SkillDownloadConfig] = Field(default_factory=list)
+    skills_download_url: str | None = None
     mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
 
 
@@ -70,6 +74,7 @@ class SessionBootstrapResponse(BaseModel):
     status: Literal["ready"] = "ready"
     tools: list[ToolSummary] = Field(default_factory=list)
     skills: list[SkillSummary] = Field(default_factory=list)
+    skill_downloads: list[SkillDownloadSummary] = Field(default_factory=list)
     mcp_servers: list[MCPServerSummary] = Field(default_factory=list)
 
 

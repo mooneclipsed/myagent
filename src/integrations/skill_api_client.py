@@ -10,7 +10,7 @@ import zipfile
 
 import requests
 
-DEFAULT_SKILLS_DIR = Path(__file__).resolve().parents[1] / "skills"
+DEFAULT_SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
 SKILLS_DOWNLOAD_URL_ENV = "SKILLS_DOWNLOAD_URL"
 
 
@@ -147,9 +147,13 @@ def extract_skill_zip(
     skills_dir: str | Path = DEFAULT_SKILLS_DIR,
 ) -> Path:
     """Extract a skill ZIP archive into the local skills directory."""
-    target_skills_dir = Path(skills_dir)
+    target_skills_dir = Path(skills_dir).resolve()
     target_skills_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zip_path) as archive:
+        for member in archive.infolist():
+            destination = (target_skills_dir / member.filename).resolve()
+            if destination != target_skills_dir and target_skills_dir not in destination.parents:
+                raise SkillDownloadError(f"Unsafe skill archive path: {member.filename}")
         archive.extractall(target_skills_dir)
     return target_skills_dir
 

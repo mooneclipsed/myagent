@@ -23,6 +23,28 @@ class SkillConfig(BaseModel):
     skill_dir: str
 
 
+class SkillDownloadConfig(BaseModel):
+    """Bootstrap declaration for a remotely managed skill version."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    skill_id: int = Field(gt=0)
+    version_id: int = Field(gt=0)
+
+
+class SkillDownloadSummary(BaseModel):
+    """Result summary for a remotely managed skill install attempt."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    skill_id: int
+    version_id: int
+    status: Literal["kept", "installed", "failed", "removed"]
+    skill_dir: str | None = None
+    zip_path: str | None = None
+    error: str | None = None
+
+
 class _BaseMCPServerConfig(BaseModel):
     """Shared MCP server configuration fields."""
 

@@ -11,6 +11,7 @@ from ..config.schemas import (
     MCPServerConfig,
     MemoryCompressionConfig,
     SkillConfig,
+    SkillDownloadConfig,
     ToolConfig,
 )
 
@@ -25,6 +26,8 @@ class RuntimeSpec:
     system_prompt: str | None = None
     tools: list[ToolConfig] = field(default_factory=list)
     skills: list[SkillConfig] = field(default_factory=list)
+    skill_downloads: list[SkillDownloadConfig] = field(default_factory=list)
+    skills_download_url: str | None = None
     mcp_servers: list[MCPServerConfig] = field(default_factory=list)
 
 
@@ -72,4 +75,3 @@ class AgentRuntime(Protocol):
 
     async def shutdown(self, runtime_id: str) -> None:
         """Shutdown framework-specific runtime resources."""
-

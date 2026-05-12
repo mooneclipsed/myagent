@@ -7,7 +7,7 @@ This document lists only the business APIs, with a short purpose, the main input
 ## POST `/runtimes/bootstrap`
 
 **Purpose**  
-Create the pod runtime profile with optional tools, skills, MCP servers, and model overrides.
+Create or reload the pod runtime profile with optional tools, local skills, remote skill downloads, MCP servers, and model overrides.
 
 **Input**  
 `application/json`
@@ -26,8 +26,10 @@ Main fields:
   - `name`
 - `skills` — optional list of skills to load
   - `skill_dir`
-  - `activation_mode`
-  - `expose_structured_tools`
+- `skills_download_url` — optional remote skill service base URL; falls back to `SKILLS_DOWNLOAD_URL`
+- `skill_downloads` — optional list of remote skills to download and load
+  - `skill_id`
+  - `version_id`
 - `mcp_servers` — optional list of MCP servers
   - stdio server: `type`, `name`, `command`, `args`, `env`, `cwd`
   - http server: `type`, `name`, `transport`, `url`, `headers`, `timeout`, `sse_read_timeout`
@@ -38,6 +40,7 @@ Main fields:
   - `status` = `ready`
   - `tools` — enabled tool summaries
   - `skills` — loaded skill summaries
+  - `skill_downloads` — per-skill remote install results with `installed`, `kept`, `failed`, or `removed`
   - `mcp_servers` — MCP server summaries
 - `422 application/json`
   - Validation error payload

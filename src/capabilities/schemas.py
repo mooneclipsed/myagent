@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ToolConfig(BaseModel):
-    """Bootstrap configuration for a named tool from the local registry."""
+    """Runtime initialization configuration for a named tool from the local registry."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -16,7 +16,7 @@ class ToolConfig(BaseModel):
 
 
 class SkillConfig(BaseModel):
-    """Bootstrap configuration for a dynamic skill bundle."""
+    """Runtime initialization configuration for a dynamic skill bundle."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -24,7 +24,7 @@ class SkillConfig(BaseModel):
 
 
 class SkillDownloadConfig(BaseModel):
-    """Bootstrap declaration for a remotely managed skill version."""
+    """Runtime initialization declaration for a remotely managed skill version."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -54,7 +54,7 @@ class _BaseMCPServerConfig(BaseModel):
 
 
 class StdioMCPServerConfig(_BaseMCPServerConfig):
-    """Bootstrap configuration for stdio MCP servers."""
+    """Runtime initialization configuration for stdio MCP servers."""
 
     type: Literal["stdio"] = "stdio"
     command: str
@@ -64,7 +64,7 @@ class StdioMCPServerConfig(_BaseMCPServerConfig):
 
 
 class HttpMCPServerConfig(_BaseMCPServerConfig):
-    """Bootstrap configuration for stateful HTTP MCP servers."""
+    """Runtime initialization configuration for stateful HTTP MCP servers."""
 
     type: Literal["http"] = "http"
     transport: Literal["sse", "streamable_http"]
@@ -81,7 +81,7 @@ MCPServerConfig = Annotated[
 
 
 class MCPServerSummary(BaseModel):
-    """Normalized MCP server summary returned from bootstrap."""
+    """Normalized MCP server summary returned from runtime initialization."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -91,7 +91,7 @@ class MCPServerSummary(BaseModel):
 
 
 class ToolSummary(BaseModel):
-    """Normalized tool summary returned from bootstrap."""
+    """Normalized tool summary returned from runtime initialization."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -100,7 +100,7 @@ class ToolSummary(BaseModel):
 
 
 class SkillSummary(BaseModel):
-    """Normalized skill summary returned from bootstrap."""
+    """Normalized skill summary returned from runtime initialization."""
 
     model_config = ConfigDict(extra="forbid")
 

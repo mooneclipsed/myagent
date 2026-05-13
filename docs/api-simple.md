@@ -4,7 +4,7 @@ Base URL: `http://127.0.0.1:8000`
 
 This document lists only the business APIs, with a short purpose, the main input fields, and the main output shape.
 
-## POST `/runtimes/bootstrap`
+## POST `/runtimes/initialize`
 
 **Purpose**  
 Create or reload the pod runtime profile with optional tools, local skills, remote skill downloads, MCP servers, and model overrides.
@@ -98,15 +98,15 @@ Example response:
 ```
 
 Remote skill behavior:
-- `skill_downloads` is a desired-state list. Calling bootstrap while a runtime is already active reloads the runtime.
+- `skill_downloads` is a desired-state list. Calling initialize while a runtime is already active reloads the runtime.
 - On reload, unchanged remote skills are kept, new remote skills are downloaded, and removed remote skills are deleted after the new runtime is ready.
-- A single remote skill download or extraction failure does not fail the whole bootstrap. The failed item is returned with `status = failed`, and successfully installed or local skills still load.
+- A single remote skill download or extraction failure does not fail the whole initialization. The failed item is returned with `status = failed`, and successfully installed or local skills still load.
 - Managed remote skills are stored under `skills/.managed/`; downloaded ZIP files are stored under `skills/.downloads/`.
 
 ## POST `/runtimes/{runtime_id}/shutdown`
 
 **Purpose**  
-Close the existing bootstrapped runtime profile.
+Close the existing runtime profile.
 
 **Input**  
 Path parameter:
@@ -118,30 +118,6 @@ No request body.
 - `200 application/json`
   - `runtime_id`
   - `status` = `closed`
-- `422 application/json`
-  - Validation error payload
-
-## POST `/process`
-
-**Purpose**  
-Send a runtime-hosted agent request. This is the main AgentScope-compatible processing endpoint.
-
-**Input**  
-`application/json`
-
-Main fields:
-- `input` — required list of messages
-- `stream` — whether to stream responses
-- `runtime_id` — optional runtime profile identifier
-- `session_id` — optional conversation identifier used for memory persistence; AgentScope Runtime generates one when omitted
-- `user_id` — optional user identifier
-- `model` — optional model name
-- `temperature`, `top_p`, `max_tokens`, `stop`, `seed` — optional generation settings
-- `tools` — optional tool definitions
-
-**Output**  
-- `200 application/json`
-- Agent runtime response payload
 - `422 application/json`
   - Validation error payload
 

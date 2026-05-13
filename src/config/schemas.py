@@ -1,7 +1,7 @@
-"""Request-scoped and session-bootstrap configuration with .env fallback.
+"""Request-scoped and runtime initialization configuration with .env fallback.
 
 Provides AgentConfig for per-request model overrides,
-MCP bootstrap request/response models, skill bootstrap models, and
+MCP runtime request/response models, skill runtime models, and
 resolve_effective_config for field-level fallback to .env defaults.
 
 Decisions: D-01 (minimally overridable), D-02 (field-level fallback),
@@ -49,8 +49,8 @@ class MemoryCompressionConfig(BaseModel):
     keep_recent: int | None = Field(default=None, ge=1)
 
 
-class SessionBootstrapRequest(BaseModel):
-    """Bootstrap request for creating a runtime-scoped agent profile."""
+class RuntimeInitializeRequest(BaseModel):
+    """Request for creating a runtime profile."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -72,8 +72,8 @@ class SessionBootstrapRequest(BaseModel):
         return value
 
 
-class SessionBootstrapResponse(BaseModel):
-    """Bootstrap response for a ready runtime profile."""
+class RuntimeProfileResponse(BaseModel):
+    """Response for a ready runtime profile."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -86,7 +86,7 @@ class SessionBootstrapResponse(BaseModel):
 
 
 class SessionShutdownResponse(BaseModel):
-    """Response returned after closing a bootstrapped runtime profile."""
+    """Response returned after closing a runtime profile."""
 
     model_config = ConfigDict(extra="forbid")
 

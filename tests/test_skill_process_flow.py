@@ -30,7 +30,7 @@ def test_bootstrap_returns_skill_summary_and_chat_completes(client, valid_payloa
         "mcp_servers": [],
     }
 
-    bootstrap_response = client.post("/runtimes/bootstrap", json=bootstrap_payload)
+    bootstrap_response = client.post("/runtimes/initialize", json=bootstrap_payload)
     assert bootstrap_response.status_code == 200, bootstrap_response.text
     body = bootstrap_response.json()
     assert body["skills"] == [

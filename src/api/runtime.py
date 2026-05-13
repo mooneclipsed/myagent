@@ -5,16 +5,16 @@ from agentscope_runtime.engine import AgentApp
 
 from ..application.chat_service import chat_via_agentscope
 from ..config.schemas import (
-    SessionBootstrapRequest,
-    SessionBootstrapResponse,
+    RuntimeInitializeRequest,
+    RuntimeProfileResponse,
     SessionShutdownResponse,
 )
 from ..application.runtime_service import (
-    SessionBootstrapError,
+    RuntimeInitializationError,
     SessionRuntimeConflictError,
     SessionRuntimeNotFoundError,
     SessionRuntimeValidationError,
-    bootstrap_session_runtime,
+    initialize_runtime_from_request,
     shutdown_runtime_profile,
 )
 from ..sessions.backend import validate_session_id
@@ -26,23 +26,23 @@ def register_runtime_routes(app: AgentApp) -> None:
     app.post("/chat")(chat_via_agentscope)
 
     @app.post(
-        "/runtimes/bootstrap",
-        response_model=SessionBootstrapResponse,
+        "/runtimes/initialize",
+        response_model=RuntimeProfileResponse,
         tags=["runtime-api"],
     )
-    async def bootstrap_runtime(
-        request: SessionBootstrapRequest,
-    ) -> SessionBootstrapResponse:
+    async def initialize_runtime_profile(
+        request: RuntimeInitializeRequest,
+    ) -> RuntimeProfileResponse:
         try:
-            runtime, _ = await bootstrap_session_runtime(request)
+            runtime, _ = await initialize_runtime_from_request(request)
         except SessionRuntimeValidationError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except SessionRuntimeConflictError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
-        except SessionBootstrapError as exc:
+        except RuntimeInitializationError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-        return SessionBootstrapResponse(
+        return RuntimeProfileResponse(
             runtime_id=runtime.runtime_id,
             tools=runtime.tool_summaries,
             skills=runtime.skill_summaries,

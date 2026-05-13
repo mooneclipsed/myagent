@@ -48,17 +48,17 @@ Using a runtime-owned toolkit has several advantages:
 
 The helper `create_base_toolkit()` in `src/tools/__init__.py` is the bridge between the two worlds:
 
-- the legacy path still uses the module-level `toolkit`
-- the bootstrap path creates a fresh toolkit by calling `create_base_toolkit()`
+- the request-scoped fallback path still uses the module-level `toolkit`
+- the initialization path creates a fresh runtime-owned toolkit
 
 ## How This Reuses AgentScope Runtime
 
-This design does not replace `agentscope-runtime`. It reuses the existing framework structure and only adds a bootstrap lifecycle around it.
+This design does not replace `agentscope-runtime`. It reuses the existing framework structure and adds a runtime initialization lifecycle around it.
 
 The following existing framework pieces are still central:
 
 - `AgentApp` from `agentscope_runtime.engine`
-- `@app.query` for the `/process` chat entrypoint
+- FastAPI routes registered on `AgentApp`
 - `ReActAgent` from AgentScope
 - `Toolkit.register_mcp_client(...)`
 - `stream_printing_messages(...)`
@@ -71,8 +71,8 @@ The codebase continues to rely on `AgentApp` as the HTTP/SSE shell:
 
 The main change is not the transport layer. The main change is **when and how the `ReActAgent` is created**:
 
-- legacy path: create an agent inside `/process`
-- bootstrap path: create the agent once during session bootstrap, then reuse it on later `/process` calls
+- initialization path: prepare a runtime profile with toolkit/config/MCP resources
+- chat path: create a request-scoped agent inside `/chat` from that runtime profile
 
 ## Runtime Components
 
@@ -105,7 +105,7 @@ Important elements:
   - `_runtime_lock`
 
 - lifecycle helpers
-  - `bootstrap_session_runtime(...)`
+- `initialize_runtime_from_request(...)`
   - `shutdown_runtime_profile(...)`
   - `close_all_session_runtimes()`
   - `get_runtime_profile(...)`
@@ -116,27 +116,27 @@ This is intentionally a **single-active-runtime** implementation. It matches the
 
 `src/api/runtime_routes.py` adds two APIs:
 
-- `POST /runtimes/bootstrap`
+- `POST /runtimes/initialize`
 - `POST /runtimes/{runtime_id}/shutdown`
 
-These routes are registered from `src/main.py` and live alongside the existing `/process` endpoint.
+These routes are registered from `src/main.py` and live alongside the `/chat` endpoint.
 
-### 4. Query Reuse Path
+### 4. Chat Reuse Path
 
-`src/application/chat_service.py` keeps the existing `@app.query` handler but adds a runtime lookup step.
+`src/application/chat_service.py` handles `/chat` and adds a runtime lookup step.
 
 Behavior:
 
-- if `runtime_id` matches the active bootstrapped runtime, build a temporary agent from the runtime profile and the request `session_id` memory
-- otherwise, fall back to the legacy per-request path
+- if `runtime_id` matches the active initialized runtime, build a temporary agent from the runtime profile and the request `session_id` memory
+- otherwise, return an error for unknown runtime ids
 
-This preserves backward compatibility while enabling reusable runtime-level config and isolated conversation memory.
+This enables reusable runtime-level config and isolated conversation memory.
 
 ## End-to-End Flow
 
-## Bootstrap
+## Runtime Initialization
 
-`POST /runtimes/bootstrap`
+`POST /runtimes/initialize`
 
 Input:
 
@@ -145,7 +145,7 @@ Input:
 - optional `memory_compression`
 - `mcp_servers`
 
-The bootstrap handler does the following:
+The initialization handler does the following:
 
 1. Validate the requested `runtime_id`
 2. Enforce the single-active-runtime-per-pod rule
@@ -161,13 +161,13 @@ If any MCP server fails during connect or registration:
 
 - already connected clients are closed in reverse order
 - the runtime is not published
-- bootstrap returns a clear error
+- initialization returns a clear error
 
-This is a fail-fast bootstrap design.
+This is a fail-fast initialization design.
 
-## Process
+## Chat
 
-`POST /process`
+`POST /chat`
 
 When a request includes `session_id`:
 
@@ -180,7 +180,7 @@ When a request includes `runtime_id`:
 - if yes, it loads memory by `session_id`, builds a temporary `ReActAgent` with the runtime toolkit/config, runs it, then saves memory
 - if no `runtime_id` is provided, it follows the legacy path and creates a temporary per-request agent using the shared global toolkit
 
-When a bootstrapped runtime is reused, dynamic MCP tools are already present because the temporary agent is bound to the runtime-owned toolkit.
+When an initialized runtime is reused, dynamic MCP tools are already present because the temporary agent is bound to the runtime-owned toolkit.
 
 This is the key reason dynamic MCP does not need to be visible in the global toolkit: the agent does not ask the process for tools at runtime. It reads its own toolkit.
 

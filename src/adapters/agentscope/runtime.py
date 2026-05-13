@@ -76,7 +76,7 @@ class AgentScopeRuntimeProfile:
     mcp_servers: list[MCPServerSummary] = field(default_factory=list)
 
     async def close(self) -> None:
-        """Close bootstrapped MCP clients in LIFO order."""
+        """Close initialized MCP clients in LIFO order."""
         await close_mcp_clients(self.mcp_clients)
         self.mcp_clients.clear()
 
@@ -100,7 +100,7 @@ class AgentScopeRuntime:
                 run_id=spec.runtime_id,
             )
             logger.info("AgentScope Studio connected: %s (run_id=%s)", studio_url, spec.runtime_id)
-            log_tracing_state(f"bootstrap:{spec.runtime_id}")
+            log_tracing_state(f"initialize:{spec.runtime_id}")
 
         session_toolkit = Toolkit()
         try:
@@ -131,8 +131,8 @@ class AgentScopeRuntime:
                 summaries.append(current_summary)
         except Exception as exc:
             await close_mcp_clients(mcp_clients)
-            detail = format_bootstrap_error(current_summary)
-            raise AgentScopeBootstrapError(detail) from exc
+            detail = format_initialization_error(current_summary)
+            raise AgentScopeInitializationError(detail) from exc
 
         profile = AgentScopeRuntimeProfile(
             runtime_id=spec.runtime_id,
@@ -146,7 +146,7 @@ class AgentScopeRuntime:
             skill_summaries=skill_registry.list_skill_summaries(),
             mcp_servers=summaries,
         )
-        _print_toolkit_loaded("Bootstrap", session_toolkit, runtime_id=spec.runtime_id)
+        _print_toolkit_loaded("Initialize", session_toolkit, runtime_id=spec.runtime_id)
         self._profile = profile
         return profile
 
@@ -174,11 +174,11 @@ class AgentScopeRuntime:
         request: ChatRequest,
         default_toolkit: Toolkit,
     ):
-        """Stream a chat response using a bootstrapped profile or request-scoped config."""
+        """Stream a chat response using an initialized profile or request-scoped config."""
         if profile is not None:
             if request.agent_config:
                 raise ValueError(
-                    "Bootstrapped runtimes do not accept agent_config on /chat. Re-bootstrap the runtime instead.",
+                    "Initialized runtimes do not accept agent_config on /chat. Re-initialize the runtime instead.",
                 )
             memory = InMemoryMemory()
             if request.session_id:
@@ -248,7 +248,7 @@ class AgentScopeRuntime:
                 await _save_session_state(request.session_id, agent)
 
 
-class AgentScopeBootstrapError(RuntimeError):
+class AgentScopeInitializationError(RuntimeError):
     """Raised when AgentScope runtime initialization fails."""
 
 
@@ -353,11 +353,11 @@ def create_mcp_client(mcp_server: MCPServerConfig) -> StatefulClientBase:
             sse_read_timeout=mcp_server.sse_read_timeout,
         )
 
-    raise AgentScopeBootstrapError("Unsupported MCP server configuration.")
+    raise AgentScopeInitializationError("Unsupported MCP server configuration.")
 
 
-def format_bootstrap_error(summary: MCPServerSummary | None) -> str:
-    """Return a redacted bootstrap error message."""
+def format_initialization_error(summary: MCPServerSummary | None) -> str:
+    """Return a redacted initialization error message."""
     if summary is None:
         return "Failed to initialize one or more MCP servers."
     if summary.transport:
@@ -374,7 +374,7 @@ async def close_mcp_clients(mcp_clients: list[StatefulClientBase]) -> None:
         try:
             await client.close(ignore_errors=True)
         except Exception as exc:  # pragma: no cover - defensive logging
-            logger.warning("Error closing bootstrap MCP client %s: %s", client.name, exc)
+            logger.warning("Error closing initialized MCP client %s: %s", client.name, exc)
 
 
 def chat_messages_to_agentscope(messages: list[ChatMessage]) -> list[Msg]:

@@ -1,15 +1,15 @@
 # Runtime Architecture
 
-This document describes the current `/runtimes/bootstrap` and `/chat` execution flow.
+This document describes the current `/runtimes/initialize` and `/chat` execution flow.
 
-## Bootstrap Flow
+## Runtime Initialization Flow
 
-`/runtimes/bootstrap` prepares a reusable runtime profile. It does not create a `ReActAgent`. The agent is created later during `/chat`.
+`/runtimes/initialize` prepares a reusable runtime profile. It does not create a `ReActAgent`. The agent is created later during `/chat`.
 
 ```mermaid
 flowchart TD
-    A[Client POST /runtimes/bootstrap] --> B[Runtime API handler]
-    B --> C[Convert SessionBootstrapRequest to RuntimeSpec]
+    A[Client POST /runtimes/initialize] --> B[Runtime API handler]
+    B --> C[Convert RuntimeInitializeRequest to RuntimeSpec]
     C --> D[initialize_runtime]
     D --> E{runtime_id valid?}
     E -- no --> F[Return validation error]
@@ -34,17 +34,17 @@ flowchart TD
     T --> U[Create and connect MCP clients]
     U --> V[Register MCP tools into Toolkit]
     V --> W[Create AgentScopeRuntimeProfile]
-    W --> X[Print bootstrap toolkit skills/tools]
+    W --> X[Print initialization toolkit skills/tools]
     X --> Y[Publish active runtime profile]
-    Y --> Z[Return bootstrap response]
+    Y --> Z[Return runtime profile response]
 
     U -- connect/register failed --> AA[Close connected MCP clients]
-    AA --> AB[Return bootstrap error]
+    AA --> AB[Return initialization error]
 ```
 
 ## Chat Flow
 
-`/chat` receives user messages, finds the bootstrapped runtime profile by `runtime_id`, creates a request-scoped `ReActAgent`, streams SSE events, and saves session memory after execution.
+`/chat` receives user messages, finds the initialized runtime profile by `runtime_id`, creates a request-scoped `ReActAgent`, streams SSE events, and saves session memory after execution.
 
 ```mermaid
 flowchart TD
@@ -107,12 +107,12 @@ sequenceDiagram
     participant AgentScope
     participant SessionBackend
 
-    Client->>API: POST /runtimes/bootstrap
-    API->>RuntimeService: bootstrap_session_runtime(request)
+    Client->>API: POST /runtimes/initialize
+    API->>RuntimeService: initialize_runtime_from_request(request)
     RuntimeService->>AgentScope: initialize(RuntimeSpec)
     AgentScope-->>RuntimeService: AgentScopeRuntimeProfile
     RuntimeService-->>API: runtime profile summary
-    API-->>Client: bootstrap response
+    API-->>Client: runtime profile response
 
     Client->>API: POST /chat
     API-->>Client: SSE status=created

@@ -103,7 +103,7 @@ def _build_compression_config(
     resolved_config: dict,
     memory_compression: MemoryCompressionConfig | None = None,
 ) -> ReActAgent.CompressionConfig | None:
-    """Resolve env/bootstrap settings into an AgentScope compression config."""
+    """Resolve env/runtime settings into an AgentScope compression config."""
     settings = get_settings()
     enabled = (
         memory_compression.enabled

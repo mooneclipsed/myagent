@@ -6,11 +6,11 @@ import asyncio
 
 from ..capabilities.schemas import SkillDownloadSummary
 from ..adapters.agentscope.runtime import (
-    AgentScopeBootstrapError,
+    AgentScopeInitializationError,
     AgentScopeRuntime,
     AgentScopeRuntimeProfile,
 )
-from ..config.schemas import SessionBootstrapRequest
+from ..config.schemas import RuntimeInitializeRequest
 from ..core.interfaces import RuntimeSpec
 from ..sessions.backend import validate_session_id
 from ..tools import ToolRegistryError
@@ -27,7 +27,7 @@ class SessionRuntimeError(RuntimeError):
 
 
 class SessionRuntimeConflictError(SessionRuntimeError):
-    """Raised when a runtime id is already bootstrapped in this pod."""
+    """Raised when a runtime id conflicts with active pod state."""
 
 
 class SessionRuntimeNotFoundError(SessionRuntimeError):
@@ -38,8 +38,8 @@ class SessionRuntimeValidationError(SessionRuntimeError):
     """Raised when a supplied runtime identifier is invalid."""
 
 
-class SessionBootstrapError(SessionRuntimeError):
-    """Raised when session bootstrap cannot complete successfully."""
+class RuntimeInitializationError(SessionRuntimeError):
+    """Raised when runtime initialization cannot complete successfully."""
 
 
 _active_runtime: AgentScopeRuntimeProfile | None = None
@@ -48,8 +48,8 @@ _runtime_lock = asyncio.Lock()
 _runtime_adapter = AgentScopeRuntime()
 
 
-def runtime_spec_from_bootstrap_request(request: SessionBootstrapRequest) -> RuntimeSpec:
-    """Convert API bootstrap DTO into the framework-neutral runtime spec."""
+def runtime_spec_from_initialize_request(request: RuntimeInitializeRequest) -> RuntimeSpec:
+    """Convert API initialization DTO into the framework-neutral runtime spec."""
     return RuntimeSpec(
         runtime_id=request.runtime_id,
         agent_config=request.agent_config,
@@ -64,7 +64,7 @@ def runtime_spec_from_bootstrap_request(request: SessionBootstrapRequest) -> Run
 
 
 def get_active_session_runtime() -> AgentScopeRuntimeProfile | None:
-    """Return the currently active bootstrapped runtime profile if any."""
+    """Return the currently active runtime profile if any."""
     return _active_runtime
 
 
@@ -81,11 +81,11 @@ def get_runtime_profile(runtime_id: str | None) -> AgentScopeRuntimeProfile | No
     return None
 
 
-async def bootstrap_session_runtime(
-    request: SessionBootstrapRequest,
+async def initialize_runtime_from_request(
+    request: RuntimeInitializeRequest,
 ) -> tuple[AgentScopeRuntimeProfile, bool]:
     """Create and register the single active pod runtime profile."""
-    return await initialize_runtime(runtime_spec_from_bootstrap_request(request))
+    return await initialize_runtime(runtime_spec_from_initialize_request(request))
 
 
 async def initialize_runtime(spec: RuntimeSpec) -> tuple[AgentScopeRuntimeProfile, bool]:
@@ -170,8 +170,8 @@ async def _initialize_runtime_locked(spec: RuntimeSpec) -> AgentScopeRuntimeProf
         runtime = await _runtime_adapter.initialize(prepared_spec)
     except ToolRegistryError as exc:
         raise SessionRuntimeValidationError(str(exc)) from exc
-    except AgentScopeBootstrapError as exc:
-        raise SessionBootstrapError(str(exc)) from exc
+    except AgentScopeInitializationError as exc:
+        raise RuntimeInitializationError(str(exc)) from exc
 
     runtime.skill_downloads = download_summaries
     _active_managed_skills = managed_state
@@ -194,8 +194,8 @@ async def _reload_runtime_locked(
         runtime = await _runtime_adapter.reload(prepared_spec)
     except ToolRegistryError as exc:
         raise SessionRuntimeValidationError(str(exc)) from exc
-    except AgentScopeBootstrapError as exc:
-        raise SessionBootstrapError(str(exc)) from exc
+    except AgentScopeInitializationError as exc:
+        raise RuntimeInitializationError(str(exc)) from exc
 
     runtime.skill_downloads = download_summaries
     _active_runtime = runtime

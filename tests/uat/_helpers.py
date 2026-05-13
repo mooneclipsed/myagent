@@ -138,16 +138,19 @@ def extract_text(events: list[dict]) -> str:
     return "".join(texts)
 
 
-def bootstrap(session_id: str, payload: dict) -> dict:
+def initialize_runtime(session_id: str, payload: dict) -> dict:
     resp = httpx.post(
-        f"{SERVICE_URL}/runtimes/bootstrap",
+        f"{SERVICE_URL}/runtimes/initialize",
         json={"runtime_id": session_id, **payload},
         timeout=DEFAULT_TIMEOUT,
     )
     if resp.status_code != 200:
-        print(f"  Bootstrap FAILED ({resp.status_code}): {resp.text[:300]}", file=sys.stderr)
+        print(f"  Runtime initialize FAILED ({resp.status_code}): {resp.text[:300]}", file=sys.stderr)
         sys.exit(1)
     return resp.json()
+
+
+bootstrap = initialize_runtime
 
 
 def chat(session_id: str, text: str, path: str | None = None) -> ChatResult:

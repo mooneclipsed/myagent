@@ -58,7 +58,7 @@ def prepare_remote_skills(
     skills_dir: str | Path = DEFAULT_SKILLS_DIR,
     downloader: Downloader | None = None,
 ) -> ManagedSkillSyncResult:
-    """Prepare remote skill downloads for a runtime bootstrap/reload.
+    """Prepare remote skill downloads for a runtime initialization or reload.
 
     Converts requested skill/version pairs into local SkillConfig entries by reusing
     already-installed managed skills, downloading missing versions, and marking

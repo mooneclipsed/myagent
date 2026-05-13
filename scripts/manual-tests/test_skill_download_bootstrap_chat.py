@@ -119,7 +119,7 @@ def main() -> None:
             shutdown_runtime(client)
 
             bootstrap_response = client.post(
-                "/runtimes/bootstrap",
+                "/runtimes/initialize",
                 json={
                     "runtime_id": RUNTIME_ID,
                     "system_prompt": (
@@ -133,8 +133,8 @@ def main() -> None:
                     ],
                 },
             )
-            print("bootstrap_status=", bootstrap_response.status_code)
-            print("bootstrap_body=", json.dumps(bootstrap_response.json(), ensure_ascii=False))
+            print("initialize_status=", bootstrap_response.status_code)
+            print("runtime_profile=", json.dumps(bootstrap_response.json(), ensure_ascii=False))
             bootstrap_response.raise_for_status()
             skill_dir = assert_downloaded_skill(bootstrap_response.json())
             print("downloaded_skill_dir=", skill_dir)

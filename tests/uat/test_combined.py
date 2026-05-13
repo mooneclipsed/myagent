@@ -25,13 +25,13 @@ WEATHER_SCRIPT = os.path.join(MCP_SERVER_DIR, "weather_mcp.py")
 HELLO_SKILL_DIR = os.path.join(REPO_ROOT, "skills", "hello")
 
 
-def test_agent_routes_to_tool():
+def check_agent_routes_to_tool():
     """Math question → agent should use local calculate tool."""
     result = chat(SESSION_ID, "帮我算一下 15 乘以 27 等于多少？")
     check("405" in result.text, "routed to calculate tool", result.text[:120])
 
 
-def test_agent_routes_to_mcp():
+def check_agent_routes_to_mcp():
     """Weather question → agent should use MCP get_weather."""
     result = chat(SESSION_ID, "深圳天气怎么样？")
     check(
@@ -41,7 +41,7 @@ def test_agent_routes_to_mcp():
     )
 
 
-def test_agent_routes_to_skill():
+def check_agent_routes_to_skill():
     """Greeting request → agent should use loaded hello skill and run script."""
     result = chat(
         SESSION_ID,
@@ -54,7 +54,7 @@ def test_agent_routes_to_skill():
     )
 
 
-def test_agent_switches_between_capabilities():
+def check_agent_switches_between_capabilities():
     """Rapid-fire different requests → agent switches capability each time."""
     r1 = chat(SESSION_ID, "200 除以 8 是多少？")
     check("25" in r1.text, "switch test: calculate invoked", r1.text[:80])
@@ -67,7 +67,7 @@ def test_agent_switches_between_capabilities():
     )
 
 
-def main():
+def test_combined_tool_mcp_skill_routing():
     print("=" * 60)
     print("TEST: Combined Tool + MCP + Skill (Agent Routing)")
     print("=" * 60)
@@ -98,10 +98,10 @@ def main():
     check("hello" in skill_names, "bootstrap: hello registered")
 
     try:
-        test_agent_routes_to_tool()
-        test_agent_routes_to_mcp()
-        test_agent_routes_to_skill()
-        test_agent_switches_between_capabilities()
+        check_agent_routes_to_tool()
+        check_agent_routes_to_mcp()
+        check_agent_routes_to_skill()
+        check_agent_switches_between_capabilities()
     finally:
         shutdown(SESSION_ID)
 
@@ -110,4 +110,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    test_combined_tool_mcp_skill_routing()

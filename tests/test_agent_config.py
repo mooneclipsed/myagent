@@ -43,7 +43,7 @@ def test_config_override_applied(client, config_override_payload):
         patch("src.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
-        response = client.post("/process", json=config_override_payload)
+        response = client.post("/chat", json=config_override_payload)
 
     assert response.status_code == 200, (
         f"Expected 200, got {response.status_code}: {response.text[:200]}"
@@ -68,7 +68,7 @@ def test_config_fallback_to_env(client, valid_payload):
         patch("src.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
-        response = client.post("/process", json=valid_payload)
+        response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200, (
         f"Expected 200, got {response.status_code}: {response.text[:200]}"
@@ -97,7 +97,7 @@ def test_partial_override(client, valid_payload):
         patch("src.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
-        response = client.post("/process", json=payload)
+        response = client.post("/chat", json=payload)
 
     assert response.status_code == 200, (
         f"Expected 200, got {response.status_code}: {response.text[:200]}"
@@ -125,8 +125,8 @@ def test_different_configs_sequential(client, valid_payload):
         patch("src.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
-        response_a = client.post("/process", json=payload_a)
-        response_b = client.post("/process", json=payload_b)
+        response_a = client.post("/chat", json=payload_a)
+        response_b = client.post("/chat", json=payload_b)
 
     assert response_a.status_code == 200
     assert response_b.status_code == 200
@@ -158,7 +158,7 @@ def test_config_trace_logging(client, config_override_payload, caplog):
         patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
         caplog.at_level(logging.INFO, logger="src.config.schemas"),
     ):
-        response = client.post("/process", json=config_override_payload)
+        response = client.post("/chat", json=config_override_payload)
 
     assert response.status_code == 200
 

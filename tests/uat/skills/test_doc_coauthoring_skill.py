@@ -1,4 +1,4 @@
-"""Manual test: bootstrap doc-coauthoring and exercise it through /process."""
+"""Manual test: bootstrap doc-coauthoring and exercise it through /chat."""
 
 import os
 import sys
@@ -13,7 +13,7 @@ SESSION_ID = "manual-skill-doc-coauthoring"
 
 def main() -> None:
     run_skill_test(
-        title="Doc Co-Authoring Skill via /process",
+        title="Doc Co-Authoring Skill via /chat",
         session_id=SESSION_ID,
         skill_name="doc-coauthoring",
         prompt=(

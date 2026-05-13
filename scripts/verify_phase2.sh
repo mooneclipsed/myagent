@@ -28,12 +28,12 @@ if running:
 sys.exit(0 if running else 1)
 "
 
-echo "--- Step 4: Verify /process endpoint registered ---"
+echo "--- Step 4: Verify /chat endpoint registered ---"
 uv run python -c "
 from src.main import app
 routes = [r.path for r in app.routes]
-assert '/process' in routes, f'/process not in {routes}'
-print('PASS: /process endpoint is registered')
+assert '/chat' in routes, f'/chat not in {routes}'
+print('PASS: /chat endpoint is registered')
 "
 
 echo "--- Step 5: Phase traceability ---"

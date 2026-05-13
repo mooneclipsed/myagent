@@ -1,4 +1,4 @@
-"""Manual test: bootstrap pdf and exercise it through /process."""
+"""Manual test: bootstrap pdf and exercise it through /chat."""
 
 import os
 import sys
@@ -13,7 +13,7 @@ SESSION_ID = "manual-skill-pdf"
 
 def main() -> None:
     run_skill_test(
-        title="PDF Skill via /process",
+        title="PDF Skill via /chat",
         session_id=SESSION_ID,
         skill_name="pdf",
         prompt=(

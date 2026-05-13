@@ -32,7 +32,7 @@ def main():
         "session_id": session_id,
     }
 
-    response1 = httpx.post(f"{SERVICE_URL}/process", json=payload1, timeout=timeout)
+    response1 = httpx.post(f"{SERVICE_URL}/chat", json=payload1, timeout=timeout)
     assert response1.status_code == 200, (
         f"Request 1 failed: {response1.status_code} {response1.text[:200]}"
     )
@@ -51,7 +51,7 @@ def main():
         "session_id": session_id,
     }
 
-    response2 = httpx.post(f"{SERVICE_URL}/process", json=payload2, timeout=timeout)
+    response2 = httpx.post(f"{SERVICE_URL}/chat", json=payload2, timeout=timeout)
     assert response2.status_code == 200, (
         f"Request 2 failed: {response2.status_code} {response2.text[:200]}"
     )

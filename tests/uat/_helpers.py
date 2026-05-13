@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 import httpx
 
 SERVICE_URL = os.getenv("SERVICE_URL", "http://127.0.0.1:8000")
-PROCESS_PATH = os.getenv("PROCESS_PATH", "/process")
+CHAT_PATH = os.getenv("CHAT_PATH", "/chat")
 DEFAULT_TIMEOUT = float(os.getenv("TEST_TIMEOUT", "90"))
 
 
@@ -157,7 +157,7 @@ def chat(session_id: str, text: str, path: str | None = None) -> ChatResult:
         "session_id": session_id,
         "input": [{"role": "user", "content": [{"type": "text", "text": text}]}],
     }
-    target_path = path or PROCESS_PATH
+    target_path = path or CHAT_PATH
     resp = httpx.post(f"{SERVICE_URL}{target_path}", json=payload, timeout=DEFAULT_TIMEOUT)
     if resp.status_code != 200:
         print(f"  Chat FAILED ({resp.status_code}): {resp.text[:300]}", file=sys.stderr)

@@ -178,7 +178,7 @@ class AgentScopeRuntime:
         if profile is not None:
             if request.agent_config:
                 raise ValueError(
-                    "Bootstrapped runtimes do not accept agent_config on /process. Re-bootstrap the runtime instead.",
+                    "Bootstrapped runtimes do not accept agent_config on /chat. Re-bootstrap the runtime instead.",
                 )
             memory = InMemoryMemory()
             if request.session_id:

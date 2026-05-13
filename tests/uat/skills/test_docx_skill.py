@@ -1,4 +1,4 @@
-"""Manual test: bootstrap docx and exercise it through /process."""
+"""Manual test: bootstrap docx and exercise it through /chat."""
 
 import os
 import sys
@@ -13,7 +13,7 @@ SESSION_ID = "manual-skill-docx"
 
 def main() -> None:
     run_skill_test(
-        title="DOCX Skill via /process",
+        title="DOCX Skill via /chat",
         session_id=SESSION_ID,
         skill_name="docx",
         prompt=(

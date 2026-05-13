@@ -19,9 +19,9 @@ async def _mock_stream(*args, **kwargs):
     yield msg, True
 
 
-def test_bootstrap_returns_skill_summary_and_process_completes(client, valid_payload):
+def test_bootstrap_returns_skill_summary_and_chat_completes(client, valid_payload):
     bootstrap_payload = {
-        "runtime_id": "skill-process-runtime-001",
+        "runtime_id": "skill-chat-runtime-001",
         "skills": [
             {
                 "skill_dir": "skills/example_skill",
@@ -41,14 +41,14 @@ def test_bootstrap_returns_skill_summary_and_process_completes(client, valid_pay
         ]
 
     with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream):
-        process_payload = {
+        chat_payload = {
             **valid_payload,
-            "runtime_id": "skill-process-runtime-001",
-            "session_id": "skill-process-001",
+            "runtime_id": "skill-chat-runtime-001",
+            "session_id": "skill-chat-001",
         }
-        process_response = client.post("/process", json=process_payload)
+        chat_response = client.post("/chat", json=chat_payload)
 
-    assert process_response.status_code == 200
-    events = _parse_sse_events(process_response.text)
+    assert chat_response.status_code == 200
+    events = _parse_sse_events(chat_response.text)
     statuses = [event.get("status") for event in events if "status" in event]
     assert "completed" in statuses

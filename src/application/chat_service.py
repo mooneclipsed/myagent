@@ -7,9 +7,6 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 
-from agentscope_runtime.engine import AgentApp
-from agentscope.message import Msg
-
 from ..adapters.agentscope.runtime import AgentScopeRuntime, agentscope_msg_to_chat_event
 from ..config.schemas import AgentConfig
 from ..core.interfaces import ChatMessage, ChatRequest as RuntimeChatRequest
@@ -74,69 +71,8 @@ def _extract_request_context(request: Any) -> tuple[str | None, str | None, Any,
     return session_id, runtime_id, runtime, agent_config
 
 
-def _coerce_chat_message(item: Any) -> ChatMessage:
-    if isinstance(item, ChatMessage):
-        return item
-    if isinstance(item, Msg):
-        return ChatMessage(role=item.role, content=item.content, name=item.name)
-    role = getattr(item, "role", "user")
-    content = getattr(item, "content", item)
-    name = getattr(item, "name", role)
-    return ChatMessage(role=role, content=content, name=name)
-
-
-async def _stream_agent_messages(msgs, request: Any):
-    session_id = None
-    if request and hasattr(request, "session_id") and request.session_id and validate_session_id(request.session_id):
-        session_id = request.session_id
-    lock = await _get_session_lock(session_id) if session_id else None
-
-    if lock is None:
-        async for item in _stream_agent_messages_locked(msgs, request):
-            yield item
-    else:
-        async with lock:
-            async for item in _stream_agent_messages_locked(msgs, request):
-                yield item
-
-
-async def _stream_agent_messages_locked(msgs, request: Any):
-    session_id, runtime_id, runtime, agent_config = _extract_request_context(request)
-    config = AgentConfig(**agent_config) if agent_config else None
-    chat_request = RuntimeChatRequest(
-        messages=[_coerce_chat_message(item) for item in msgs],
-        runtime_id=runtime_id,
-        session_id=session_id,
-        agent_config=config,
-    )
-    async for msg, last, _agent in _runtime_adapter.stream_with_profile(
-        profile=runtime,
-        request=chat_request,
-        default_toolkit=toolkit,
-    ):
-        yield msg, last
-
-
 def _sse_data(payload: dict[str, Any]) -> bytes:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n".encode("utf-8")
-
-
-def _msg_to_payload(msg: Msg, last: bool, session_id: str | None) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "object": "message",
-        "role": msg.role,
-        "name": msg.name,
-        "content": msg.content,
-        "status": "completed" if last else "in_progress",
-    }
-    if msg.content:
-        first = msg.content[0]
-        if isinstance(first, dict) and first.get("type") == "text":
-            payload["delta"] = {"text": first.get("text", "")}
-            payload["text"] = first.get("text", "")
-    if session_id:
-        payload["session_id"] = session_id
-    return payload
 
 
 def _chat_event_to_payload(event, session_id: str | None) -> dict[str, Any]:
@@ -153,16 +89,6 @@ def _chat_event_to_payload(event, session_id: str | None) -> dict[str, Any]:
     if session_id:
         payload["session_id"] = session_id
     return payload
-
-
-async def chat_query(self, msgs, request=None, **kwargs):
-    """Handle runtime-hosted /process queries with optional session persistence."""
-    async for item in _stream_agent_messages(msgs, request):
-        yield item
-
-
-def register_query_handlers(app: AgentApp) -> None:
-    app.query(framework="agentscope")(chat_query)
 
 
 async def chat_via_agentscope(request: ChatRequest):

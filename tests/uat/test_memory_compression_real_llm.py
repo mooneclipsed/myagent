@@ -94,7 +94,7 @@ def shutdown_runtime(runtime_id: str) -> None:
 
 def chat(runtime_id: str, session_id: str, text: str) -> str:
     response = httpx.post(
-        f"{SERVICE_URL}/process",
+        f"{SERVICE_URL}/chat",
         json={
             "runtime_id": runtime_id,
             "session_id": session_id,

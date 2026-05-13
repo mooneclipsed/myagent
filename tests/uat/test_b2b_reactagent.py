@@ -45,7 +45,7 @@ def read_hello_invocation_log() -> str:
         return handle.read()
 
 
-def test_agent_executes_full_b2b_flow() -> None:
+def check_agent_executes_full_b2b_flow() -> None:
     before = read_log_file()
     hello_before = read_hello_invocation_log()
     result = chat(
@@ -79,7 +79,7 @@ def test_agent_executes_full_b2b_flow() -> None:
     check("say_hello.py" in after or "hello skill usage" in after, "log contains read_file content", after)
 
 
-def main() -> None:
+def test_b2b_reactagent_happy_path() -> None:
     print("=" * 60)
     print("TEST: B2B ReactAgent Happy Path")
     print("=" * 60)
@@ -110,7 +110,7 @@ def main() -> None:
     check("hello" in skill_names, "bootstrap registered hello skill")
 
     try:
-        test_agent_executes_full_b2b_flow()
+        check_agent_executes_full_b2b_flow()
     finally:
         shutdown(SESSION_ID)
 
@@ -119,4 +119,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    test_b2b_reactagent_happy_path()

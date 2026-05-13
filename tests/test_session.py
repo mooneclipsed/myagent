@@ -6,7 +6,7 @@ Tests validate the session-aware query handler contract:
 - D-05/D-12: Chat without session_id behaves identically to Phase 5 (backward compatible)
 - T-6-01: validate_session_id rejects path traversal attempts
 
-Uses mock query handler pattern from test_chat_stream.py to avoid real LLM calls.
+Uses mock runtime stream pattern from test_chat_stream.py to avoid real LLM calls.
 """
 
 import json
@@ -18,8 +18,7 @@ from agentscope.memory import InMemoryMemory
 from agentscope.message import Msg
 from agentscope.session import JSONSession
 
-from src.main import app
-from tests.test_chat_stream import _make_mock_handler, _parse_sse_events
+from tests.test_chat_stream import _make_mock_runtime_stream, _parse_sse_events
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +46,7 @@ def session_env(configured_env, session_dir, monkeypatch):
 
 def test_session_persists_to_json(client, session_env):
     """RES-01: A chat request with session_id creates a session JSON file."""
-    mock_handler = _make_mock_handler(["Hello"])
+    mock_stream = _make_mock_runtime_stream(["Hello"])
     session_id = "test-persist-session-001"
 
     payload = {
@@ -57,8 +56,8 @@ def test_session_persists_to_json(client, session_env):
         "session_id": session_id,
     }
 
-    with patch.object(app._runner, "query_handler", mock_handler):
-        response = client.post("/process", json=payload)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
     events = _parse_sse_events(response.text)
@@ -81,20 +80,7 @@ def test_session_resume_has_prior_context(client, session_env):
     """RES-03: A subsequent chat with same session_id has access to prior context."""
     session_id = "test-resume-session-002"
 
-    # First request: create a session with some context
-    captured_first = []
-
-    async def _first_handler(msgs, request=None, response=None, **kwargs):
-        if isinstance(msgs, list):
-            captured_first.extend(msgs)
-        else:
-            captured_first.append(msgs)
-        msg = Msg(
-            name="agentops",
-            content=[{"type": "text", "text": "First reply"}],
-            role="assistant",
-        )
-        yield msg, True
+    first_stream = _make_mock_runtime_stream(["First reply"])
 
     payload1 = {
         "input": [
@@ -103,25 +89,12 @@ def test_session_resume_has_prior_context(client, session_env):
         "session_id": session_id,
     }
 
-    with patch.object(app._runner, "query_handler", _first_handler):
-        response1 = client.post("/process", json=payload1)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", first_stream):
+        response1 = client.post("/chat", json=payload1)
 
     assert response1.status_code == 200
 
-    # Second request: resume with same session_id
-    captured_second = []
-
-    async def _second_handler(msgs, request=None, response=None, **kwargs):
-        if isinstance(msgs, list):
-            captured_second.extend(msgs)
-        else:
-            captured_second.append(msgs)
-        msg = Msg(
-            name="agentops",
-            content=[{"type": "text", "text": "I remember"}],
-            role="assistant",
-        )
-        yield msg, True
+    second_stream = _make_mock_runtime_stream(["I remember"])
 
     payload2 = {
         "input": [
@@ -130,8 +103,8 @@ def test_session_resume_has_prior_context(client, session_env):
         "session_id": session_id,
     }
 
-    with patch.object(app._runner, "query_handler", _second_handler):
-        response2 = client.post("/process", json=payload2)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", second_stream):
+        response2 = client.post("/chat", json=payload2)
 
     assert response2.status_code == 200
     events = _parse_sse_events(response2.text)
@@ -146,10 +119,10 @@ def test_session_resume_has_prior_context(client, session_env):
 
 def test_no_session_id_backward_compatible(client, valid_payload):
     """D-05/D-12: Request without session_id works identically to Phase 5."""
-    mock_handler = _make_mock_handler(["Hello back"])
+    mock_stream = _make_mock_runtime_stream(["Hello back"])
 
-    with patch.object(app._runner, "query_handler", mock_handler):
-        response = client.post("/process", json=valid_payload)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200
     events = _parse_sse_events(response.text)
@@ -292,7 +265,7 @@ def test_session_persists_to_redis(client, configured_env, clear_settings_cache,
     )
     monkeypatch.setattr(session_mod, "_session_backend", fake_backend)
 
-    mock_handler = _make_mock_handler(["Redis reply"])
+    mock_stream = _make_mock_runtime_stream(["Redis reply"])
     session_id = "test-redis-persist-001"
 
     payload = {
@@ -302,8 +275,8 @@ def test_session_persists_to_redis(client, configured_env, clear_settings_cache,
         "session_id": session_id,
     }
 
-    with patch.object(app._runner, "query_handler", mock_handler):
-        response = client.post("/process", json=payload)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
     events = _parse_sse_events(response.text)
@@ -341,19 +314,7 @@ def test_session_resume_from_redis(client, configured_env, clear_settings_cache,
     monkeypatch.setattr(session_mod, "_session_backend", fake_backend)
 
     session_id = "test-redis-resume-001"
-    captured = []
-
-    async def _handler(msgs, request=None, response=None, **kwargs):
-        if isinstance(msgs, list):
-            captured.extend(msgs)
-        else:
-            captured.append(msgs)
-        msg = Msg(
-            name="agentops",
-            content=[{"type": "text", "text": "Reply"}],
-            role="assistant",
-        )
-        yield msg, True
+    mock_stream = _make_mock_runtime_stream(["Reply"])
 
     payload = {
         "input": [
@@ -362,13 +323,12 @@ def test_session_resume_from_redis(client, configured_env, clear_settings_cache,
         "session_id": session_id,
     }
 
-    with patch.object(app._runner, "query_handler", _handler):
-        response = client.post("/process", json=payload)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
 
     # Second request with same session_id — should load prior context
-    captured.clear()
     payload2 = {
         "input": [
             {"role": "user", "content": [{"type": "text", "text": "What is my name?"}]},
@@ -376,8 +336,8 @@ def test_session_resume_from_redis(client, configured_env, clear_settings_cache,
         "session_id": session_id,
     }
 
-    with patch.object(app._runner, "query_handler", _handler):
-        response2 = client.post("/process", json=payload2)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response2 = client.post("/chat", json=payload2)
 
     assert response2.status_code == 200
     events = _parse_sse_events(response2.text)
@@ -399,7 +359,7 @@ def test_json_backend_still_works(client, session_env, configured_env, clear_set
     monkeypatch.setenv("SESSION_BACKEND", "json")
     reset_session_backend()
 
-    mock_handler = _make_mock_handler(["JSON still works"])
+    mock_stream = _make_mock_runtime_stream(["JSON still works"])
     session_id = "test-json-backward-compat-001"
 
     payload = {
@@ -409,8 +369,8 @@ def test_json_backend_still_works(client, session_env, configured_env, clear_set
         "session_id": session_id,
     }
 
-    with patch.object(app._runner, "query_handler", mock_handler):
-        response = client.post("/process", json=payload)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
     events = _parse_sse_events(response.text)

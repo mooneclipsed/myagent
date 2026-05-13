@@ -64,7 +64,7 @@ def extract_text_from_events(events: list[dict]) -> str:
 def send_chat(payload: dict, timeout: float = 30.0) -> str:
     """Send a chat request and return extracted response text."""
     response = httpx.post(
-        f"{SERVICE_URL}/process",
+        f"{SERVICE_URL}/chat",
         json=payload,
         timeout=timeout,
     )

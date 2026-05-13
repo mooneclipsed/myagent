@@ -1,4 +1,4 @@
-"""Manual test: bootstrap webapp-testing and exercise it through /process."""
+"""Manual test: bootstrap webapp-testing and exercise it through /chat."""
 
 import os
 import sys
@@ -13,7 +13,7 @@ SESSION_ID = "manual-skill-webapp-testing"
 
 def main() -> None:
     run_skill_test(
-        title="Webapp Testing Skill via /process",
+        title="Webapp Testing Skill via /chat",
         session_id=SESSION_ID,
         skill_name="webapp-testing",
         prompt=(

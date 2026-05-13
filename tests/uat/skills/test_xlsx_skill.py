@@ -1,4 +1,4 @@
-"""Manual test: bootstrap xlsx and exercise it through /process."""
+"""Manual test: bootstrap xlsx and exercise it through /chat."""
 
 import os
 import sys
@@ -13,7 +13,7 @@ SESSION_ID = "manual-skill-xlsx"
 
 def main() -> None:
     run_skill_test(
-        title="XLSX Skill via /process",
+        title="XLSX Skill via /chat",
         session_id=SESSION_ID,
         skill_name="xlsx",
         prompt=(

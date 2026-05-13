@@ -1,4 +1,4 @@
-"""Manual test: bootstrap theme-factory and exercise it through /process."""
+"""Manual test: bootstrap theme-factory and exercise it through /chat."""
 
 import os
 import sys
@@ -13,7 +13,7 @@ SESSION_ID = "manual-skill-theme-factory"
 
 def main() -> None:
     run_skill_test(
-        title="Theme Factory Skill via /process",
+        title="Theme Factory Skill via /chat",
         session_id=SESSION_ID,
         skill_name="theme-factory",
         prompt=(

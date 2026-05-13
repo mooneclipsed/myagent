@@ -23,7 +23,7 @@ WEATHER_SCRIPT = os.path.join(MCP_SERVER_DIR, "weather_mcp.py")
 HIKING_SCRIPT = os.path.join(MCP_SERVER_DIR, "hiking_spot_mcp.py")
 
 
-def test_agent_calls_weather_mcp():
+def check_agent_calls_weather_mcp():
     """Weather question → agent should discover and call MCP get_weather."""
     result = chat(SESSION_ID, "深圳现在天气怎么样？")
     check(
@@ -33,7 +33,7 @@ def test_agent_calls_weather_mcp():
     )
 
 
-def test_agent_calls_hiking_mcp():
+def check_agent_calls_hiking_mcp():
     """Hiking question → agent should discover and call MCP recommend_hiking_spots."""
     shutdown(SESSION_ID)
     bootstrap(SESSION_ID, {
@@ -55,7 +55,7 @@ def test_agent_calls_hiking_mcp():
     )
 
 
-def test_agent_picks_right_mcp_tool():
+def check_agent_picks_right_mcp_tool():
     """Two MCP servers registered, different questions → agent picks correctly."""
     shutdown(SESSION_ID)
     bootstrap(SESSION_ID, {
@@ -90,7 +90,7 @@ def test_agent_picks_right_mcp_tool():
     )
 
 
-def main():
+def test_agent_mcp_stdio_invocation():
     print("=" * 60)
     print("TEST: Agent MCP Invocation (stdio)")
     print("=" * 60)
@@ -111,9 +111,9 @@ def main():
     check("weather-mcp" in mcp_names, "bootstrap registered weather-mcp (stdio)")
 
     try:
-        test_agent_calls_weather_mcp()
-        test_agent_calls_hiking_mcp()
-        test_agent_picks_right_mcp_tool()
+        check_agent_calls_weather_mcp()
+        check_agent_calls_hiking_mcp()
+        check_agent_picks_right_mcp_tool()
     finally:
         shutdown(SESSION_ID)
 
@@ -122,4 +122,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    test_agent_mcp_stdio_invocation()

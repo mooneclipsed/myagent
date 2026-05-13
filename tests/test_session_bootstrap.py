@@ -423,12 +423,12 @@ def test_bootstrap_failure_rolls_back_connected_clients(client):
     first_client.close.assert_awaited_once_with(ignore_errors=True)
 
 
-def test_process_uses_bootstrapped_runtime_profile_with_session_memory(client, valid_payload):
-    bootstrap_payload = {"runtime_id": "bootstrap-process-001", "skills": [], "mcp_servers": []}
+def test_chat_uses_bootstrapped_runtime_profile_with_session_memory(client, valid_payload):
+    bootstrap_payload = {"runtime_id": "bootstrap-chat-001", "skills": [], "mcp_servers": []}
     response = client.post("/runtimes/bootstrap", json=bootstrap_payload)
     assert response.status_code == 200
 
-    runtime = get_runtime_profile("bootstrap-process-001")
+    runtime = get_runtime_profile("bootstrap-chat-001")
     assert runtime is not None
 
     async def _mock_stream_runtime(*args, **kwargs):
@@ -446,24 +446,24 @@ def test_process_uses_bootstrapped_runtime_profile_with_session_memory(client, v
         yield msg, True
 
     with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
-        process_payload = {
+        chat_payload = {
             **valid_payload,
-            "runtime_id": "bootstrap-process-001",
-            "session_id": "conversation-process-001",
+            "runtime_id": "bootstrap-chat-001",
+            "session_id": "conversation-chat-001",
         }
-        process_response = client.post("/process", json=process_payload)
+        chat_response = client.post("/chat", json=chat_payload)
 
-    assert process_response.status_code == 200
-    events = _parse_sse_events(process_response.text)
+    assert chat_response.status_code == 200
+    events = _parse_sse_events(chat_response.text)
     statuses = [e.get("status") for e in events if "status" in e]
     assert "completed" in statuses
 
 
-def test_process_passes_runtime_memory_compression_to_agent(client, valid_payload):
+def test_chat_passes_runtime_memory_compression_to_agent(client, valid_payload):
     response = client.post(
         "/runtimes/bootstrap",
         json={
-            "runtime_id": "bootstrap-process-compression",
+            "runtime_id": "bootstrap-chat-compression",
             "memory_compression": {
                 "enabled": True,
                 "trigger_tokens": 12345,
@@ -489,25 +489,25 @@ def test_process_passes_runtime_memory_compression_to_agent(client, valid_payloa
         patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime),
         patch("src.adapters.agentscope.agent_factory.build_react_agent", wraps=__import__("src.adapters.agentscope.agent_factory", fromlist=["build_react_agent"]).build_react_agent) as mock_build,
     ):
-        process_response = client.post(
-            "/process",
+        chat_response = client.post(
+            "/chat",
             json={
                 **valid_payload,
-                "runtime_id": "bootstrap-process-compression",
-                "session_id": "conversation-process-compression",
+                "runtime_id": "bootstrap-chat-compression",
+                "session_id": "conversation-chat-compression",
             },
         )
 
-    assert process_response.status_code == 200
+    assert chat_response.status_code == 200
     build_kwargs = mock_build.call_args.kwargs
     assert build_kwargs["memory_compression"].enabled is True
     assert build_kwargs["memory_compression"].trigger_tokens == 12345
     assert build_kwargs["memory_compression"].keep_recent == 7
 
 
-def test_process_rebinds_agentscope_run_context_for_bootstrapped_session(client, valid_payload):
-    runtime_id = "bootstrap-process-trace-runtime"
-    session_id = "bootstrap-process-trace-bind"
+def test_chat_rebinds_agentscope_run_context_for_bootstrapped_session(client, valid_payload):
+    runtime_id = "bootstrap-chat-trace-runtime"
+    session_id = "bootstrap-chat-trace-bind"
     response = client.post("/runtimes/bootstrap", json={"runtime_id": runtime_id, "skills": [], "mcp_servers": []})
     assert response.status_code == 200
 
@@ -525,8 +525,8 @@ def test_process_rebinds_agentscope_run_context_for_bootstrapped_session(client,
         yield msg, True
 
     with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
-        process_response = client.post(
-            "/process",
+        chat_response = client.post(
+            "/chat",
             json={
                 **valid_payload,
                 "runtime_id": runtime_id,
@@ -534,13 +534,13 @@ def test_process_rebinds_agentscope_run_context_for_bootstrapped_session(client,
             },
         )
 
-    assert process_response.status_code == 200
+    assert chat_response.status_code == 200
     assert captured["run_id"] == session_id
 
 
-def test_process_exports_span_with_session_conversation_id(client, monkeypatch, valid_payload):
-    runtime_id = "bootstrap-process-trace-runtime"
-    session_id = "bootstrap-process-trace-span"
+def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, valid_payload):
+    runtime_id = "bootstrap-chat-trace-runtime"
+    session_id = "bootstrap-chat-trace-span"
     monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
 
     from src.config.settings import get_settings
@@ -575,8 +575,8 @@ def test_process_exports_span_with_session_conversation_id(client, monkeypatch, 
 
     with patch("src.adapters.agentscope.runtime.ot_trace.get_tracer_provider", return_value=tracer_provider):
         with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
-            process_response = client.post(
-                "/process",
+            chat_response = client.post(
+                "/chat",
                 json={
                     **valid_payload,
                     "runtime_id": runtime_id,
@@ -584,7 +584,7 @@ def test_process_exports_span_with_session_conversation_id(client, monkeypatch, 
                 },
             )
 
-    assert process_response.status_code == 200
+    assert chat_response.status_code == 200
     spans = exporter.get_finished_spans()
     assert any(json.loads(span.attributes["gen_ai.conversation.id"]) == session_id for span in spans)
 
@@ -696,26 +696,27 @@ def test_bootstrap_download_failure_continues_with_runtime(client):
     assert body["skill_downloads"][0]["status"] == "failed"
 
 
-def test_process_rejects_agent_config_for_bootstrapped_session(client, valid_payload):
-    bootstrap_payload = {"runtime_id": "bootstrap-process-002", "skills": [], "mcp_servers": []}
+def test_chat_rejects_agent_config_for_bootstrapped_session(client, valid_payload):
+    bootstrap_payload = {"runtime_id": "bootstrap-chat-002", "skills": [], "mcp_servers": []}
     response = client.post("/runtimes/bootstrap", json=bootstrap_payload)
     assert response.status_code == 200
 
-    process_payload = {
+    chat_payload = {
         **valid_payload,
-        "runtime_id": "bootstrap-process-002",
-        "session_id": "conversation-process-002",
+        "runtime_id": "bootstrap-chat-002",
+        "session_id": "conversation-chat-002",
         "agent_config": {"model_name": "other-model"},
     }
-    process_response = client.post("/process", json=process_payload)
+    chat_response = client.post("/chat", json=chat_payload)
 
-    assert process_response.status_code == 200
-    events = _parse_sse_events(process_response.text)
+    assert chat_response.status_code == 200
+    events = _parse_sse_events(chat_response.text)
     assert any(event.get("status") == "failed" for event in events)
 
 
-def test_process_without_session_id_uses_generated_conversation(client, valid_payload):
-    bootstrap_payload = {"runtime_id": "bootstrap-process-generated-session", "skills": [], "mcp_servers": []}
+def test_chat_without_session_id_uses_runtime_id_context(client, valid_payload):
+    runtime_id = "bootstrap-chat-no-session"
+    bootstrap_payload = {"runtime_id": runtime_id, "skills": [], "mcp_servers": []}
     response = client.post("/runtimes/bootstrap", json=bootstrap_payload)
     assert response.status_code == 200
 
@@ -733,51 +734,49 @@ def test_process_without_session_id_uses_generated_conversation(client, valid_pa
         yield msg, True
 
     with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
-        process_response = client.post(
-            "/process",
-            json={**valid_payload, "runtime_id": "bootstrap-process-generated-session"},
+        chat_response = client.post(
+            "/chat",
+            json={**valid_payload, "runtime_id": runtime_id},
         )
 
-    assert process_response.status_code == 200
-    events = _parse_sse_events(process_response.text)
+    assert chat_response.status_code == 200
+    events = _parse_sse_events(chat_response.text)
     response_session_ids = [event.get("session_id") for event in events if event.get("session_id")]
-    assert response_session_ids
-    assert captured["run_id"] == response_session_ids[0]
+    assert response_session_ids == []
+    assert captured["run_id"]
 
 
 def test_same_session_id_streams_are_serialized():
-    from src.application import chat_service as query
-
-    class RequestShim:
-        runtime_id = None
-        session_id = "conversation-lock-001"
-        agent_config = None
+    from src.application import chat_service
 
     entered = asyncio.Event()
     release_first = asyncio.Event()
     events: list[str] = []
 
-    async def _mock_locked_stream(*args, **kwargs):
+    async def _mock_chat_stream(*args, **kwargs):
         call_number = events.count("enter") + 1
         events.append("enter")
         if call_number == 1:
             entered.set()
             await release_first.wait()
         events.append("exit")
-        yield Msg(
-            name="agentops",
-            content=[{"type": "text", "text": "ok"}],
-            role="assistant",
-        ), True
+        yield b"data: {}\n\n"
+
+    request = chat_service.ChatRequest(
+        session_id="conversation-lock-001",
+        input=[chat_service.ChatInput(role="user", content="hello")],
+    )
 
     async def _collect_stream():
         items = []
-        async for item in query._stream_agent_messages([], RequestShim()):
-            items.append(item)
+        lock = await chat_service._get_session_lock(request.session_id)
+        async with lock:
+            async for item in chat_service._stream_chat_request([], request, request.session_id):
+                items.append(item)
         return items
 
     async def _run():
-        with patch("src.application.chat_service._stream_agent_messages_locked", _mock_locked_stream):
+        with patch("src.application.chat_service._stream_chat_request", _mock_chat_stream):
             first = asyncio.create_task(_collect_stream())
             await entered.wait()
             second = asyncio.create_task(_collect_stream())

@@ -140,7 +140,7 @@ def main() -> None:
             print("downloaded_skill_dir=", skill_dir)
 
             chat_response = client.post(
-                "/process",
+                "/chat",
                 json={
                     "runtime_id": RUNTIME_ID,
                     "session_id": RUNTIME_ID,

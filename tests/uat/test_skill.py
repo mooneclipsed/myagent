@@ -29,7 +29,7 @@ HELLO_SKILL_DIR = os.path.join(
     "hello",
 )
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-MARKER_FILE = os.path.join(REPO_ROOT, "tests", "uat", "files", "hello_skill_invocations.log")
+MARKER_FILE = os.path.join(REPO_ROOT, "scripts", "manual-tests", "files", "hello_skill_invocations.log")
 
 
 def read_marker_lines() -> list[str]:
@@ -45,7 +45,7 @@ def truncate_marker_file() -> None:
         pass
 
 
-def test_agent_uses_loaded_skill_context():
+def check_agent_uses_loaded_skill_context():
     """Ask about the loaded skill without encouraging filesystem-wide discovery."""
     result = chat(SESSION_ID, "当前 runtime 已加载 hello skill。请简要说明这个 skill 的用途。")
     check(
@@ -55,7 +55,7 @@ def test_agent_uses_loaded_skill_context():
     )
 
 
-def test_agent_uses_skill_script():
+def check_agent_uses_skill_script():
     """Ask agent to greet someone → agent should run the skill script."""
     before = read_marker_lines()
     result = chat(
@@ -93,7 +93,7 @@ def test_agent_uses_skill_script():
     )
 
 
-def test_agent_reads_skill_resources():
+def check_agent_reads_skill_resources():
     """Ask about skill usage → agent should read resources/usage.md."""
     result = chat(
         SESSION_ID,
@@ -106,7 +106,7 @@ def test_agent_reads_skill_resources():
     )
 
 
-def test_agent_runs_script_with_different_args():
+def check_agent_runs_script_with_different_args():
     """Ask greeting with different name → agent executes script with new args."""
     before = read_marker_lines()
     result = chat(SESSION_ID, "再帮我用同样的方式跟 Bob 打个招呼。")
@@ -118,8 +118,8 @@ def test_agent_runs_script_with_different_args():
         result.text,
     )
     check(
-        "timestamp=" in result.text,
-        "agent returned timestamp for Bob run",
+        any("timestamp=" in line and "name=Bob" in line for line in after[len(before):]),
+        "script marker records Bob timestamp",
         result.text,
     )
     check(
@@ -134,7 +134,7 @@ def test_agent_runs_script_with_different_args():
     )
 
 
-def main():
+def test_agent_skill_loading_and_script_execution():
     print("=" * 60)
     print("TEST: Agent Skill Loading & Script Execution")
     print("=" * 60)
@@ -154,10 +154,10 @@ def main():
     check("hello" in skill_names, "bootstrap registered hello")
 
     try:
-        test_agent_uses_loaded_skill_context()
-        test_agent_uses_skill_script()
-        test_agent_reads_skill_resources()
-        test_agent_runs_script_with_different_args()
+        check_agent_uses_loaded_skill_context()
+        check_agent_uses_skill_script()
+        check_agent_reads_skill_resources()
+        check_agent_runs_script_with_different_args()
     finally:
         shutdown(SESSION_ID)
 
@@ -166,4 +166,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    test_agent_skill_loading_and_script_execution()

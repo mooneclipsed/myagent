@@ -2,7 +2,6 @@ from agentscope_runtime.engine import AgentApp
 
 from .api.lifecycle import app_lifespan
 from .api.runtime import register_runtime_routes
-from .application.chat_service import register_query_handlers
 from .config.settings import get_settings
 
 app = AgentApp(
@@ -11,8 +10,6 @@ app = AgentApp(
     lifespan=app_lifespan,
 )
 register_runtime_routes(app)
-
-register_query_handlers(app)
 
 if __name__ == "__main__":
     settings = get_settings()

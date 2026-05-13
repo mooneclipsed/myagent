@@ -9,10 +9,8 @@ import json
 from unittest.mock import patch
 
 import pytest
-from agentscope.message import Msg
 
-from src.main import app
-from tests.test_chat_stream import _make_mock_handler, _parse_sse_events
+from tests.test_chat_stream import _make_mock_runtime_stream, _parse_sse_events
 
 
 # ---------------------------------------------------------------------------
@@ -21,31 +19,21 @@ from tests.test_chat_stream import _make_mock_handler, _parse_sse_events
 
 
 def test_multi_turn_passes_full_history(client, multi_turn_payload):
-    captured_msgs = []
+    captured_requests = []
+    mock_stream = _make_mock_runtime_stream(["I remember"], captured_requests=captured_requests)
 
-    async def _capturing_handler(msgs, request=None, response=None, **kwargs):
-        if isinstance(msgs, list):
-            captured_msgs.extend(msgs)
-        else:
-            captured_msgs.append(msgs)
-        msg = Msg(
-            name="agentops",
-            content=[{"type": "text", "text": "I remember"}],
-            role="assistant",
-        )
-        yield msg, True
-
-    with patch.object(app._runner, "query_handler", _capturing_handler):
-        response = client.post("/process", json=multi_turn_payload)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=multi_turn_payload)
 
     assert response.status_code == 200
+    captured_msgs = captured_requests[0].messages
     assert len(captured_msgs) == 3
     assert captured_msgs[0].role == "user"
-    assert captured_msgs[0].content[0]["text"] == "My name is Alice."
+    assert captured_msgs[0].content == "My name is Alice."
     assert captured_msgs[1].role == "assistant"
-    assert captured_msgs[1].content[0]["text"] == "Hello Alice!"
+    assert captured_msgs[1].content == "Hello Alice!"
     assert captured_msgs[2].role == "user"
-    assert captured_msgs[2].content[0]["text"] == "What is my name?"
+    assert captured_msgs[2].content == "What is my name?"
 
 
 # ---------------------------------------------------------------------------
@@ -54,10 +42,10 @@ def test_multi_turn_passes_full_history(client, multi_turn_payload):
 
 
 def test_single_turn_backward_compatible(client, valid_payload):
-    mock_handler = _make_mock_handler(["Hello back"])
+    mock_stream = _make_mock_runtime_stream(["Hello back"])
 
-    with patch.object(app._runner, "query_handler", mock_handler):
-        response = client.post("/process", json=valid_payload)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200
     events = _parse_sse_events(response.text)
@@ -71,10 +59,10 @@ def test_single_turn_backward_compatible(client, valid_payload):
 
 
 def test_multi_turn_sse_lifecycle(client, multi_turn_payload):
-    mock_handler = _make_mock_handler(["I remember your name."])
+    mock_stream = _make_mock_runtime_stream(["I remember your name."])
 
-    with patch.object(app._runner, "query_handler", mock_handler):
-        response = client.post("/process", json=multi_turn_payload)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=multi_turn_payload)
 
     assert response.status_code == 200
     assert "text/event-stream" in response.headers.get("content-type", "")
@@ -100,26 +88,16 @@ def test_prior_assistant_messages_in_context(client):
         ]
     }
 
-    captured_msgs = []
+    captured_requests = []
+    mock_stream = _make_mock_runtime_stream(["Third answer"], captured_requests=captured_requests)
 
-    async def _capturing_handler(msgs, request=None, response=None, **kwargs):
-        if isinstance(msgs, list):
-            captured_msgs.extend(msgs)
-        else:
-            captured_msgs.append(msgs)
-        msg = Msg(
-            name="agentops",
-            content=[{"type": "text", "text": "Third answer"}],
-            role="assistant",
-        )
-        yield msg, True
-
-    with patch.object(app._runner, "query_handler", _capturing_handler):
-        response = client.post("/process", json=payload)
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
+    captured_msgs = captured_requests[0].messages
     assert len(captured_msgs) == 5
     assert captured_msgs[1].role == "assistant"
-    assert captured_msgs[1].content[0]["text"] == "First answer"
+    assert captured_msgs[1].content == "First answer"
     assert captured_msgs[3].role == "assistant"
-    assert captured_msgs[3].content[0]["text"] == "Second answer"
+    assert captured_msgs[3].content == "Second answer"

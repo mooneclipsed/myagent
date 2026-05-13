@@ -1,4 +1,4 @@
-"""Manual test: bootstrap frontend-design and exercise it through /process."""
+"""Manual test: bootstrap frontend-design and exercise it through /chat."""
 
 import os
 import sys
@@ -13,7 +13,7 @@ SESSION_ID = "manual-skill-frontend-design"
 
 def main() -> None:
     run_skill_test(
-        title="Frontend Design Skill via /process",
+        title="Frontend Design Skill via /chat",
         session_id=SESSION_ID,
         skill_name="frontend-design",
         prompt=(

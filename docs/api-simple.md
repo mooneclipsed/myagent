@@ -148,10 +148,38 @@ Main fields:
   - `object`, `role`, `name`
   - `content`
   - `text`
-  - `delta.text`
+  - `delta.text` — incremental text delta. If the underlying AgentScope stream emits cumulative text, `/chat` converts it to only the newly added text.
   - `error.message`
 - `200 application/json`
   - Documented schema equivalent for tooling compatibility
+
+## POST `/process`
+
+**Purpose**  
+Compatibility and comparison endpoint backed by the AgentScope runtime query handler. It uses the same agent runtime path as `/chat`, but lets `agentscope_runtime` serialize the streamed `Msg` objects into SSE.
+
+**Input**  
+`application/json`
+
+Main fields:
+- `input` — required list of chat messages
+  - `role`
+  - `content` — usually a list like `[{"type": "text", "text": "Hello"}]`
+- `runtime_id` — optional runtime profile identifier
+- `session_id` — optional conversation identifier used for memory persistence. When omitted, the runtime framework may assign a generated session identifier.
+- `agent_config` — optional model settings
+  - `model_name`
+  - `api_key`
+  - `base_url`
+
+**Output**  
+- `200 text/event-stream`
+- Streamed SSE events produced by `agentscope_runtime` from the yielded AgentScope `Msg` stream.
+
+Notes:
+- `/chat` and `/process` both call `AgentScopeRuntime.stream_with_profile`.
+- `/chat` owns its SSE JSON shape and normalizes cumulative text into incremental `delta.text`.
+- `/process` is useful for comparing the framework-provided stream serialization with the explicit `/chat` SSE contract.
 
 ## Notes
 

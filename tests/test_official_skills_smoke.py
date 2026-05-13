@@ -28,7 +28,7 @@ def test_bootstrap_selected_official_skills(client):
         "mcp_servers": [],
     }
 
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
 
     assert response.status_code == 200, response.text
     body = response.json()

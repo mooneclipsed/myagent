@@ -4,7 +4,7 @@ Base URL: `http://127.0.0.1:8000`
 
 This document lists only the business APIs, with a short purpose, the main input fields, and the main output shape.
 
-## POST `/runtimes/initialize`
+## POST `/runtimes/init`
 
 **Purpose**  
 Create or reload the pod runtime profile with optional tools, local skills, remote skill downloads, MCP servers, and model overrides.

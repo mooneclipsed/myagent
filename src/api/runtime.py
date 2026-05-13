@@ -26,7 +26,7 @@ def register_runtime_routes(app: AgentApp) -> None:
     app.post("/chat")(chat_via_agentscope)
 
     @app.post(
-        "/runtimes/initialize",
+        "/runtimes/init",
         response_model=RuntimeProfileResponse,
         tags=["runtime-api"],
     )

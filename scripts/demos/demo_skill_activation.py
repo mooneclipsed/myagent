@@ -19,7 +19,7 @@ def main():
     }
 
     bootstrap_response = httpx.post(
-        f"{SERVICE_URL}/runtimes/initialize",
+        f"{SERVICE_URL}/runtimes/init",
         json=bootstrap_payload,
         timeout=30.0,
     )

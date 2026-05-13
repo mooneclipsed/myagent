@@ -1,14 +1,14 @@
 # Runtime Architecture
 
-This document describes the current `/runtimes/initialize`, `/chat`, and compatibility `/process` execution flow.
+This document describes the current `/runtimes/init`, `/chat`, and compatibility `/process` execution flow.
 
 ## Runtime Initialization Flow
 
-`/runtimes/initialize` prepares a reusable runtime profile. It does not create a `ReActAgent`. The agent is created later during `/chat`.
+`/runtimes/init` prepares a reusable runtime profile. It does not create a `ReActAgent`. The agent is created later during `/chat`.
 
 ```mermaid
 flowchart TD
-    A[Client POST /runtimes/initialize] --> B[Runtime API handler]
+    A[Client POST /runtimes/init] --> B[Runtime API handler]
     B --> C[Convert RuntimeInitializeRequest to RuntimeSpec]
     C --> D[initialize_runtime]
     D --> E{runtime_id valid?}
@@ -176,7 +176,7 @@ sequenceDiagram
     participant AgentScope
     participant SessionBackend
 
-    Client->>API: POST /runtimes/initialize
+    Client->>API: POST /runtimes/init
     API->>RuntimeService: initialize_runtime_from_request(request)
     RuntimeService->>AgentScope: initialize(RuntimeSpec)
     AgentScope-->>RuntimeService: AgentScopeRuntimeProfile

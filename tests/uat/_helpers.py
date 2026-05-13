@@ -140,7 +140,7 @@ def extract_text(events: list[dict]) -> str:
 
 def initialize_runtime(session_id: str, payload: dict) -> dict:
     resp = httpx.post(
-        f"{SERVICE_URL}/runtimes/initialize",
+        f"{SERVICE_URL}/runtimes/init",
         json={"runtime_id": session_id, **payload},
         timeout=DEFAULT_TIMEOUT,
     )

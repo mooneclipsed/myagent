@@ -105,7 +105,7 @@ def test_bootstrap_stdio_session_success(client):
         mock_client.list_tools = AsyncMock(return_value=[])
         mock_stdio.return_value = mock_client
 
-        response = client.post("/runtimes/initialize", json=payload)
+        response = client.post("/runtimes/init", json=payload)
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -144,7 +144,7 @@ def test_bootstrap_http_session_success(client):
         mock_client.list_tools = AsyncMock(return_value=[])
         mock_http.return_value = mock_client
 
-        response = client.post("/runtimes/initialize", json=payload)
+        response = client.post("/runtimes/init", json=payload)
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -178,7 +178,7 @@ def test_bootstrap_rejects_invalid_http_transport(client):
         ],
     }
 
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
     assert response.status_code == 422
 
 
@@ -186,8 +186,8 @@ def test_bootstrap_reloads_when_another_runtime_is_active(client):
     payload_a = {"runtime_id": "bootstrap-session-a", "skills": [], "mcp_servers": []}
     payload_b = {"runtime_id": "bootstrap-session-b", "skills": [], "mcp_servers": []}
 
-    response_a = client.post("/runtimes/initialize", json=payload_a)
-    response_b = client.post("/runtimes/initialize", json=payload_b)
+    response_a = client.post("/runtimes/init", json=payload_a)
+    response_b = client.post("/runtimes/init", json=payload_b)
 
     assert response_a.status_code == 200
     assert response_b.status_code == 200
@@ -199,7 +199,7 @@ def test_bootstrap_reloads_when_another_runtime_is_active(client):
 def test_bootstrap_without_system_prompt_uses_default_prompt(client):
     payload = {"runtime_id": "bootstrap-default-prompt", "skills": [], "mcp_servers": []}
 
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
 
     assert response.status_code == 200, response.text
     runtime = get_runtime_profile("bootstrap-default-prompt")
@@ -210,7 +210,7 @@ def test_bootstrap_without_system_prompt_uses_default_prompt(client):
 def test_bootstrap_accepts_numeric_runtime_id(client):
     payload = {"runtime_id": 7459893631797690368, "skills": [], "mcp_servers": []}
 
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -221,8 +221,8 @@ def test_bootstrap_accepts_numeric_runtime_id(client):
 def test_bootstrap_same_runtime_reloads(client):
     payload = {"runtime_id": "bootstrap-session-same", "skills": [], "mcp_servers": []}
 
-    response_a = client.post("/runtimes/initialize", json=payload)
-    response_b = client.post("/runtimes/initialize", json=payload)
+    response_a = client.post("/runtimes/init", json=payload)
+    response_b = client.post("/runtimes/init", json=payload)
 
     assert response_a.status_code == 200
     assert response_b.status_code == 200
@@ -237,7 +237,7 @@ def test_bootstrap_with_blank_system_prompt_uses_default_prompt(client):
         "mcp_servers": [],
     }
 
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
 
     assert response.status_code == 200, response.text
     runtime = get_runtime_profile("bootstrap-blank-prompt")
@@ -280,7 +280,7 @@ def test_bootstrap_stores_memory_compression_config(client):
         "mcp_servers": [],
     }
 
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
 
     assert response.status_code == 200, response.text
     runtime = get_runtime_profile("bootstrap-compression-config")
@@ -364,7 +364,7 @@ def test_bootstrap_memory_compression_overrides_env_defaults(client, monkeypatch
     get_settings.cache_clear()
 
     response = client.post(
-        "/runtimes/initialize",
+        "/runtimes/init",
         json={
             "runtime_id": "bootstrap-compression-override",
             "memory_compression": {
@@ -416,7 +416,7 @@ def test_bootstrap_failure_rolls_back_connected_clients(client):
         "src.adapters.agentscope.runtime.StdIOStatefulClient",
         side_effect=[first_client, second_client],
     ):
-        response = client.post("/runtimes/initialize", json=payload)
+        response = client.post("/runtimes/init", json=payload)
 
     assert response.status_code == 502
     assert "Failed to initialize MCP server 'second' (stdio)." == response.json()["detail"]
@@ -425,7 +425,7 @@ def test_bootstrap_failure_rolls_back_connected_clients(client):
 
 def test_chat_uses_bootstrapped_runtime_profile_with_session_memory(client, valid_payload):
     bootstrap_payload = {"runtime_id": "bootstrap-chat-001", "skills": [], "mcp_servers": []}
-    response = client.post("/runtimes/initialize", json=bootstrap_payload)
+    response = client.post("/runtimes/init", json=bootstrap_payload)
     assert response.status_code == 200
 
     runtime = get_runtime_profile("bootstrap-chat-001")
@@ -461,7 +461,7 @@ def test_chat_uses_bootstrapped_runtime_profile_with_session_memory(client, vali
 
 def test_chat_passes_runtime_memory_compression_to_agent(client, valid_payload):
     response = client.post(
-        "/runtimes/initialize",
+        "/runtimes/init",
         json={
             "runtime_id": "bootstrap-chat-compression",
             "memory_compression": {
@@ -508,7 +508,7 @@ def test_chat_passes_runtime_memory_compression_to_agent(client, valid_payload):
 def test_chat_rebinds_agentscope_run_context_for_bootstrapped_session(client, valid_payload):
     runtime_id = "bootstrap-chat-trace-runtime"
     session_id = "bootstrap-chat-trace-bind"
-    response = client.post("/runtimes/initialize", json={"runtime_id": runtime_id, "skills": [], "mcp_servers": []})
+    response = client.post("/runtimes/init", json={"runtime_id": runtime_id, "skills": [], "mcp_servers": []})
     assert response.status_code == 200
 
     captured = {}
@@ -549,7 +549,7 @@ def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, val
 
     with patch("src.adapters.agentscope.runtime.agentscope.init"):
         response = client.post(
-            "/runtimes/initialize",
+            "/runtimes/init",
             json={"runtime_id": runtime_id, "skills": [], "mcp_servers": []},
         )
 
@@ -592,7 +592,7 @@ def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, val
 def test_bootstrap_with_skills_also_registers_local_runtime_tools(client):
     skill_dir = str((__import__("pathlib").Path(__file__).resolve().parents[1] / "skills" / "hello").resolve())
     response = client.post(
-        "/runtimes/initialize",
+        "/runtimes/init",
         json={
             "runtime_id": "bootstrap-skill-local-tools-001",
             "skills": [{"skill_dir": skill_dir}],
@@ -646,7 +646,7 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
 
     with patch("src.application.runtime_service.prepare_remote_skills", fake_sync):
         response = client.post(
-            "/runtimes/initialize",
+            "/runtimes/init",
             json={
                 "runtime_id": "bootstrap-download-skill-001",
                 "skills_download_url": "http://skills.example",
@@ -680,7 +680,7 @@ def test_bootstrap_download_failure_continues_with_runtime(client):
 
     with patch("src.application.runtime_service.prepare_remote_skills", fake_sync):
         response = client.post(
-            "/runtimes/initialize",
+            "/runtimes/init",
             json={
                 "runtime_id": "bootstrap-download-skill-failure",
                 "skills_download_url": "http://skills.example",
@@ -698,7 +698,7 @@ def test_bootstrap_download_failure_continues_with_runtime(client):
 
 def test_chat_rejects_agent_config_for_bootstrapped_session(client, valid_payload):
     bootstrap_payload = {"runtime_id": "bootstrap-chat-002", "skills": [], "mcp_servers": []}
-    response = client.post("/runtimes/initialize", json=bootstrap_payload)
+    response = client.post("/runtimes/init", json=bootstrap_payload)
     assert response.status_code == 200
 
     chat_payload = {
@@ -717,7 +717,7 @@ def test_chat_rejects_agent_config_for_bootstrapped_session(client, valid_payloa
 def test_chat_without_session_id_uses_runtime_id_context(client, valid_payload):
     runtime_id = "bootstrap-chat-no-session"
     bootstrap_payload = {"runtime_id": runtime_id, "skills": [], "mcp_servers": []}
-    response = client.post("/runtimes/initialize", json=bootstrap_payload)
+    response = client.post("/runtimes/init", json=bootstrap_payload)
     assert response.status_code == 200
 
     captured = {}
@@ -792,7 +792,7 @@ def test_same_session_id_streams_are_serialized():
 
 def test_shutdown_closes_active_runtime(client):
     response = client.post(
-        "/runtimes/initialize",
+        "/runtimes/init",
         json={"runtime_id": "bootstrap-shutdown-001", "skills": [], "mcp_servers": []},
     )
     assert response.status_code == 200
@@ -820,7 +820,7 @@ def test_bootstrap_with_tools_registers_requested_tools(client):
         "runtime_id": "bootstrap-tools-001",
         "tools": [{"name": "get_weather"}, {"name": "calculate"}],
     }
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
     assert response.status_code == 200, response.text
     body = response.json()
     tool_names = [t["name"] for t in body["tools"]]
@@ -836,7 +836,7 @@ def test_bootstrap_rejects_unknown_tool_name(client):
         "runtime_id": "bootstrap-tools-bad",
         "tools": [{"name": "get_weather"}, {"name": "nonexistent_tool"}],
     }
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
     assert response.status_code == 400
     assert "nonexistent_tool" in response.json()["detail"]
     assert "Unknown tool" in response.json()["detail"]
@@ -847,7 +847,7 @@ def test_bootstrap_with_empty_tools_succeeds(client):
         "runtime_id": "bootstrap-tools-empty",
         "tools": [],
     }
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
     assert response.status_code == 200
     assert response.json()["tools"] == []
 
@@ -861,7 +861,7 @@ def test_bootstrap_with_builtin_tools_registers_agentscope_tools(client):
             {"name": "write_text_file"},
         ],
     }
-    response = client.post("/runtimes/initialize", json=payload)
+    response = client.post("/runtimes/init", json=payload)
     assert response.status_code == 200, response.text
     body = response.json()
     tool_names = [t["name"] for t in body["tools"]]
@@ -880,7 +880,7 @@ def test_bootstrap_initializes_agentscope_studio_when_configured(client, monkeyp
 
     with patch("src.adapters.agentscope.runtime.agentscope.init") as mock_init:
         response = client.post(
-            "/runtimes/initialize",
+            "/runtimes/init",
             json={"runtime_id": "bootstrap-studio-001", "skills": [], "mcp_servers": []},
         )
 
@@ -902,7 +902,7 @@ def test_bootstrap_skips_agentscope_studio_when_disabled(client, monkeypatch):
 
     with patch("src.adapters.agentscope.runtime.agentscope.init") as mock_init:
         response = client.post(
-            "/runtimes/initialize",
+            "/runtimes/init",
             json={"runtime_id": "bootstrap-studio-disabled-001", "skills": [], "mcp_servers": []},
         )
 

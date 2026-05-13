@@ -119,7 +119,7 @@ def main() -> None:
             shutdown_runtime(client)
 
             bootstrap_response = client.post(
-                "/runtimes/initialize",
+                "/runtimes/init",
                 json={
                     "runtime_id": RUNTIME_ID,
                     "system_prompt": (

@@ -116,7 +116,7 @@ This is intentionally a **single-active-runtime** implementation. It matches the
 
 `src/api/runtime_routes.py` adds two APIs:
 
-- `POST /runtimes/initialize`
+- `POST /runtimes/init`
 - `POST /runtimes/{runtime_id}/shutdown`
 
 These routes are registered from `src/main.py` and live alongside the `/chat` endpoint.
@@ -136,7 +136,7 @@ This enables reusable runtime-level config and isolated conversation memory.
 
 ## Runtime Initialization
 
-`POST /runtimes/initialize`
+`POST /runtimes/init`
 
 Input:
 

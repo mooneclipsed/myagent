@@ -67,7 +67,7 @@ def parse_sse_events(response_text: str) -> list[dict]:
 
 def bootstrap_runtime(runtime_id: str) -> None:
     response = httpx.post(
-        f"{SERVICE_URL}/runtimes/initialize",
+        f"{SERVICE_URL}/runtimes/init",
         json={
             "runtime_id": runtime_id,
             "memory_compression": {

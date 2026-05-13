@@ -70,6 +70,21 @@ def _parse_sse_events(response_text):
 # ---------------------------------------------------------------------------
 
 
+def test_process_returns_sse_stream(client, valid_payload):
+    mock_stream = _make_mock_runtime_stream(["Hello"])
+
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/process", json=valid_payload)
+
+    assert response.status_code == 200, (
+        f"Expected 200, got {response.status_code}: {response.text[:200]}"
+    )
+    assert "text/event-stream" in response.headers.get("content-type", ""), (
+        f"Expected text/event-stream, got {response.headers.get('content-type')}"
+    )
+    assert "data:" in response.text, "Response body should contain SSE data lines"
+
+
 def test_chat_returns_sse_stream(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(["Hello"])
 
@@ -83,6 +98,27 @@ def test_chat_returns_sse_stream(client, valid_payload):
         f"Expected text/event-stream, got {response.headers.get('content-type')}"
     )
     assert "data:" in response.text, "Response body should contain SSE data lines"
+
+
+def test_process_and_chat_share_runtime_stream(client, valid_payload):
+    captured_requests = []
+    payload = {**valid_payload, "session_id": "compare-session"}
+
+    with patch(
+        "src.application.chat_service._runtime_adapter.stream_with_profile",
+        _make_mock_runtime_stream(["Hello"], captured_requests=captured_requests),
+    ):
+        process_response = client.post("/process", json=payload)
+        chat_response = client.post("/chat", json=payload)
+
+    assert process_response.status_code == 200
+    assert chat_response.status_code == 200
+    assert len(captured_requests) == 2
+    process_request, chat_request = captured_requests
+    assert process_request.messages == chat_request.messages
+    assert process_request.runtime_id == chat_request.runtime_id
+    assert process_request.session_id == chat_request.session_id
+    assert process_request.agent_config == chat_request.agent_config
 
 
 def test_chat_accepts_string_content(client):
@@ -145,6 +181,42 @@ def test_stream_lifecycle_events(client, valid_payload):
     assert "completed" in statuses, (
         f"SSE lifecycle should include completed status, got statuses: {statuses}"
     )
+
+
+def test_chat_converts_cumulative_model_text_to_deltas(client, valid_payload):
+    mock_stream = _make_mock_runtime_stream(
+        ["你", "你好", "你好，我", "你好，我是", "你好，我是bob。"]
+    )
+
+    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+        response = client.post("/chat", json=valid_payload)
+
+    assert response.status_code == 200
+    events = _parse_sse_events(response.text)
+    deltas = [
+        event["delta"]["text"]
+        for event in events
+        if isinstance(event.get("delta"), dict) and "text" in event["delta"]
+    ]
+    text_fields = [
+        event["text"]
+        for event in events
+        if isinstance(event.get("text"), str)
+    ]
+    content_texts = [
+        event["content"][0]["text"]
+        for event in events
+        if (
+            isinstance(event.get("content"), list)
+            and event["content"]
+            and isinstance(event["content"][0], dict)
+            and event["content"][0].get("type") == "text"
+        )
+    ]
+
+    assert deltas == ["你", "好", "，我", "是", "bob。"]
+    assert text_fields == deltas
+    assert content_texts == deltas
 
 
 # ---------------------------------------------------------------------------

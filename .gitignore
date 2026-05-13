@@ -20,3 +20,6 @@ __pycache__/
 /scripts/manual-tests/files/
 
 AGENTS.md
+
+.claude/
+.codex/

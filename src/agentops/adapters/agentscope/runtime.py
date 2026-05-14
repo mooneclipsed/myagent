@@ -11,13 +11,13 @@ from agentscope.message import Msg
 from agentscope.pipeline import stream_printing_messages
 from agentscope.tool import Toolkit
 
-from ...capabilities.schemas import (
+from ...capabilities.models import (
     MCPServerSummary,
     SkillDownloadSummary,
     SkillSummary,
     ToolSummary,
 )
-from ...config.schemas import (
+from ...config.runtime_models import (
     AgentConfig,
     AgentModelConfig,
     MemoryCompressionConfig,

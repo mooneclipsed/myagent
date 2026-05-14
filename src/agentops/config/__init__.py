@@ -1,1 +1,1 @@
-"""Configuration settings and request/response schemas."""
+"""Configuration settings and runtime request/response models."""

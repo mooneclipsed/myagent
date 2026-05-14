@@ -217,7 +217,7 @@ Bootstrap config shape:
 }
 ```
 
-Relevant fields currently supported in `src/agentops/config/schemas.py`:
+Relevant fields currently supported in `src/agentops/config/runtime_models.py`:
 
 - `name`
 - `type = "stdio"`
@@ -246,7 +246,7 @@ Bootstrap config shape:
 }
 ```
 
-Relevant fields currently supported in `src/agentops/config/schemas.py`:
+Relevant fields currently supported in `src/agentops/config/runtime_models.py`:
 
 - `name`
 - `type = "http"`
@@ -291,7 +291,7 @@ In the current implementation, MCP is the primary dynamic capability introduced 
 
 Implementation-relevant files in the current codebase:
 
-- `src/agentops/config/schemas.py`
+- `src/agentops/config/runtime_models.py`
 - `src/agentops/tools/registry.py`
 - `src/agentops/application/runtime_service.py`
 - `src/agentops/application/chat_service.py`

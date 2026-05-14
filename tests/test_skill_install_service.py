@@ -5,7 +5,7 @@ from agentops.application.skill_install_service import (
     cleanup_removed_managed_skills,
     prepare_remote_skills,
 )
-from agentops.capabilities.schemas import SkillDownloadConfig
+from agentops.capabilities.models import SkillDownloadConfig
 from agentops.integrations.skill_api_client import SkillDownloadError, SkillInstallResult
 
 

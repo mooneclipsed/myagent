@@ -13,7 +13,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ..capabilities.schemas import (
+from ..capabilities.models import (
     MCPServerConfig,
     MCPServerSummary,
     SkillConfig,

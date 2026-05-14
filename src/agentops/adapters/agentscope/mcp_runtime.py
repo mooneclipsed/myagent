@@ -7,7 +7,7 @@ import logging
 from agentscope.mcp import HttpStatefulClient, StatefulClientBase, StdIOStatefulClient
 from agentscope.tool import Toolkit
 
-from ...capabilities.schemas import (
+from ...capabilities.models import (
     HttpMCPServerConfig,
     MCPServerConfig,
     MCPServerSummary,

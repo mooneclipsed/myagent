@@ -3,7 +3,7 @@
 from fastapi import HTTPException
 from agentscope_runtime.engine import AgentApp
 
-from ..config.schemas import (
+from ..config.runtime_models import (
     RuntimeInitializeRequest,
     RuntimeProfileResponse,
 )

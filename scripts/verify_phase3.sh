@@ -30,7 +30,7 @@ sys.exit(0 if running else 1)
 
 echo "--- Step 4: Verify config resolution module ---"
 uv run python -c "
-from agentops.config.schemas import AgentConfig, resolve_agent_model_config
+from agentops.config.runtime_models import AgentConfig, resolve_agent_model_config
 cfg = AgentConfig(model_name='test-model')
 assert cfg.model_name == 'test-model'
 assert cfg.api_key is None

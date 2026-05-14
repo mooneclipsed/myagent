@@ -6,7 +6,7 @@ from typing import Any
 from agentscope_runtime.engine import AgentApp
 
 from ..adapters.agentscope.runtime import AgentScopeRuntime, AgentScopeRuntimeProfile
-from ..config.schemas import AgentConfig
+from ..config.runtime_models import AgentConfig
 from .runtime_service import (
     get_runtime_profile,
 )

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from agentscope.tool import Toolkit
 
-from ..config.schemas import SkillConfig, SkillSummary
+from ..config.runtime_models import SkillConfig, SkillSummary
 
 
 @dataclass

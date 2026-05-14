@@ -98,8 +98,8 @@ flowchart TD
 | `src/agentops/adapters/agentscope/session_memory.py` | Loads and saves AgentScope memory through the configured session backend. |
 | `src/agentops/adapters/agentscope/tracing.py` | Handles AgentScope tracing setup, session context binding, warning filtering, and trace flushing. |
 | `src/agentops/config/settings.py` | Loads environment-backed settings with snake_case Python fields and uppercase environment aliases. |
-| `src/agentops/config/schemas.py` | Defines API request/response models plus `AgentModelConfig` resolution from request overrides and environment defaults. |
-| `src/agentops/capabilities/schemas.py` | Defines tool, skill, skill download, and MCP capability declaration models. |
+| `src/agentops/config/runtime_models.py` | Defines API request/response models plus `AgentModelConfig` resolution from request overrides and environment defaults. |
+| `src/agentops/capabilities/models.py` | Defines tool, skill, skill download, and MCP capability declaration models. |
 | `src/agentops/tools/` | Defines local deterministic tools, native file/shell tools, and the tool registry. |
 | `src/agentops/runtime/skill_runtime.py` | Registers configured AgentScope skills and builds skill summaries. |
 | `src/agentops/sessions/backend.py` | Selects and caches the JSON or Redis session backend. |

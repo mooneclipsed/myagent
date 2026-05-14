@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from agentops.runtime.skill_runtime import register_configured_skills
-from agentops.config.schemas import SkillConfig
+from agentops.config.runtime_models import SkillConfig
 from agentops.tools import create_base_toolkit
 from agentops.tools.native_tools import register_native_tools
 

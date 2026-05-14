@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import asyncio
 
-from ..capabilities.schemas import SkillDownloadSummary
+from ..capabilities.models import SkillDownloadSummary
 from ..adapters.agentscope.runtime import (
     AgentScopeInitializationError,
     AgentScopeRuntime,
     AgentScopeRuntimeProfile,
 )
-from ..config.schemas import RuntimeInitializeRequest
+from ..config.runtime_models import RuntimeInitializeRequest
 from ..sessions.backend import validate_session_id
 from ..tools import ToolRegistryError
 from .skill_install_service import (

@@ -12,7 +12,7 @@ import pytest
 from agentscope.message import Msg
 from pydantic import ValidationError
 
-from agentops.config.schemas import AgentConfig
+from agentops.config.runtime_models import AgentConfig
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +156,7 @@ def test_config_trace_logging(client, config_override_payload, caplog):
     with (
         patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
-        caplog.at_level(logging.INFO, logger="agentops.config.schemas"),
+        caplog.at_level(logging.INFO, logger="agentops.config.runtime_models"),
     ):
         response = client.post("/chat", json=config_override_payload)
 

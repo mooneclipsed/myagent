@@ -15,7 +15,7 @@ from agentscope.model._model_base import ChatModelBase
 from agentscope.token import OpenAITokenCounter
 from agentscope.tool import Toolkit
 
-from ...config.schemas import AgentModelConfig, MemoryCompressionConfig
+from ...config.runtime_models import AgentModelConfig, MemoryCompressionConfig
 from ...config.settings import get_settings
 
 logger = logging.getLogger(__name__)

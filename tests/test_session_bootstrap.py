@@ -197,7 +197,7 @@ def test_bootstrap_reloads_when_another_runtime_is_active(client):
 
 def test_bootstrap_reinit_closes_old_runtime_and_deletes_managed_skills(client, tmp_path):
     from agentops.application.skill_install_service import ManagedSkillState, ManagedSkillSyncResult
-    from agentops.capabilities.schemas import SkillConfig, SkillDownloadSummary
+    from agentops.capabilities.models import SkillConfig, SkillDownloadSummary
 
     old_skill_dir = tmp_path / "skills" / ".managed" / "skill_1_v1"
     old_skill_dir.mkdir(parents=True)
@@ -312,7 +312,7 @@ def test_build_react_agent_enables_console_output_from_settings(configured_env, 
     monkeypatch.setenv("AGENT_CONSOLE_OUTPUT_ENABLED", "true")
 
     from agentops.adapters.agentscope.agent_factory import build_react_agent
-    from agentops.config.schemas import AgentModelConfig
+    from agentops.config.runtime_models import AgentModelConfig
     from agentops.config.settings import get_settings
     from agentscope.memory import InMemoryMemory
     from agentscope.tool import Toolkit
@@ -360,7 +360,7 @@ def test_build_react_agent_uses_bootstrap_memory_compression(configured_env, cle
     from agentscope.tool import Toolkit
 
     from agentops.adapters.agentscope.agent_factory import build_react_agent
-    from agentops.config.schemas import AgentModelConfig, MemoryCompressionConfig
+    from agentops.config.runtime_models import AgentModelConfig, MemoryCompressionConfig
 
     agent = build_react_agent(
         resolved_config=AgentModelConfig(
@@ -685,7 +685,7 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
             ManagedSkillState,
             ManagedSkillSyncResult,
         )
-        from agentops.capabilities.schemas import SkillConfig, SkillDownloadSummary
+        from agentops.capabilities.models import SkillConfig, SkillDownloadSummary
 
         assert kwargs["skills_download_url"] == "http://skills.example"
         return ManagedSkillSyncResult(
@@ -729,7 +729,7 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
 def test_bootstrap_download_failure_fails_initialization(client):
     def fake_sync(**kwargs):
         from agentops.application.skill_install_service import ManagedSkillSyncResult
-        from agentops.capabilities.schemas import SkillDownloadSummary
+        from agentops.capabilities.models import SkillDownloadSummary
 
         return ManagedSkillSyncResult(
             summaries=[

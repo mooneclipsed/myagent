@@ -97,7 +97,7 @@ def test_bootstrap_stdio_session_success(client):
         ],
     }
 
-    with patch("src.adapters.agentscope.runtime.StdIOStatefulClient") as mock_stdio:
+    with patch("src.adapters.agentscope.mcp_runtime.StdIOStatefulClient") as mock_stdio:
         mock_client = AsyncMock()
         mock_client.name = "time-mcp"
         mock_client.is_connected = True
@@ -136,7 +136,7 @@ def test_bootstrap_http_session_success(client):
         ],
     }
 
-    with patch("src.adapters.agentscope.runtime.HttpStatefulClient") as mock_http:
+    with patch("src.adapters.agentscope.mcp_runtime.HttpStatefulClient") as mock_http:
         mock_client = AsyncMock()
         mock_client.name = "remote-mcp"
         mock_client.is_connected = True
@@ -450,7 +450,7 @@ def test_bootstrap_memory_compression_overrides_env_defaults(client, monkeypatch
 
 def test_thinking_formatter_warning_filter_is_installed_on_agentscope_logger():
     import logging
-    from src.adapters.agentscope.runtime import _AgentScopeThinkingWarningFilter
+    from src.adapters.agentscope.tracing import _AgentScopeThinkingWarningFilter
 
     logger = logging.getLogger("as")
 
@@ -477,7 +477,7 @@ def test_bootstrap_failure_rolls_back_connected_clients(client):
     second_client.is_connected = False
 
     with patch(
-        "src.adapters.agentscope.runtime.StdIOStatefulClient",
+        "src.adapters.agentscope.mcp_runtime.StdIOStatefulClient",
         side_effect=[first_client, second_client],
     ):
         response = client.post("/runtimes/init", json=payload)
@@ -637,7 +637,7 @@ def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, val
             )
             yield msg, True
 
-    with patch("src.adapters.agentscope.runtime.ot_trace.get_tracer_provider", return_value=tracer_provider):
+    with patch("src.adapters.agentscope.tracing.ot_trace.get_tracer_provider", return_value=tracer_provider):
         with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
             chat_response = client.post(
                 "/chat",

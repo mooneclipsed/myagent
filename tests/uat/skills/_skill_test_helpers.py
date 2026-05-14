@@ -9,11 +9,15 @@ REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", ".."))
 
 sys.path.insert(0, MANUAL_TESTS_DIR)
 
-from _helpers import bootstrap, chat, check, check_service_running  # noqa: E402
+from _helpers import bootstrap, chat, check, check_service_running, make_session_id  # noqa: E402
 
 
 def resolve_skill_dir(skill_dir_name: str) -> str:
     return os.path.join(REPO_ROOT, "skills", skill_dir_name)
+
+
+def make_skill_session_id(skill_name: str) -> str:
+    return make_session_id(f"manual-skill-{skill_name}")
 
 
 def run_skill_test(

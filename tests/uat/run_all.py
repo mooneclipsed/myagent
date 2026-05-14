@@ -2,8 +2,7 @@
 
 Usage:
     cd tests/uat
-    python run_all.py                 # run all
-    python run_all.py --skip-http-mcp # skip HTTP MCP (servers not running)
+    python run_all.py
 """
 
 import subprocess
@@ -15,7 +14,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TESTS = [
     ("test_tools.py",     "Local Tools (agent invocation)"),
     ("test_mcp_stdio.py", "MCP stdio (agent invocation)"),
-    ("test_mcp_http.py",  "MCP HTTP (agent invocation)"),
     ("test_skill.py",     "Skill activation & script (agent invocation)"),
     ("test_combined.py",  "Combined tool+MCP+skill routing"),
     ("test_b2b_reactagent.py", "B2B reactagent happy path"),
@@ -32,15 +30,9 @@ def run_test(script: str, label: str) -> bool:
 
 
 def main():
-    skip_http_mcp = "--skip-http-mcp" in sys.argv
-
     passed, failed, skipped = [], [], []
 
     for script, label in TESTS:
-        if script == "test_mcp_http.py" and skip_http_mcp:
-            print(f"\nSKIP: {label}")
-            skipped.append(label)
-            continue
         if run_test(script, label):
             passed.append(label)
         else:

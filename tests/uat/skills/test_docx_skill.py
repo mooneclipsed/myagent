@@ -5,10 +5,10 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from _skill_test_helpers import run_skill_test
+from _skill_test_helpers import make_skill_session_id, run_skill_test
 
 
-SESSION_ID = "manual-skill-docx"
+SESSION_ID = make_skill_session_id("docx")
 
 
 def main() -> None:

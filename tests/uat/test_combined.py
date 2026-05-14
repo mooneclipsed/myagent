@@ -15,9 +15,9 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from _helpers import check_service_running, bootstrap, chat, check
+from _helpers import check_service_running, bootstrap, chat, check, make_session_id
 
-SESSION_ID = "test-agent-combined"
+SESSION_ID = make_session_id("test-agent-combined")
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MCP_SERVER_DIR = os.path.join(REPO_ROOT, "mcp-server")

@@ -11,9 +11,9 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from _helpers import check_service_running, bootstrap, chat, check
+from _helpers import check_service_running, bootstrap, chat, check, make_session_id
 
-SESSION_ID = "test-agent-tools"
+SESSION_ID = make_session_id("test-agent-tools")
 
 
 def check_agent_calls_weather_tool():

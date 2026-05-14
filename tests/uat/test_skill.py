@@ -19,9 +19,9 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
-from _helpers import check_service_running, bootstrap, chat, check
+from _helpers import check_service_running, bootstrap, chat, check, make_session_id
 
-SESSION_ID = "test-agent-skill"
+SESSION_ID = make_session_id("test-agent-skill")
 
 HELLO_SKILL_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),

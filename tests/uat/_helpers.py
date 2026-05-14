@@ -9,6 +9,7 @@ verify it made the right choice.
 import json
 import os
 import sys
+import uuid
 from dataclasses import dataclass, field
 
 import httpx
@@ -16,6 +17,12 @@ import httpx
 SERVICE_URL = os.getenv("SERVICE_URL", "http://127.0.0.1:8000")
 CHAT_PATH = os.getenv("CHAT_PATH", "/chat")
 DEFAULT_TIMEOUT = float(os.getenv("TEST_TIMEOUT", "90"))
+
+
+def make_session_id(prefix: str) -> str:
+    """Return a unique session/runtime id with a readable test prefix."""
+    normalized_prefix = prefix.strip("-")
+    return f"{normalized_prefix}-{uuid.uuid4().hex}"
 
 
 @dataclass

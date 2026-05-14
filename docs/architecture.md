@@ -87,16 +87,16 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Client POST /runtimes/init] --> B[Runtime API handler]
-    B --> C[Convert RuntimeInitializeRequest to RuntimeSpec]
-    C --> D[initialize_runtime]
-    D --> E{runtime_id valid?}
-    E -- no --> F[Return validation error]
-    E -- yes --> G[Acquire runtime lock]
-    G --> H{active runtime exists?}
-    H -- yes --> I[Prepare replacement runtime using previous managed skill state]
-    H -- no --> J[Prepare first runtime from empty managed skill state]
-    I --> K[Build prepared RuntimeSpec]
-    J --> K
+    B --> C[initialize_runtime]
+    C --> D{runtime_id valid?}
+    D -- no --> E[Return validation error]
+    D -- yes --> F[Acquire runtime lock]
+    F --> G{active runtime exists?}
+    G -- yes --> H[Close active runtime and delete managed skills]
+    G -- no --> I[Continue]
+    H --> J[Download requested remote skills]
+    I --> J
+    J --> K[Build prepared RuntimeInitializeRequest]
 
     K --> O[AgentScopeRuntime.initialize]
     O --> P[Resolve effective model config]
@@ -266,7 +266,7 @@ sequenceDiagram
 
     Client->>API: POST /runtimes/init
     API->>RuntimeService: initialize_runtime_from_request(request)
-    RuntimeService->>AgentScopeRuntime: initialize(RuntimeSpec)
+    RuntimeService->>AgentScopeRuntime: initialize(RuntimeInitializeRequest)
     AgentScopeRuntime-->>RuntimeService: AgentScopeRuntimeProfile
     RuntimeService-->>API: runtime profile summary
     API-->>Client: runtime profile response

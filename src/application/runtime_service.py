@@ -11,7 +11,6 @@ from ..adapters.agentscope.runtime import (
     AgentScopeRuntimeProfile,
 )
 from ..config.schemas import RuntimeInitializeRequest
-from ..core.interfaces import RuntimeSpec
 from ..sessions.backend import validate_session_id
 from ..tools import ToolRegistryError
 from .skill_install_service import (
@@ -44,21 +43,6 @@ _runtime_lock = asyncio.Lock()
 _runtime_adapter = AgentScopeRuntime()
 
 
-def runtime_spec_from_initialize_request(request: RuntimeInitializeRequest) -> RuntimeSpec:
-    """Convert API initialization DTO into the framework-neutral runtime spec."""
-    return RuntimeSpec(
-        runtime_id=request.runtime_id,
-        agent_config=request.agent_config,
-        memory_compression=request.memory_compression,
-        system_prompt=request.system_prompt,
-        tools=request.tools,
-        skills=request.skills,
-        skill_downloads=request.skill_downloads,
-        skills_download_url=request.skills_download_url,
-        mcp_servers=request.mcp_servers,
-    )
-
-
 def get_active_session_runtime() -> AgentScopeRuntimeProfile | None:
     """Return the currently active runtime profile if any."""
     return _active_runtime
@@ -81,14 +65,14 @@ async def initialize_runtime_from_request(
     request: RuntimeInitializeRequest,
 ) -> tuple[AgentScopeRuntimeProfile, bool]:
     """Create and register the single active pod runtime profile."""
-    return await initialize_runtime(runtime_spec_from_initialize_request(request))
+    return await initialize_runtime(request)
 
 
-async def initialize_runtime(spec: RuntimeSpec) -> tuple[AgentScopeRuntimeProfile, bool]:
+async def initialize_runtime(request: RuntimeInitializeRequest) -> tuple[AgentScopeRuntimeProfile, bool]:
     """Create and register the single active pod runtime profile."""
     global _active_runtime, _active_managed_skills
 
-    if not validate_session_id(spec.runtime_id):
+    if not validate_session_id(request.runtime_id):
         raise SessionRuntimeValidationError("Invalid runtime_id format.")
 
     async with _runtime_lock:
@@ -101,7 +85,7 @@ async def initialize_runtime(spec: RuntimeSpec) -> tuple[AgentScopeRuntimeProfil
             await previous_runtime.close()
         cleanup_removed_managed_skills(previous_managed_skills)
 
-        runtime = await _initialize_runtime_locked(spec)
+        runtime = await _initialize_runtime_locked(request)
         _active_runtime = runtime
         return _active_runtime, True
 
@@ -121,10 +105,10 @@ async def close_all_session_runtimes() -> None:
     cleanup_removed_managed_skills(managed_skills)
 
 
-async def _initialize_runtime_locked(spec: RuntimeSpec) -> AgentScopeRuntimeProfile:
+async def _initialize_runtime_locked(request: RuntimeInitializeRequest) -> AgentScopeRuntimeProfile:
     global _active_managed_skills
 
-    prepared_spec, download_summaries, managed_state = _prepare_runtime_spec(spec)
+    prepared_request, download_summaries, managed_state = _prepare_runtime_request(request)
     try:
         _raise_for_failed_skill_downloads(download_summaries)
     except RuntimeInitializationError:
@@ -132,7 +116,7 @@ async def _initialize_runtime_locked(spec: RuntimeSpec) -> AgentScopeRuntimeProf
         raise
 
     try:
-        runtime = await _runtime_adapter.initialize(prepared_spec)
+        runtime = await _runtime_adapter.initialize(prepared_request)
     except ToolRegistryError as exc:
         cleanup_removed_managed_skills(list(managed_state.values()))
         raise SessionRuntimeValidationError(str(exc)) from exc
@@ -148,26 +132,16 @@ async def _initialize_runtime_locked(spec: RuntimeSpec) -> AgentScopeRuntimeProf
     return runtime
 
 
-def _prepare_runtime_spec(
-    spec: RuntimeSpec,
-) -> tuple[RuntimeSpec, list[SkillDownloadSummary], dict[ManagedSkillKey, ManagedSkillState]]:
+def _prepare_runtime_request(
+    request: RuntimeInitializeRequest,
+) -> tuple[RuntimeInitializeRequest, list[SkillDownloadSummary], dict[ManagedSkillKey, ManagedSkillState]]:
     sync_result = prepare_remote_skills(
-        requested=spec.skill_downloads,
-        skills_download_url=spec.skills_download_url,
+        requested=request.skill_downloads,
+        skills_download_url=request.skills_download_url,
     )
-    prepared_spec = RuntimeSpec(
-        runtime_id=spec.runtime_id,
-        agent_config=spec.agent_config,
-        memory_compression=spec.memory_compression,
-        system_prompt=spec.system_prompt,
-        tools=spec.tools,
-        skills=[*spec.skills, *sync_result.skills],
-        skill_downloads=spec.skill_downloads,
-        skills_download_url=spec.skills_download_url,
-        mcp_servers=spec.mcp_servers,
-    )
+    prepared_request = request.model_copy(update={"skills": [*request.skills, *sync_result.skills]})
     return (
-        prepared_spec,
+        prepared_request,
         sync_result.summaries,
         sync_result.state,
     )

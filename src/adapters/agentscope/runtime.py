@@ -27,10 +27,10 @@ from ...capabilities.schemas import (
 from ...config.schemas import (
     AgentConfig,
     MemoryCompressionConfig,
+    RuntimeInitializeRequest,
     resolve_effective_config,
 )
 from ...config.settings import get_settings
-from ...core.interfaces import RuntimeSpec
 from ...runtime.skill_runtime import (
     SkillRuntimeRegistry,
     register_configured_skills,
@@ -88,8 +88,8 @@ class AgentScopeRuntime:
     def __init__(self) -> None:
         self._profile: AgentScopeRuntimeProfile | None = None
 
-    async def initialize(self, spec: RuntimeSpec) -> AgentScopeRuntimeProfile:
-        resolved_config = resolve_effective_config(spec.agent_config)
+    async def initialize(self, request: RuntimeInitializeRequest) -> AgentScopeRuntimeProfile:
+        resolved_config = resolve_effective_config(request.agent_config)
         settings = get_settings()
         studio_url = settings.STUDIO_URL
         if settings.STUDIO_ENABLED and studio_url:
@@ -98,28 +98,28 @@ class AgentScopeRuntime:
                 project="agentops",
                 studio_url=studio_url,
                 tracing_url=tracing_url,
-                run_id=spec.runtime_id,
+                run_id=request.runtime_id,
             )
-            logger.info("AgentScope Studio connected: %s (run_id=%s)", studio_url, spec.runtime_id)
-            log_tracing_state(f"initialize:{spec.runtime_id}")
+            logger.info("AgentScope Studio connected: %s (run_id=%s)", studio_url, request.runtime_id)
+            log_tracing_state(f"initialize:{request.runtime_id}")
 
         session_toolkit = Toolkit()
         try:
-            tool_summaries = register_configured_tools(session_toolkit, spec.tools)
+            tool_summaries = register_configured_tools(session_toolkit, request.tools)
         except ToolRegistryError:
             raise
 
         register_native_tools(session_toolkit)
         skill_registry = register_configured_skills(
             toolkit=session_toolkit,
-            skill_configs=spec.skills,
+            skill_configs=request.skills,
         )
         mcp_clients: list[StatefulClientBase] = []
         summaries: list[MCPServerSummary] = []
         current_summary: MCPServerSummary | None = None
 
         try:
-            for mcp_server in spec.mcp_servers:
+            for mcp_server in request.mcp_servers:
                 current_summary = summarize_mcp_server(mcp_server)
                 client = create_mcp_client(mcp_server)
                 await client.connect()
@@ -136,10 +136,10 @@ class AgentScopeRuntime:
             raise AgentScopeInitializationError(detail) from exc
 
         profile = AgentScopeRuntimeProfile(
-            runtime_id=spec.runtime_id,
+            runtime_id=request.runtime_id,
             toolkit=session_toolkit,
-            system_prompt=spec.system_prompt,
-            memory_compression=spec.memory_compression,
+            system_prompt=request.system_prompt,
+            memory_compression=request.memory_compression,
             skill_registry=skill_registry,
             mcp_clients=mcp_clients,
             resolved_config=resolved_config,
@@ -147,7 +147,7 @@ class AgentScopeRuntime:
             skill_summaries=skill_registry.list_skill_summaries(),
             mcp_servers=summaries,
         )
-        _print_toolkit_loaded("Initialize", session_toolkit, runtime_id=spec.runtime_id)
+        _print_toolkit_loaded("Initialize", session_toolkit, runtime_id=request.runtime_id)
         self._profile = profile
         return profile
 

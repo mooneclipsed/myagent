@@ -106,7 +106,6 @@ Important elements:
 
 - lifecycle helpers
 - `initialize_runtime_from_request(...)`
-  - `shutdown_runtime_profile(...)`
   - `close_all_session_runtimes()`
   - `get_runtime_profile(...)`
 
@@ -114,10 +113,9 @@ This is intentionally a **single-active-runtime** implementation. It matches the
 
 ### 3. Runtime Routes
 
-`src/api/runtime_routes.py` adds two APIs:
+`src/api/runtime_routes.py` adds one API:
 
 - `POST /runtimes/init`
-- `POST /runtimes/{runtime_id}/shutdown`
 
 These routes are registered from `src/main.py` and live alongside the `/chat` endpoint.
 
@@ -183,19 +181,6 @@ When a request includes `runtime_id`:
 When an initialized runtime is reused, dynamic MCP tools are already present because the temporary agent is bound to the runtime-owned toolkit.
 
 This is the key reason dynamic MCP does not need to be visible in the global toolkit: the agent does not ask the process for tools at runtime. It reads its own toolkit.
-
-## Shutdown
-
-`POST /runtimes/{runtime_id}/shutdown`
-
-Shutdown closes the active runtime profile by:
-
-1. validating the runtime id
-2. locating the active runtime
-3. closing all runtime-owned MCP clients in LIFO order
-4. clearing the active runtime from memory
-
-Unknown runtime ids return `404`.
 
 ## Pod Teardown
 

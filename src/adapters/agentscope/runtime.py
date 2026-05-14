@@ -151,15 +151,6 @@ class AgentScopeRuntime:
         self._profile = profile
         return profile
 
-    async def reload(self, spec: RuntimeSpec) -> AgentScopeRuntimeProfile:
-        return await self.initialize(spec)
-
-    async def shutdown(self, runtime_id: str) -> None:
-        _ = runtime_id
-        if self._profile is not None:
-            await self._profile.close()
-            self._profile = None
-
     async def stream_chat(
         self,
         *,

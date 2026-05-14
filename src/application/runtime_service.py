@@ -30,10 +30,6 @@ class SessionRuntimeConflictError(SessionRuntimeError):
     """Raised when a runtime id conflicts with active pod state."""
 
 
-class SessionRuntimeNotFoundError(SessionRuntimeError):
-    """Raised when the requested runtime profile does not exist."""
-
-
 class SessionRuntimeValidationError(SessionRuntimeError):
     """Raised when a supplied runtime identifier is invalid."""
 
@@ -90,58 +86,24 @@ async def initialize_runtime_from_request(
 
 async def initialize_runtime(spec: RuntimeSpec) -> tuple[AgentScopeRuntimeProfile, bool]:
     """Create and register the single active pod runtime profile."""
-    global _active_runtime
+    global _active_runtime, _active_managed_skills
 
     if not validate_session_id(spec.runtime_id):
         raise SessionRuntimeValidationError("Invalid runtime_id format.")
 
     async with _runtime_lock:
-        if _active_runtime is not None:
-            return await _reload_runtime_locked(spec)
+        previous_runtime = _active_runtime
+        previous_managed_skills = list(_active_managed_skills.values())
+        _active_runtime = None
+        _active_managed_skills = {}
+
+        if previous_runtime is not None:
+            await previous_runtime.close()
+        cleanup_removed_managed_skills(previous_managed_skills)
 
         runtime = await _initialize_runtime_locked(spec)
         _active_runtime = runtime
         return _active_runtime, True
-
-
-async def reload_runtime(spec: RuntimeSpec) -> tuple[AgentScopeRuntimeProfile, bool]:
-    """Replace the active runtime with a newly initialized profile."""
-    global _active_runtime
-
-    if not validate_session_id(spec.runtime_id):
-        raise SessionRuntimeValidationError("Invalid runtime_id format.")
-
-    async with _runtime_lock:
-        runtime, previous, remove_after_swap = await _reload_runtime_locked(spec, include_previous=True)
-
-    if previous is not None:
-        await previous.close()
-    cleanup_removed_managed_skills(remove_after_swap)
-
-    return runtime, True
-
-
-async def shutdown_session_runtime(session_id: str) -> None:
-    """Close and clear the active runtime for legacy session-route callers."""
-    await shutdown_runtime_profile(session_id)
-
-
-async def shutdown_runtime_profile(runtime_id: str) -> None:
-    """Close and clear the active runtime for the given runtime id."""
-    global _active_runtime, _active_managed_skills
-
-    async with _runtime_lock:
-        if _active_runtime is None or _active_runtime.runtime_id != runtime_id:
-            raise SessionRuntimeNotFoundError(
-                f"No active runtime found for '{runtime_id}'.",
-            )
-        runtime = _active_runtime
-        managed_skills = list(_active_managed_skills.values())
-        _active_runtime = None
-        _active_managed_skills = {}
-
-    await runtime.close()
-    cleanup_removed_managed_skills(managed_skills)
 
 
 async def close_all_session_runtimes() -> None:
@@ -162,15 +124,23 @@ async def close_all_session_runtimes() -> None:
 async def _initialize_runtime_locked(spec: RuntimeSpec) -> AgentScopeRuntimeProfile:
     global _active_managed_skills
 
-    prepared_spec, download_summaries, managed_state, _ = _prepare_runtime_spec(
-        spec,
-        previous_managed_skills={},
-    )
+    prepared_spec, download_summaries, managed_state = _prepare_runtime_spec(spec)
+    try:
+        _raise_for_failed_skill_downloads(download_summaries)
+    except RuntimeInitializationError:
+        cleanup_removed_managed_skills(list(managed_state.values()))
+        raise
+
     try:
         runtime = await _runtime_adapter.initialize(prepared_spec)
     except ToolRegistryError as exc:
+        cleanup_removed_managed_skills(list(managed_state.values()))
         raise SessionRuntimeValidationError(str(exc)) from exc
     except AgentScopeInitializationError as exc:
+        cleanup_removed_managed_skills(list(managed_state.values()))
+        raise RuntimeInitializationError(str(exc)) from exc
+    except Exception as exc:
+        cleanup_removed_managed_skills(list(managed_state.values()))
         raise RuntimeInitializationError(str(exc)) from exc
 
     runtime.skill_downloads = download_summaries
@@ -178,47 +148,12 @@ async def _initialize_runtime_locked(spec: RuntimeSpec) -> AgentScopeRuntimeProf
     return runtime
 
 
-async def _reload_runtime_locked(
-    spec: RuntimeSpec,
-    *,
-    include_previous: bool = False,
-):
-    global _active_runtime, _active_managed_skills
-
-    previous = _active_runtime
-    prepared_spec, download_summaries, managed_state, remove_after_swap = _prepare_runtime_spec(
-        spec,
-        previous_managed_skills=_active_managed_skills,
-    )
-    try:
-        runtime = await _runtime_adapter.reload(prepared_spec)
-    except ToolRegistryError as exc:
-        raise SessionRuntimeValidationError(str(exc)) from exc
-    except AgentScopeInitializationError as exc:
-        raise RuntimeInitializationError(str(exc)) from exc
-
-    runtime.skill_downloads = download_summaries
-    _active_runtime = runtime
-    _active_managed_skills = managed_state
-
-    if include_previous:
-        return runtime, previous, remove_after_swap
-
-    if previous is not None:
-        await previous.close()
-    cleanup_removed_managed_skills(remove_after_swap)
-    return runtime, True
-
-
 def _prepare_runtime_spec(
     spec: RuntimeSpec,
-    *,
-    previous_managed_skills: dict[ManagedSkillKey, ManagedSkillState],
-) -> tuple[RuntimeSpec, list[SkillDownloadSummary], dict[ManagedSkillKey, ManagedSkillState], list[ManagedSkillState]]:
+) -> tuple[RuntimeSpec, list[SkillDownloadSummary], dict[ManagedSkillKey, ManagedSkillState]]:
     sync_result = prepare_remote_skills(
         requested=spec.skill_downloads,
         skills_download_url=spec.skills_download_url,
-        previous_state=previous_managed_skills,
     )
     prepared_spec = RuntimeSpec(
         runtime_id=spec.runtime_id,
@@ -235,5 +170,16 @@ def _prepare_runtime_spec(
         prepared_spec,
         sync_result.summaries,
         sync_result.state,
-        sync_result.remove_after_runtime_swap,
     )
+
+
+def _raise_for_failed_skill_downloads(summaries: list[SkillDownloadSummary]) -> None:
+    failed = [summary for summary in summaries if summary.status == "failed"]
+    if not failed:
+        return
+
+    details = [
+        f"skill_id={summary.skill_id} version_id={summary.version_id}: {summary.error or 'download failed'}"
+        for summary in failed
+    ]
+    raise RuntimeInitializationError("Remote skill download failed: " + "; ".join(details))

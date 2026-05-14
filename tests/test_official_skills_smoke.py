@@ -41,6 +41,3 @@ def test_bootstrap_selected_official_skills(client):
     assert "read_file" in runtime.toolkit.tools
     assert "edit_file" in runtime.toolkit.tools
     assert "run_local_shell" in runtime.toolkit.tools
-
-    shutdown = client.post("/runtimes/bootstrap-official-skills-001/shutdown")
-    assert shutdown.status_code == 200, shutdown.text

@@ -85,15 +85,6 @@ class RuntimeProfileResponse(BaseModel):
     mcp_servers: list[MCPServerSummary] = Field(default_factory=list)
 
 
-class SessionShutdownResponse(BaseModel):
-    """Response returned after closing a runtime profile."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    runtime_id: str
-    status: Literal["closed"] = "closed"
-
-
 def resolve_effective_config(agent_config: AgentConfig | None = None) -> dict:
     """Resolve effective model config by merging request overrides with .env defaults."""
     settings = get_settings()

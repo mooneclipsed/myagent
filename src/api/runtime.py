@@ -6,17 +6,13 @@ from agentscope_runtime.engine import AgentApp
 from ..config.schemas import (
     RuntimeInitializeRequest,
     RuntimeProfileResponse,
-    SessionShutdownResponse,
 )
 from ..application.runtime_service import (
     RuntimeInitializationError,
     SessionRuntimeConflictError,
-    SessionRuntimeNotFoundError,
     SessionRuntimeValidationError,
     initialize_runtime_from_request,
-    shutdown_runtime_profile,
 )
-from ..sessions.backend import validate_session_id
 
 
 def register_runtime_routes(app: AgentApp) -> None:
@@ -46,19 +42,3 @@ def register_runtime_routes(app: AgentApp) -> None:
             skill_downloads=runtime.skill_downloads,
             mcp_servers=runtime.mcp_servers,
         )
-
-    @app.post(
-        "/runtimes/{runtime_id}/shutdown",
-        response_model=SessionShutdownResponse,
-        tags=["runtime-api"],
-    )
-    async def shutdown_runtime(runtime_id: str) -> SessionShutdownResponse:
-        if not validate_session_id(runtime_id):
-            raise HTTPException(status_code=400, detail="Invalid runtime_id format.")
-
-        try:
-            await shutdown_runtime_profile(runtime_id)
-        except SessionRuntimeNotFoundError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-        return SessionShutdownResponse(runtime_id=runtime_id)

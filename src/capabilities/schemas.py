@@ -39,7 +39,7 @@ class SkillDownloadSummary(BaseModel):
 
     skill_id: int
     version_id: int
-    status: Literal["kept", "installed", "failed", "removed"]
+    status: Literal["installed", "failed"]
     skill_dir: str | None = None
     zip_path: str | None = None
     error: str | None = None

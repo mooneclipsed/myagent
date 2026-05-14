@@ -15,7 +15,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
-from _helpers import check_service_running, bootstrap, chat, shutdown, check
+from _helpers import check_service_running, bootstrap, chat, check
 
 SESSION_ID = "test-agent-b2b-reactagent"
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -109,10 +109,7 @@ def test_b2b_reactagent_happy_path() -> None:
     check("weather-mcp" in mcp_names, "bootstrap registered weather-mcp")
     check("hello" in skill_names, "bootstrap registered hello skill")
 
-    try:
-        check_agent_executes_full_b2b_flow()
-    finally:
-        shutdown(SESSION_ID)
+    check_agent_executes_full_b2b_flow()
 
     print()
     print("ALL PASSED: test_b2b_reactagent.py")

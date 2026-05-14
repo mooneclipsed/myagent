@@ -9,28 +9,19 @@ from src.capabilities.schemas import SkillDownloadConfig
 from src.integrations.skill_api_client import SkillDownloadError, SkillInstallResult
 
 
-def test_prepare_remote_skills_keeps_adds_and_marks_removed(tmp_path):
-    kept_dir = tmp_path / "skills" / ".managed" / "skill_1_v1"
-    kept_dir.mkdir(parents=True)
-    previous = {
-        (1, 1): ManagedSkillState(
-            skill_id=1,
-            version_id=1,
-            skill_dir=str(kept_dir),
-            zip_path=str(tmp_path / "skills" / ".downloads" / "skill_1_v1.zip"),
-        ),
-        (2, 1): ManagedSkillState(
-            skill_id=2,
-            version_id=1,
-            skill_dir=str(tmp_path / "skills" / ".managed" / "skill_2_v1"),
-        ),
-    }
+def test_prepare_remote_skills_reinstalls_requested_skills(tmp_path):
+    refreshed_dir = tmp_path / "skills" / ".managed" / "skill_1_v1"
+    refreshed_dir.mkdir(parents=True)
+    (refreshed_dir / "SKILL.md").write_text("user edited", encoding="utf-8")
+    installed_keys = []
 
     def downloader(base_url, key, skill_dir, download_root):
         assert base_url == "http://skills.example"
+        assert not skill_dir.exists()
         skill_id, version_id = key
+        installed_keys.append(key)
         skill_dir.mkdir(parents=True)
-        (skill_dir / "SKILL.md").write_text("---\nname: remote\n---\n", encoding="utf-8")
+        (skill_dir / "SKILL.md").write_text("---\nname: remote-new\n---\n", encoding="utf-8")
         zip_path = download_root / f"skill_{skill_id}_v{version_id}.zip"
         zip_path.parent.mkdir(parents=True, exist_ok=True)
         zip_path.write_bytes(b"zip")
@@ -49,15 +40,15 @@ def test_prepare_remote_skills_keeps_adds_and_marks_removed(tmp_path):
             SkillDownloadConfig(skill_id=3, version_id=2),
         ],
         skills_download_url="http://skills.example",
-        previous_state=previous,
         skills_dir=tmp_path / "skills",
         downloader=downloader,
     )
 
-    assert [summary.status for summary in result.summaries] == ["kept", "installed", "removed"]
+    assert installed_keys == [(1, 1), (3, 2)]
+    assert (refreshed_dir / "SKILL.md").read_text(encoding="utf-8") == "---\nname: remote-new\n---\n"
+    assert [summary.status for summary in result.summaries] == ["installed", "installed"]
     assert set(result.state) == {(1, 1), (3, 2)}
     assert [Path(skill.skill_dir).name for skill in result.skills] == ["skill_1_v1", "skill_3_v2"]
-    assert result.remove_after_runtime_swap == [previous[(2, 1)]]
 
 
 def test_prepare_remote_skills_continues_after_install_failure(tmp_path, caplog):

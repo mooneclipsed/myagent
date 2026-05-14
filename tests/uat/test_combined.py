@@ -15,7 +15,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from _helpers import check_service_running, bootstrap, chat, shutdown, check
+from _helpers import check_service_running, bootstrap, chat, check
 
 SESSION_ID = "test-agent-combined"
 
@@ -97,13 +97,10 @@ def test_combined_tool_mcp_skill_routing():
     check("weather-mcp" in mcp_names, "bootstrap: weather-mcp registered")
     check("hello" in skill_names, "bootstrap: hello registered")
 
-    try:
-        check_agent_routes_to_tool()
-        check_agent_routes_to_mcp()
-        check_agent_routes_to_skill()
-        check_agent_switches_between_capabilities()
-    finally:
-        shutdown(SESSION_ID)
+    check_agent_routes_to_tool()
+    check_agent_routes_to_mcp()
+    check_agent_routes_to_skill()
+    check_agent_switches_between_capabilities()
 
     print()
     print("ALL PASSED: test_combined.py")

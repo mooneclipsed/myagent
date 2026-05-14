@@ -44,7 +44,6 @@ class ManagedSkillSyncResult:
     skills: list[SkillConfig] = field(default_factory=list)
     summaries: list[SkillDownloadSummary] = field(default_factory=list)
     state: dict[ManagedSkillKey, ManagedSkillState] = field(default_factory=dict)
-    remove_after_runtime_swap: list[ManagedSkillState] = field(default_factory=list)
 
 
 Downloader = Callable[[str, ManagedSkillKey, Path, Path], SkillInstallResult]
@@ -54,55 +53,33 @@ def prepare_remote_skills(
     *,
     requested: list[SkillDownloadConfig],
     skills_download_url: str | None,
-    previous_state: dict[ManagedSkillKey, ManagedSkillState] | None = None,
     skills_dir: str | Path = DEFAULT_SKILLS_DIR,
     downloader: Downloader | None = None,
 ) -> ManagedSkillSyncResult:
     """Prepare remote skill downloads for a runtime initialization or reload.
 
-    Converts requested skill/version pairs into local SkillConfig entries by reusing
-    already-installed managed skills, downloading missing versions, and marking
-    unrequested previous versions for cleanup after a successful runtime swap.
-    Individual download failures are reported in summaries without blocking other
-    requested skills from being prepared.
+    Converts requested skill/version pairs into local SkillConfig entries by reinstalling
+    each requested version. Individual download failures are reported in summaries
+    without blocking other requested skills from being prepared.
     """
-    previous = previous_state or {}
     requested_keys = _filter_duplicate_skill_keys(requested)
     requested_set = set(requested_keys)
-    previous_set = set(previous)
 
-    keep = requested_set & previous_set
-    add = requested_set - previous_set
-    remove = previous_set - requested_set
+    to_install = requested_set
 
     result = ManagedSkillSyncResult()
     target_skills_dir = Path(skills_dir)
     managed_root = target_skills_dir / ".managed"
     download_root = target_skills_dir / ".downloads"
 
-    for key in requested_keys:
-        if key in keep:
-            state = previous[key]
-            result.state[key] = state
-            result.skills.append(SkillConfig(skill_dir=state.skill_dir))
-            result.summaries.append(
-                SkillDownloadSummary(
-                    skill_id=key[0],
-                    version_id=key[1],
-                    status="kept",
-                    skill_dir=state.skill_dir,
-                    zip_path=state.zip_path,
-                ),
-            )
-
-    if add:
+    if to_install:
         try:
             base_url = _resolve_base_url(skills_download_url)
         except SkillDownloadError as exc:
-            for key in sorted(add, key=_sort_key):
+            for key in sorted(to_install, key=_sort_key):
                 _append_failure(result, key, exc)
-            add = set()
-        for key in sorted(add, key=_sort_key):
+            to_install = set()
+        for key in sorted(to_install, key=_sort_key):
             install = _install_managed_skill(
                 base_url=base_url,
                 key=key,
@@ -131,18 +108,6 @@ def prepare_remote_skills(
                     zip_path=state.zip_path,
                 ),
             )
-
-    for key in sorted(remove, key=_sort_key):
-        result.remove_after_runtime_swap.append(previous[key])
-        result.summaries.append(
-            SkillDownloadSummary(
-                skill_id=key[0],
-                version_id=key[1],
-                status="removed",
-                skill_dir=previous[key].skill_dir,
-                zip_path=previous[key].zip_path,
-            ),
-        )
 
     return result
 

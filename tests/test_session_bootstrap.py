@@ -195,6 +195,70 @@ def test_bootstrap_reloads_when_another_runtime_is_active(client):
     assert get_runtime_profile("bootstrap-session-b") is not None
 
 
+def test_bootstrap_reinit_closes_old_runtime_and_deletes_managed_skills(client, tmp_path):
+    from src.application.skill_install_service import ManagedSkillState, ManagedSkillSyncResult
+    from src.capabilities.schemas import SkillConfig, SkillDownloadSummary
+
+    old_skill_dir = tmp_path / "skills" / ".managed" / "skill_1_v1"
+    old_skill_dir.mkdir(parents=True)
+    (old_skill_dir / "SKILL.md").write_text("---\nname: old\n---\n", encoding="utf-8")
+
+    def build_old_sync_result():
+        return ManagedSkillSyncResult(
+            state={
+                (1, 1): ManagedSkillState(
+                    skill_id=1,
+                    version_id=1,
+                    skill_dir=str(old_skill_dir),
+                )
+            },
+        )
+
+    def build_new_sync_result():
+        skill_dir = tmp_path / "skills" / ".managed" / "skill_2_v1"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: new\ndescription: new skill\n---\n",
+            encoding="utf-8",
+        )
+        return ManagedSkillSyncResult(
+            skills=[SkillConfig(skill_dir=str(skill_dir))],
+            summaries=[
+                SkillDownloadSummary(
+                    skill_id=2,
+                    version_id=1,
+                    status="installed",
+                    skill_dir=str(skill_dir),
+                )
+            ],
+            state={
+                (2, 1): ManagedSkillState(
+                    skill_id=2,
+                    version_id=1,
+                    skill_dir=str(skill_dir),
+                )
+            },
+        )
+
+    with patch("src.application.runtime_service.prepare_remote_skills") as sync:
+        sync.side_effect = [build_old_sync_result(), build_new_sync_result()]
+        response_a = client.post("/runtimes/init", json={"runtime_id": "bootstrap-reinit-a"})
+        response_b = client.post(
+            "/runtimes/init",
+            json={
+                "runtime_id": "bootstrap-reinit-b",
+                "skills_download_url": "http://skills.example",
+                "skill_downloads": [{"skill_id": 2, "version_id": 1}],
+            },
+        )
+
+    assert response_a.status_code == 200, response_a.text
+    assert response_b.status_code == 200, response_b.text
+    assert not old_skill_dir.exists()
+    assert get_runtime_profile("bootstrap-reinit-a") is None
+    assert get_runtime_profile("bootstrap-reinit-b") is not None
+
+
 def test_bootstrap_without_system_prompt_uses_default_prompt(client):
     payload = {"runtime_id": "bootstrap-default-prompt", "skills": [], "mcp_servers": []}
 
@@ -661,7 +725,7 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
     assert body["skill_downloads"][0]["status"] == "installed"
 
 
-def test_bootstrap_download_failure_continues_with_runtime(client):
+def test_bootstrap_download_failure_fails_initialization(client):
     def fake_sync(**kwargs):
         from src.application.skill_install_service import ManagedSkillSyncResult
         from src.capabilities.schemas import SkillDownloadSummary
@@ -689,10 +753,9 @@ def test_bootstrap_download_failure_continues_with_runtime(client):
             },
         )
 
-    assert response.status_code == 200, response.text
-    body = response.json()
-    assert body["skills"] == []
-    assert body["skill_downloads"][0]["status"] == "failed"
+    assert response.status_code == 502, response.text
+    assert "Remote skill download failed" in response.json()["detail"]
+    assert get_runtime_profile("bootstrap-download-skill-failure") is None
 
 
 def test_chat_rejects_agent_config_for_bootstrapped_session(client, valid_payload):
@@ -793,26 +856,6 @@ def test_same_session_id_streams_are_serialized():
     asyncio.run(_run())
 
     assert events == ["enter", "exit", "enter", "exit"]
-
-
-def test_shutdown_closes_active_runtime(client):
-    response = client.post(
-        "/runtimes/init",
-        json={"runtime_id": "bootstrap-shutdown-001", "skills": [], "mcp_servers": []},
-    )
-    assert response.status_code == 200
-
-    shutdown_response = client.post("/runtimes/bootstrap-shutdown-001/shutdown")
-    assert shutdown_response.status_code == 200
-    assert shutdown_response.json() == {
-        "runtime_id": "bootstrap-shutdown-001",
-        "status": "closed",
-    }
-
-
-def test_shutdown_missing_session_returns_404(client):
-    response = client.post("/runtimes/unknown-session/shutdown")
-    assert response.status_code == 404
 
 
 # ---------------------------------------------------------------------------

@@ -13,7 +13,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from _helpers import check_service_running, bootstrap, chat, shutdown, check
+from _helpers import check_service_running, bootstrap, chat, check
 
 SESSION_ID = "test-agent-mcp-stdio"
 
@@ -35,7 +35,6 @@ def check_agent_calls_weather_mcp():
 
 def check_agent_calls_hiking_mcp():
     """Hiking question → agent should discover and call MCP recommend_hiking_spots."""
-    shutdown(SESSION_ID)
     bootstrap(SESSION_ID, {
         "mcp_servers": [
             {
@@ -57,7 +56,6 @@ def check_agent_calls_hiking_mcp():
 
 def check_agent_picks_right_mcp_tool():
     """Two MCP servers registered, different questions → agent picks correctly."""
-    shutdown(SESSION_ID)
     bootstrap(SESSION_ID, {
         "mcp_servers": [
             {
@@ -110,12 +108,9 @@ def test_agent_mcp_stdio_invocation():
     mcp_names = [s["name"] for s in body.get("mcp_servers", [])]
     check("weather-mcp" in mcp_names, "bootstrap registered weather-mcp (stdio)")
 
-    try:
-        check_agent_calls_weather_mcp()
-        check_agent_calls_hiking_mcp()
-        check_agent_picks_right_mcp_tool()
-    finally:
-        shutdown(SESSION_ID)
+    check_agent_calls_weather_mcp()
+    check_agent_calls_hiking_mcp()
+    check_agent_picks_right_mcp_tool()
 
     print()
     print("ALL PASSED: test_mcp_stdio.py")

@@ -175,12 +175,6 @@ def chat(session_id: str, text: str, path: str | None = None) -> ChatResult:
     return ChatResult(text=extract_text(events), events=events)
 
 
-def shutdown(session_id: str) -> None:
-    resp = httpx.post(f"{SERVICE_URL}/runtimes/{session_id}/shutdown", timeout=10.0)
-    if resp.status_code not in (200, 404):
-        print(f"  WARNING: Shutdown returned {resp.status_code}", file=sys.stderr)
-
-
 def check(condition: bool, label: str, detail: str = "") -> None:
     """Assert a condition. Exit on failure, print PASS on success."""
     if not condition:

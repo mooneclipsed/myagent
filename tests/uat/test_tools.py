@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 import httpx
-from _helpers import SERVICE_URL, DEFAULT_TIMEOUT, check_service_running, bootstrap, chat, shutdown, check
+from _helpers import SERVICE_URL, DEFAULT_TIMEOUT, check_service_running, bootstrap, chat, check
 
 SESSION_ID = "test-agent-tools"
 
@@ -51,12 +51,9 @@ def test_agent_tool_invocation():
     tool_names = [t["name"] for t in body.get("tools", [])]
     check(len(tool_names) == 2, "bootstrap registered 2 tools", str(tool_names))
 
-    try:
-        check_agent_calls_weather_tool()
-        check_agent_calls_calculate_tool()
-        check_agent_picks_right_tool()
-    finally:
-        shutdown(SESSION_ID)
+    check_agent_calls_weather_tool()
+    check_agent_calls_calculate_tool()
+    check_agent_picks_right_tool()
 
     print()
     print("ALL PASSED: test_tools.py")

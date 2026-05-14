@@ -19,7 +19,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
-from _helpers import check_service_running, bootstrap, chat, shutdown, check
+from _helpers import check_service_running, bootstrap, chat, check
 
 SESSION_ID = "test-agent-skill"
 
@@ -153,13 +153,10 @@ def test_agent_skill_loading_and_script_execution():
     skill_names = [s["name"] for s in body.get("skills", [])]
     check("hello" in skill_names, "bootstrap registered hello")
 
-    try:
-        check_agent_uses_loaded_skill_context()
-        check_agent_uses_skill_script()
-        check_agent_reads_skill_resources()
-        check_agent_runs_script_with_different_args()
-    finally:
-        shutdown(SESSION_ID)
+    check_agent_uses_loaded_skill_context()
+    check_agent_uses_skill_script()
+    check_agent_reads_skill_resources()
+    check_agent_runs_script_with_different_args()
 
     print()
     print("ALL PASSED: test_skill.py")

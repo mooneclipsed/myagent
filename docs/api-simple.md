@@ -7,7 +7,7 @@ This document lists only the business APIs, with a short purpose, the main input
 ## POST `/runtimes/init`
 
 **Purpose**  
-Create or reload the pod runtime profile with optional tools, local skills, remote skill downloads, MCP servers, and model overrides.
+Recreate the pod runtime profile with optional tools, local skills, remote skill downloads, MCP servers, and model overrides.
 
 **Input**  
 `application/json`
@@ -40,7 +40,7 @@ Main fields:
   - `status` = `ready`
   - `tools` — enabled tool summaries
   - `skills` — loaded skill summaries
-  - `skill_downloads` — per-skill remote install results with `installed`, `kept`, `failed`, or `removed`
+  - `skill_downloads` — per-skill remote install results with `installed`
   - `mcp_servers` — MCP server summaries
 - `422 application/json`
   - Validation error payload
@@ -98,28 +98,10 @@ Example response:
 ```
 
 Remote skill behavior:
-- `skill_downloads` is a desired-state list. Calling initialize while a runtime is already active reloads the runtime.
-- On reload, unchanged remote skills are kept, new remote skills are downloaded, and removed remote skills are deleted after the new runtime is ready.
-- A single remote skill download or extraction failure does not fail the whole initialization. The failed item is returned with `status = failed`, and successfully installed or local skills still load.
+- `skill_downloads` is the remote skill list for the new runtime. Calling initialize while a runtime is already active closes the old runtime first.
+- Reinitialization deletes old managed remote skills before downloading the requested remote skills again, so user-edited managed skill files are refreshed.
+- Any remote skill download or extraction failure fails the whole initialization.
 - Managed remote skills are stored under `skills/.managed/`; downloaded ZIP files are stored under `skills/.downloads/`.
-
-## POST `/runtimes/{runtime_id}/shutdown`
-
-**Purpose**  
-Close the existing runtime profile.
-
-**Input**  
-Path parameter:
-- `runtime_id`
-
-No request body.
-
-**Output**  
-- `200 application/json`
-  - `runtime_id`
-  - `status` = `closed`
-- `422 application/json`
-  - Validation error payload
 
 ## POST `/chat`
 

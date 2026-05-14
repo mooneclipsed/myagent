@@ -11,7 +11,7 @@ flowchart TD
     Client[Client / SDK / UI]
 
     subgraph API[API Layer]
-        RuntimeAPI["Runtime API<br/>/runtimes/init<br/>/runtimes/:runtime_id/shutdown"]
+        RuntimeAPI["Runtime API<br/>/runtimes/init"]
         ChatAPI[Chat API<br/>/chat]
         ProcessAPI[Compatibility API<br/>/process]
     end

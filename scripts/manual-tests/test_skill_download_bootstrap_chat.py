@@ -82,12 +82,6 @@ def check_service_running(client: httpx.Client) -> None:
     response.raise_for_status()
 
 
-def shutdown_runtime(client: httpx.Client) -> None:
-    response = client.post(f"/runtimes/{RUNTIME_ID}/shutdown")
-    if response.status_code not in {200, 404}:
-        response.raise_for_status()
-
-
 def assert_downloaded_skill(bootstrap_body: dict) -> Path:
     downloads = bootstrap_body.get("skill_downloads", [])
     assert len(downloads) == 1, downloads
@@ -116,7 +110,6 @@ def main() -> None:
     try:
         with httpx.Client(base_url=SERVICE_URL, timeout=HTTP_TIMEOUT) as client:
             check_service_running(client)
-            shutdown_runtime(client)
 
             bootstrap_response = client.post(
                 "/runtimes/init",
@@ -168,11 +161,6 @@ def main() -> None:
             assert "测试大成功" in text
             assert f"用户请求: {USER_QUERY}" in text
     finally:
-        try:
-            with httpx.Client(base_url=SERVICE_URL, timeout=HTTP_TIMEOUT) as client:
-                shutdown_runtime(client)
-        except Exception:
-            pass
         server.shutdown()
         server.server_close()
 

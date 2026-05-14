@@ -83,15 +83,6 @@ def bootstrap_runtime(runtime_id: str) -> None:
     check(response.status_code == 200, "runtime bootstrap completed", response.text[:200])
 
 
-def shutdown_runtime(runtime_id: str) -> None:
-    response = httpx.post(
-        f"{SERVICE_URL}/runtimes/{runtime_id}/shutdown",
-        timeout=10.0,
-    )
-    if response.status_code not in (200, 404):
-        print(f"  WARNING: runtime shutdown returned {response.status_code}: {response.text[:200]}")
-
-
 def chat(runtime_id: str, session_id: str, text: str) -> str:
     response = httpx.post(
         f"{SERVICE_URL}/chat",
@@ -165,30 +156,27 @@ def main() -> None:
     check_service_running()
     bootstrap_runtime(runtime_id)
 
-    try:
-        first_text = chat(
-            runtime_id,
-            session_id,
-            "Remember this exact test fact: ALPHA-COMPRESSION-FACT. Reply briefly.",
-        )
-        check(first_text.strip() != "", "first LLM response is non-empty", first_text[:120])
+    first_text = chat(
+        runtime_id,
+        session_id,
+        "Remember this exact test fact: ALPHA-COMPRESSION-FACT. Reply briefly.",
+    )
+    check(first_text.strip() != "", "first LLM response is non-empty", first_text[:120])
 
-        second_text = chat(
-            runtime_id,
-            session_id,
-            "Now answer briefly: what exact test fact did I ask you to remember?",
-        )
-        check(second_text.strip() != "", "second LLM response is non-empty", second_text[:120])
+    second_text = chat(
+        runtime_id,
+        session_id,
+        "Now answer briefly: what exact test fact did I ask you to remember?",
+    )
+    check(second_text.strip() != "", "second LLM response is non-empty", second_text[:120])
 
-        memory = load_session_memory(session_id)
-        summary = memory.get("_compressed_summary", "")
-        check(isinstance(summary, str) and summary.strip() != "", "compressed summary was written", summary[:120])
+    memory = load_session_memory(session_id)
+    summary = memory.get("_compressed_summary", "")
+    check(isinstance(summary, str) and summary.strip() != "", "compressed summary was written", summary[:120])
 
-        count = compressed_mark_count(memory)
-        check(count > 0, "old messages were marked compressed", f"{count} compressed messages")
-        check("ALPHA-COMPRESSION-FACT" in json.dumps(memory, ensure_ascii=False), "test fact remains in saved memory")
-    finally:
-        shutdown_runtime(runtime_id)
+    count = compressed_mark_count(memory)
+    check(count > 0, "old messages were marked compressed", f"{count} compressed messages")
+    check("ALPHA-COMPRESSION-FACT" in json.dumps(memory, ensure_ascii=False), "test fact remains in saved memory")
 
     print()
     print("ALL PASSED: test_memory_compression_real_llm.py")

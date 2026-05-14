@@ -9,7 +9,7 @@ REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", ".."))
 
 sys.path.insert(0, MANUAL_TESTS_DIR)
 
-from _helpers import bootstrap, chat, check, check_service_running, shutdown  # noqa: E402
+from _helpers import bootstrap, chat, check, check_service_running  # noqa: E402
 
 
 def resolve_skill_dir(skill_dir_name: str) -> str:
@@ -48,12 +48,9 @@ def run_skill_test(
     skill_names = [item["name"] for item in body.get("skills", [])]
     check(skill_name in skill_names, f"bootstrap registered {skill_name}", str(skill_names))
 
-    try:
-        result = chat(session_id, prompt)
-        for snippet in expected_substrings:
-            check(snippet in result.text, f"response contains {snippet}", result.text)
-    finally:
-        shutdown(session_id)
+    result = chat(session_id, prompt)
+    for snippet in expected_substrings:
+        check(snippet in result.text, f"response contains {snippet}", result.text)
 
     print()
     print(f"ALL PASSED: {os.path.basename(sys.argv[0])}")

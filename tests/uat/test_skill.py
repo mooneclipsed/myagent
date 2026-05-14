@@ -60,8 +60,10 @@ def check_agent_uses_skill_script():
     before = read_marker_lines()
     result = chat(
         SESSION_ID,
-        "帮我用 hello skill 和 Alice 打个招呼。"
-        "这个 skill 已经随 runtime 加载；请根据技能说明用 run_local_shell 执行 scripts/say_hello.py。",
+        "请使用已加载的 hello skill 和 Alice 打招呼。"
+        "必须用 run_local_shell 执行下面这条命令，不能改写为命令行参数形式："
+        "printf '{\"name\": \"Alice\"}' | python skills/hello/scripts/say_hello.py。"
+        "请返回脚本原始输出。",
     )
     after = read_marker_lines()
 
@@ -109,7 +111,13 @@ def check_agent_reads_skill_resources():
 def check_agent_runs_script_with_different_args():
     """Ask greeting with different name → agent executes script with new args."""
     before = read_marker_lines()
-    result = chat(SESSION_ID, "再帮我用同样的方式跟 Bob 打个招呼。")
+    result = chat(
+        SESSION_ID,
+        "请用同样方式和 Bob 打招呼。"
+        "必须用 run_local_shell 执行："
+        "printf '{\"name\": \"Bob\"}' | python skills/hello/scripts/say_hello.py。"
+        "请返回脚本原始输出。",
+    )
     after = read_marker_lines()
 
     check(

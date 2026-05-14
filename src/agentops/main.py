@@ -1,8 +1,8 @@
 from agentscope_runtime.engine import AgentApp
 
-from .api.lifecycle import app_lifespan
+from .api.chat import register_chat_query
+from .api.lifespan import app_lifespan
 from .api.runtime import register_runtime_routes
-from .application.chat_service import register_chat_query
 from .config.settings import get_settings
 
 app = AgentApp(

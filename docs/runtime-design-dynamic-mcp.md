@@ -66,8 +66,9 @@ The following existing framework pieces are still central:
 The codebase continues to rely on `AgentApp` as the HTTP/SSE shell:
 
 - `src/agentops/main.py`
+- `src/agentops/api/chat.py`
 - `src/agentops/application/chat_service.py`
-- `src/agentops/api/lifecycle.py`
+- `src/agentops/api/lifespan.py`
 
 The main change is not the transport layer. The main change is **when and how the `ReActAgent` is created**:
 
@@ -184,7 +185,7 @@ This is the key reason dynamic MCP does not need to be visible in the global too
 
 ## Pod Teardown
 
-Application teardown is handled in `src/agentops/api/lifecycle.py`.
+Application teardown is handled in `src/agentops/api/lifespan.py`.
 
 The shutdown order is:
 
@@ -295,8 +296,9 @@ Implementation-relevant files in the current codebase:
 - `src/agentops/tools/registry.py`
 - `src/agentops/application/runtime_service.py`
 - `src/agentops/application/chat_service.py`
+- `src/agentops/api/chat.py`
 - `src/agentops/api/runtime.py`
-- `src/agentops/api/lifecycle.py`
+- `src/agentops/api/lifespan.py`
 - `src/agentops/main.py`
 - `tests/test_session_bootstrap.py`
 - `scripts/demos/demo_bootstrap_mcp.py`

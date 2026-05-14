@@ -3,8 +3,6 @@
 import asyncio
 from typing import Any
 
-from agentscope_runtime.engine import AgentApp
-
 from ..adapters.agentscope.runtime import AgentScopeRuntime, AgentScopeRuntimeProfile
 from ..config.runtime_models import AgentConfig
 from .runtime_service import (
@@ -94,7 +92,3 @@ async def chat_service(self, msgs, request=None, **kwargs):
             default_toolkit=toolkit,
         ):
             yield msg, last
-
-
-def register_chat_query(app: AgentApp) -> None:
-    app.query(framework="agentscope")(chat_service)

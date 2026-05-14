@@ -23,7 +23,7 @@ grep -q "load_session_memory" src/agentops/adapters/agentscope/runtime.py && ech
 grep -q "save_session_memory" src/agentops/adapters/agentscope/runtime.py && echo "OK: save_session_memory wired"
 
 echo "--- Step 7: Verify session dir creation in lifespan ---"
-grep -q "makedirs" src/agentops/api/lifecycle.py && echo "OK: session directory creation at startup"
+grep -q "makedirs" src/agentops/api/lifespan.py && echo "OK: session directory creation at startup"
 
 echo "--- Step 8: Verify test file exists ---"
 test -f tests/test_session.py && echo "OK: tests/test_session.py exists"

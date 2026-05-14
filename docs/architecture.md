@@ -87,8 +87,9 @@ flowchart TD
 | Path | Responsibility |
 | --- | --- |
 | `src/agentops/main.py` | Creates the `AgentApp`, registers `/chat` and `/runtimes/init`, and starts the app when run directly. |
+| `src/agentops/api/chat.py` | Registers the AgentScope `/chat` query endpoint on the app. |
 | `src/agentops/api/runtime.py` | Exposes `/runtimes/init` and maps runtime service exceptions to HTTP responses. |
-| `src/agentops/api/lifecycle.py` | Validates startup dependencies such as session storage and closes runtime/session resources on shutdown. |
+| `src/agentops/api/lifespan.py` | Validates startup dependencies such as session storage and closes runtime/session resources on shutdown. |
 | `src/agentops/application/runtime_service.py` | Owns the single active runtime profile, runtime lock, managed skill cleanup, and initialization error normalization. |
 | `src/agentops/application/chat_service.py` | Adapts AgentApp chat requests, validates `runtime_id`/`session_id`, serializes same-session streams with locks, and calls `AgentScopeRuntime.stream_chat`. |
 | `src/agentops/application/skill_install_service.py` | Downloads and prepares remotely managed skills before runtime initialization. |

@@ -16,7 +16,7 @@ from ..tools import ToolRegistryError
 from .skill_install_service import (
     ManagedSkillKey,
     ManagedSkillState,
-    cleanup_removed_managed_skills,
+    cleanup_managed_skills,
     prepare_remote_skills,
 )
 
@@ -79,7 +79,7 @@ async def initialize_runtime(request: RuntimeInitializeRequest) -> tuple[AgentSc
 
         if previous_runtime is not None:
             await previous_runtime.close()
-        cleanup_removed_managed_skills(previous_managed_skills)
+        cleanup_managed_skills(previous_managed_skills)
 
         runtime = await _initialize_runtime_locked(request)
         _active_runtime = runtime
@@ -98,33 +98,33 @@ async def close_all_session_runtimes() -> None:
 
     if runtime is not None:
         await runtime.close()
-    cleanup_removed_managed_skills(managed_skills)
+    cleanup_managed_skills(managed_skills)
 
 
 async def _initialize_runtime_locked(request: RuntimeInitializeRequest) -> AgentScopeRuntimeProfile:
     global _active_managed_skills
 
-    prepared_request, download_summaries, managed_state = _prepare_runtime_request(request)
+    prepared_request, download_summaries, managed_skills = _prepare_runtime_request(request)
     try:
         _raise_for_failed_skill_downloads(download_summaries)
     except RuntimeInitializationError:
-        cleanup_removed_managed_skills(list(managed_state.values()))
+        cleanup_managed_skills(list(managed_skills.values()))
         raise
 
     try:
         runtime = await _runtime_adapter.initialize(prepared_request)
     except ToolRegistryError as exc:
-        cleanup_removed_managed_skills(list(managed_state.values()))
+        cleanup_managed_skills(list(managed_skills.values()))
         raise SessionRuntimeValidationError(str(exc)) from exc
     except AgentScopeInitializationError as exc:
-        cleanup_removed_managed_skills(list(managed_state.values()))
+        cleanup_managed_skills(list(managed_skills.values()))
         raise RuntimeInitializationError(str(exc)) from exc
     except Exception as exc:
-        cleanup_removed_managed_skills(list(managed_state.values()))
+        cleanup_managed_skills(list(managed_skills.values()))
         raise RuntimeInitializationError(str(exc)) from exc
 
     runtime.skill_downloads = download_summaries
-    _active_managed_skills = managed_state
+    _active_managed_skills = managed_skills
     return runtime
 
 
@@ -139,7 +139,7 @@ def _prepare_runtime_request(
     return (
         prepared_request,
         sync_result.summaries,
-        sync_result.state,
+        sync_result.managed_skills,
     )
 
 

@@ -1,2 +1,0 @@
-"""Framework-neutral core contracts."""
-

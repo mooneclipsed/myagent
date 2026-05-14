@@ -205,7 +205,7 @@ def test_bootstrap_reinit_closes_old_runtime_and_deletes_managed_skills(client, 
 
     def build_old_sync_result():
         return ManagedSkillSyncResult(
-            state={
+            managed_skills={
                 (1, 1): ManagedSkillState(
                     skill_id=1,
                     version_id=1,
@@ -231,7 +231,7 @@ def test_bootstrap_reinit_closes_old_runtime_and_deletes_managed_skills(client, 
                     skill_dir=str(skill_dir),
                 )
             ],
-            state={
+            managed_skills={
                 (2, 1): ManagedSkillState(
                     skill_id=2,
                     version_id=1,
@@ -699,7 +699,7 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
                     zip_path=str(tmp_path / "skills" / ".downloads" / "skill_1_v1.zip"),
                 )
             ],
-            state={
+            managed_skills={
                 (1, 1): ManagedSkillState(
                     skill_id=1,
                     version_id=1,

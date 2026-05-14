@@ -43,7 +43,7 @@ class ManagedSkillSyncResult:
 
     skills: list[SkillConfig] = field(default_factory=list)
     summaries: list[SkillDownloadSummary] = field(default_factory=list)
-    state: dict[ManagedSkillKey, ManagedSkillState] = field(default_factory=dict)
+    managed_skills: dict[ManagedSkillKey, ManagedSkillState] = field(default_factory=dict)
 
 
 Downloader = Callable[[str, ManagedSkillKey, Path, Path], SkillInstallResult]
@@ -62,24 +62,20 @@ def prepare_remote_skills(
     each requested version. Individual download failures are reported in summaries
     without blocking other requested skills from being prepared.
     """
-    requested_keys = _filter_duplicate_skill_keys(requested)
-    requested_set = set(requested_keys)
-
-    to_install = requested_set
-
     result = ManagedSkillSyncResult()
+    requested_keys = _deduplicate_skill_keys(requested)
     target_skills_dir = Path(skills_dir)
     managed_root = target_skills_dir / ".managed"
     download_root = target_skills_dir / ".downloads"
 
-    if to_install:
+    if requested_keys:
         try:
             base_url = _resolve_base_url(skills_download_url)
         except SkillDownloadError as exc:
-            for key in sorted(to_install, key=_sort_key):
+            for key in requested_keys:
                 _append_failure(result, key, exc)
-            to_install = set()
-        for key in sorted(to_install, key=_sort_key):
+            return result
+        for key in requested_keys:
             install = _install_managed_skill(
                 base_url=base_url,
                 key=key,
@@ -97,7 +93,7 @@ def prepare_remote_skills(
                 skill_dir=str(skill_dir),
                 zip_path=str(install.zip_path),
             )
-            result.state[key] = state
+            result.managed_skills[key] = state
             result.skills.append(SkillConfig(skill_dir=state.skill_dir))
             result.summaries.append(
                 SkillDownloadSummary(
@@ -112,7 +108,7 @@ def prepare_remote_skills(
     return result
 
 
-def cleanup_removed_managed_skills(states: list[ManagedSkillState]) -> None:
+def cleanup_managed_skills(states: list[ManagedSkillState]) -> None:
     """Delete managed skill directories that are no longer referenced by the active runtime."""
     for state in states:
         path = Path(state.skill_dir)
@@ -199,7 +195,7 @@ def _resolve_skill_dir(extracted_to: Path) -> Path:
     return extracted
 
 
-def _filter_duplicate_skill_keys(requested: list[SkillDownloadConfig]) -> list[ManagedSkillKey]:
+def _deduplicate_skill_keys(requested: list[SkillDownloadConfig]) -> list[ManagedSkillKey]:
     keys: list[ManagedSkillKey] = []
     seen: set[ManagedSkillKey] = set()
     for item in requested:
@@ -226,7 +222,3 @@ def _append_failure(result: ManagedSkillSyncResult, key: ManagedSkillKey, exc: E
             error=str(exc),
         ),
     )
-
-
-def _sort_key(key: ManagedSkillKey) -> tuple[int, int]:
-    return key

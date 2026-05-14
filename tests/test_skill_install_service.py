@@ -2,7 +2,7 @@ from pathlib import Path
 
 from agentops.application.skill_install_service import (
     ManagedSkillState,
-    cleanup_removed_managed_skills,
+    cleanup_managed_skills,
     prepare_remote_skills,
 )
 from agentops.capabilities.models import SkillDownloadConfig
@@ -47,8 +47,39 @@ def test_prepare_remote_skills_reinstalls_requested_skills(tmp_path):
     assert installed_keys == [(1, 1), (3, 2)]
     assert (refreshed_dir / "SKILL.md").read_text(encoding="utf-8") == "---\nname: remote-new\n---\n"
     assert [summary.status for summary in result.summaries] == ["installed", "installed"]
-    assert set(result.state) == {(1, 1), (3, 2)}
+    assert set(result.managed_skills) == {(1, 1), (3, 2)}
     assert [Path(skill.skill_dir).name for skill in result.skills] == ["skill_1_v1", "skill_3_v2"]
+
+
+def test_prepare_remote_skills_keeps_request_order_after_deduplication(tmp_path):
+    installed_keys = []
+
+    def downloader(base_url, key, skill_dir, download_root):
+        skill_id, version_id = key
+        installed_keys.append(key)
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("---\nname: remote\n---\n", encoding="utf-8")
+        return SkillInstallResult(
+            skill_id=skill_id,
+            version_id=version_id,
+            zip_path=download_root / f"skill_{skill_id}_v{version_id}.zip",
+            extracted_to=skill_dir,
+            content_type="application/zip",
+            content_disposition=None,
+        )
+
+    prepare_remote_skills(
+        requested=[
+            SkillDownloadConfig(skill_id=3, version_id=2),
+            SkillDownloadConfig(skill_id=1, version_id=1),
+            SkillDownloadConfig(skill_id=3, version_id=2),
+        ],
+        skills_download_url="http://skills.example",
+        skills_dir=tmp_path / "skills",
+        downloader=downloader,
+    )
+
+    assert installed_keys == [(3, 2), (1, 1)]
 
 
 def test_prepare_remote_skills_continues_after_install_failure(tmp_path, caplog):
@@ -81,7 +112,7 @@ def test_prepare_remote_skills_continues_after_install_failure(tmp_path, caplog)
         (1, "failed"),
         (2, "installed"),
     ]
-    assert list(result.state) == [(2, 1)]
+    assert list(result.managed_skills) == [(2, 1)]
     assert "Managed skill install failed" in caplog.text
 
 
@@ -102,11 +133,11 @@ def test_prepare_remote_skills_reports_missing_download_url_without_stopping_all
     assert result.skills == []
 
 
-def test_cleanup_removed_managed_skills_deletes_directory(tmp_path):
+def test_cleanup_managed_skills_deletes_directory(tmp_path):
     skill_dir = tmp_path / "skills" / ".managed" / "skill_1_v1"
     skill_dir.mkdir(parents=True)
 
-    cleanup_removed_managed_skills([
+    cleanup_managed_skills([
         ManagedSkillState(skill_id=1, version_id=1, skill_dir=str(skill_dir)),
     ])
 

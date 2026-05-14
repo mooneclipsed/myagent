@@ -15,7 +15,7 @@ def test_startup_uses_default_MODEL_PROVIDER_when_missing(configured_env, clear_
     with TestClient(app):
         pass
 
-    assert get_settings().MODEL_PROVIDER == "openai"
+    assert get_settings().model_provider == "openai"
 
 
 def test_startup_fails_when_MODEL_NAME_missing(configured_env, clear_settings_cache, monkeypatch):
@@ -93,5 +93,5 @@ def test_main_uses_port_from_settings(configured_env, clear_settings_cache, monk
     with monkeypatch.context() as patch_ctx:
         patch_ctx.setattr(main, "app", type("FakeApp", (), {"run": lambda self, host, port: setattr(self, "called", (host, port))})())
         settings = get_settings()
-        main.app.run(host="127.0.0.1", port=settings.PORT)
+        main.app.run(host="127.0.0.1", port=settings.port)
         assert main.app.called == ("127.0.0.1", 8211)

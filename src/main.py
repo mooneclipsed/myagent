@@ -17,4 +17,4 @@ register_runtime_routes(app)
 
 if __name__ == "__main__":
     settings = get_settings()
-    app.run(host="127.0.0.1", port=settings.PORT)
+    app.run(host="127.0.0.1", port=settings.port)

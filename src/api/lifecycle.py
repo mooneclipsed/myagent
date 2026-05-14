@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 async def app_lifespan(_: FastAPI):
     settings = get_settings()
 
-    if settings.SESSION_BACKEND == "json":
-        session_dir = settings.SESSION_DIR
+    if settings.session_backend == "json":
+        session_dir = settings.session_dir
         os.makedirs(session_dir, exist_ok=True)
         logger.info("Session directory ready: %s", session_dir)
 
-    if settings.SESSION_BACKEND == "redis":
+    if settings.session_backend == "redis":
         from ..sessions.backend import get_session_backend
 
         backend = get_session_backend()
@@ -32,7 +32,7 @@ async def app_lifespan(_: FastAPI):
         except Exception as e:
             raise RuntimeError(
                 f"Redis health check failed: {e}. "
-                f"Ensure Redis is running at {settings.REDIS_HOST}:{settings.REDIS_PORT}"
+                f"Ensure Redis is running at {settings.redis_host}:{settings.redis_port}"
             ) from e
 
     yield

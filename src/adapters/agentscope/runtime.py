@@ -92,8 +92,8 @@ class AgentScopeRuntime:
     async def initialize(self, request: RuntimeInitializeRequest) -> AgentScopeRuntimeProfile:
         resolved_config = resolve_agent_model_config(request.agent_config)
         settings = get_settings()
-        studio_url = settings.STUDIO_URL
-        if settings.STUDIO_ENABLED and studio_url:
+        studio_url = settings.studio_url
+        if settings.studio_enabled and studio_url:
             tracing_url = studio_url.rstrip("/") + "/v1/traces"
             agentscope.init(
                 project="agentops",
@@ -293,7 +293,7 @@ def log_tracing_state(context: str) -> None:
 
 
 def _query_tracing_enabled() -> bool:
-    return get_settings().STUDIO_ENABLED
+    return get_settings().studio_enabled
 
 
 @contextmanager

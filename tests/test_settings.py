@@ -10,7 +10,7 @@ def test_missing_MODEL_PROVIDER_defaults_to_openai(configured_env, clear_setting
 
     settings = get_settings()
 
-    assert settings.MODEL_PROVIDER == "openai"
+    assert settings.model_provider == "openai"
 
 
 def test_missing_MODEL_NAME_raises_validation_error(configured_env, clear_settings_cache, monkeypatch):
@@ -53,13 +53,13 @@ def test_get_settings_loads_values_once_with_all_required_keys(configured_env, c
     settings_second = get_settings()
 
     assert settings_first is settings_second
-    assert settings_first.MODEL_PROVIDER == "openai"
-    assert settings_first.MODEL_NAME == "test-model"
-    assert settings_first.MODEL_API_KEY == "test-key"
-    assert settings_first.MODEL_BASE_URL == "http://localhost:9999/v1"
-    assert settings_first.PORT == 8000
-    assert settings_first.STUDIO_ENABLED is False
-    assert settings_first.AGENT_CONSOLE_OUTPUT_ENABLED is False
+    assert settings_first.model_provider == "openai"
+    assert settings_first.model_name == "test-model"
+    assert settings_first.model_api_key == "test-key"
+    assert settings_first.model_base_url == "http://localhost:9999/v1"
+    assert settings_first.port == 8000
+    assert settings_first.studio_enabled is False
+    assert settings_first.agent_console_output_enabled is False
 
 
 def test_settings_loading_does_not_require_env_example_file(configured_env, clear_settings_cache, tmp_path, monkeypatch):
@@ -69,5 +69,5 @@ def test_settings_loading_does_not_require_env_example_file(configured_env, clea
 
     settings = get_settings()
 
-    assert settings.MODEL_PROVIDER == "openai"
+    assert settings.model_provider == "openai"
     assert not (tmp_path / ".env.example").exists()

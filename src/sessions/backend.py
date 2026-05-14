@@ -30,22 +30,22 @@ def get_session_backend() -> JSONSession | RedisSession:
     global _session_backend
     if _session_backend is None:
         settings = get_settings()
-        if settings.SESSION_BACKEND == "redis":
+        if settings.session_backend == "redis":
             _session_backend = RedisSession(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                db=settings.REDIS_DB,
-                password=settings.REDIS_PASSWORD,
+                host=settings.redis_host,
+                port=settings.redis_port,
+                db=settings.redis_db,
+                password=settings.redis_password,
                 key_prefix="agentops:",
             )
             logger.info(
                 "Session backend initialized: redis at %s:%s db=%s",
-                settings.REDIS_HOST,
-                settings.REDIS_PORT,
-                settings.REDIS_DB,
+                settings.redis_host,
+                settings.redis_port,
+                settings.redis_db,
             )
         else:
-            session_dir = settings.SESSION_DIR
+            session_dir = settings.session_dir
             _session_backend = JSONSession(save_dir=session_dir)
             logger.info("Session backend initialized: save_dir=%s", session_dir)
     return _session_backend

@@ -75,7 +75,7 @@ def build_react_agent(
         resolved_config.model_name,
         resolved_config.base_url,
         len(effective_system_prompt),
-        settings.AGENT_CONSOLE_OUTPUT_ENABLED,
+        settings.agent_console_output_enabled,
         type(formatter).__name__,
         bool(compression_config),
     )
@@ -94,7 +94,7 @@ def build_react_agent(
         compression_config=compression_config,
     )
     agent.set_console_output_enabled(
-        enabled=settings.AGENT_CONSOLE_OUTPUT_ENABLED,
+        enabled=settings.agent_console_output_enabled,
     )
     return agent
 
@@ -108,7 +108,7 @@ def _build_compression_config(
     enabled = (
         memory_compression.enabled
         if memory_compression and memory_compression.enabled is not None
-        else settings.AGENT_MEMORY_COMPRESSION_ENABLED
+        else settings.agent_memory_compression_enabled
     )
     if not enabled:
         return None
@@ -116,12 +116,12 @@ def _build_compression_config(
     trigger_tokens = (
         memory_compression.trigger_tokens
         if memory_compression and memory_compression.trigger_tokens is not None
-        else settings.AGENT_MEMORY_COMPRESSION_TRIGGER_TOKENS
+        else settings.agent_memory_compression_trigger_tokens
     )
     keep_recent = (
         memory_compression.keep_recent
         if memory_compression and memory_compression.keep_recent is not None
-        else settings.AGENT_MEMORY_COMPRESSION_KEEP_RECENT
+        else settings.agent_memory_compression_keep_recent
     )
     return ReActAgent.CompressionConfig(
         enable=True,

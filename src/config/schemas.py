@@ -101,15 +101,15 @@ def resolve_agent_model_config(agent_config: AgentConfig | None = None) -> Agent
 
     if agent_config is None:
         effective = AgentModelConfig(
-            model_name=settings.MODEL_NAME,
-            api_key=settings.MODEL_API_KEY,
-            base_url=settings.MODEL_BASE_URL,
+            model_name=settings.model_name,
+            api_key=settings.model_api_key,
+            base_url=settings.model_base_url,
         )
     else:
         effective = AgentModelConfig(
-            model_name=agent_config.model_name or settings.MODEL_NAME,
-            api_key=agent_config.api_key or settings.MODEL_API_KEY,
-            base_url=agent_config.base_url or settings.MODEL_BASE_URL,
+            model_name=agent_config.model_name or settings.model_name,
+            api_key=agent_config.api_key or settings.model_api_key,
+            base_url=agent_config.base_url or settings.model_base_url,
         )
 
     source = "request" if agent_config else "env"

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.application.runtime_service import get_runtime_profile
+from agentops.application.runtime_service import get_runtime_profile
 
 SELECTED_SKILLS = [
     "doc-coauthoring",

@@ -18,7 +18,7 @@ env = {**os.environ,
     'MODEL_API_KEY': 'phase2-smoke-key',
     'MODEL_BASE_URL': 'http://127.0.0.1:9999'}
 p = subprocess.Popen(
-    ['uv', 'run', 'uvicorn', 'src.main:app', '--host', '127.0.0.1', '--port', '8012'],
+    ['uv', 'run', 'uvicorn', 'agentops.main:app', '--host', '127.0.0.1', '--port', '8012'],
     env=env)
 time.sleep(3)
 running = (p.poll() is None)
@@ -30,7 +30,7 @@ sys.exit(0 if running else 1)
 
 echo "--- Step 4: Verify /chat endpoint registered ---"
 uv run python -c "
-from src.main import app
+from agentops.main import app
 routes = [r.path for r in app.routes]
 assert '/chat' in routes, f'/chat not in {routes}'
 print('PASS: /chat endpoint is registered')

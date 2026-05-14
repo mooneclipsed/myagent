@@ -13,17 +13,17 @@ echo "--- Step 3: Run full test suite ---"
 uv run pytest tests/ -x -q --ignore=tests/test_context.py
 
 echo "--- Step 4: Verify session module exists ---"
-test -f src/agent/session.py && echo "OK: src/agent/session.py exists"
+test -f src/agentops/sessions/backend.py && echo "OK: src/agentops/sessions/backend.py exists"
 
 echo "--- Step 5: Verify SESSION_DIR in settings ---"
-grep -q "SESSION_DIR" src/core/settings.py && echo "OK: SESSION_DIR field found in settings"
+grep -q "session_dir" src/agentops/config/settings.py && echo "OK: session_dir field found in settings"
 
 echo "--- Step 6: Verify session load/save in query handler ---"
-grep -q "load_session_state" src/agent/query.py && echo "OK: load_session_state wired"
-grep -q "save_session_state" src/agent/query.py && echo "OK: save_session_state wired"
+grep -q "load_session_memory" src/agentops/adapters/agentscope/runtime.py && echo "OK: load_session_memory wired"
+grep -q "save_session_memory" src/agentops/adapters/agentscope/runtime.py && echo "OK: save_session_memory wired"
 
 echo "--- Step 7: Verify session dir creation in lifespan ---"
-grep -q "makedirs" src/app/lifespan.py && echo "OK: session directory creation at startup"
+grep -q "makedirs" src/agentops/api/lifecycle.py && echo "OK: session directory creation at startup"
 
 echo "--- Step 8: Verify test file exists ---"
 test -f tests/test_session.py && echo "OK: tests/test_session.py exists"

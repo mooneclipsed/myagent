@@ -4,7 +4,7 @@ import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
-from src.application.runtime_service import close_all_session_runtimes
+from agentops.application.runtime_service import close_all_session_runtimes
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +23,7 @@ def configured_env(monkeypatch):
     monkeypatch.setenv("MODEL_API_KEY", "test-key")
     monkeypatch.setenv("MODEL_BASE_URL", "http://localhost:9999/v1")
     # Prevent .env file from providing fallback values during tests
-    from src.config.settings import Settings
+    from agentops.config.settings import Settings
 
     monkeypatch.setattr(
         Settings,
@@ -36,14 +36,14 @@ def configured_env(monkeypatch):
 def clear_settings_cache():
     """Clear the lru_cache on get_settings before and after each test."""
     try:
-        from src.config.settings import get_settings
+        from agentops.config.settings import get_settings
 
         get_settings.cache_clear()
     except Exception:
         pass
     yield
     try:
-        from src.config.settings import get_settings
+        from agentops.config.settings import get_settings
 
         get_settings.cache_clear()
     except Exception:
@@ -53,7 +53,7 @@ def clear_settings_cache():
 @pytest.fixture
 def client(configured_env, clear_settings_cache):
     """Create a TestClient with env configured so app boots without errors."""
-    from src.main import app
+    from agentops.main import app
 
     with TestClient(app) as c:
         yield c

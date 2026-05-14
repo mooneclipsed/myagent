@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from src.runtime.skill_runtime import register_configured_skills
-from src.config.schemas import SkillConfig
-from src.tools import create_base_toolkit
-from src.tools.native_tools import register_native_tools
+from agentops.runtime.skill_runtime import register_configured_skills
+from agentops.config.schemas import SkillConfig
+from agentops.tools import create_base_toolkit
+from agentops.tools.native_tools import register_native_tools
 
 
 EXAMPLE_SKILL_DIR = str(

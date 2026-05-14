@@ -14,17 +14,17 @@ The implemented model is:
 - **runtime-owned toolkit**
 - **legacy global toolkit retained for non-bootstrap callers**
 
-This means the process can hold one active bootstrapped runtime profile in memory at a time. That runtime owns its own `Toolkit` and MCP client list. Each `/process` request builds a temporary agent with conversation memory keyed by `session_id`.
+This means the process can hold one active bootstrapped runtime profile in memory at a time. That runtime owns its own `Toolkit` and MCP client list. Each `/chat` request builds a temporary agent with conversation memory keyed by `session_id`.
 
-The runtime-scoped profile is implemented in `src/runtime/session_runtime.py`.
+The runtime-scoped profile is coordinated from `src/agentops/application/runtime_service.py` and implemented by `src/agentops/adapters/agentscope/runtime.py`.
 
 ## Why Dynamic MCP Is Not Written Into the Global Toolkit
 
-The codebase already has a module-level shared toolkit in `src/tools/__init__.py`. That shared toolkit is useful for:
+The codebase already has a module-level shared toolkit in `src/agentops/tools/__init__.py`. That shared toolkit is useful for:
 
 - built-in deterministic tools
 - bundled example skills
-- the legacy `/process` path
+- the legacy `/chat` path without runtime bootstrap
 - the startup-time example MCP server used for backward compatibility
 
 Dynamic MCP configuration is not added to that global toolkit because bootstrap-time MCP servers are runtime-owned resources rather than process defaults.
@@ -44,9 +44,9 @@ Using a runtime-owned toolkit has several advantages:
    - If any MCP server fails to connect or register, the partially created MCP clients are closed and the runtime is not published.
 
 4. **Legacy compatibility**
-   - The original shared toolkit remains available for callers that still use `/process` without first bootstrapping a session.
+   - The original shared toolkit remains available for callers that still use `/chat` without first bootstrapping a runtime.
 
-The helper `create_base_toolkit()` in `src/tools/__init__.py` is the bridge between the two worlds:
+The helper `create_base_toolkit()` in `src/agentops/tools/registry.py` is the bridge between the two worlds:
 
 - the request-scoped fallback path still uses the module-level `toolkit`
 - the initialization path creates a fresh runtime-owned toolkit
@@ -65,9 +65,9 @@ The following existing framework pieces are still central:
 
 The codebase continues to rely on `AgentApp` as the HTTP/SSE shell:
 
-- `src/main.py`
-- `src/application/chat_service.py`
-- `src/api/lifespan.py`
+- `src/agentops/main.py`
+- `src/agentops/application/chat_service.py`
+- `src/agentops/api/lifecycle.py`
 
 The main change is not the transport layer. The main change is **when and how the `ReActAgent` is created**:
 
@@ -78,7 +78,7 @@ The main change is not the transport layer. The main change is **when and how th
 
 ### 1. Base Toolkit Helpers
 
-`src/tools/__init__.py` now provides:
+`src/agentops/tools/registry.py` now provides:
 
 - `register_default_tools(target_toolkit)`
 - `register_default_skills(target_toolkit)`
@@ -88,7 +88,7 @@ This allows the bootstrap path to reuse the same default tool and skill registra
 
 ### 2. Runtime Profile Registry
 
-`src/runtime/session_runtime.py` owns the in-memory runtime state.
+`src/agentops/application/runtime_service.py` owns the in-memory runtime state.
 
 Important elements:
 
@@ -113,15 +113,15 @@ This is intentionally a **single-active-runtime** implementation. It matches the
 
 ### 3. Runtime Routes
 
-`src/api/runtime_routes.py` adds one API:
+`src/agentops/api/runtime.py` adds one API:
 
 - `POST /runtimes/init`
 
-These routes are registered from `src/main.py` and live alongside the `/chat` endpoint.
+These routes are registered from `src/agentops/main.py` and live alongside the `/chat` endpoint.
 
 ### 4. Chat Reuse Path
 
-`src/application/chat_service.py` handles `/chat` and adds a runtime lookup step.
+`src/agentops/application/chat_service.py` handles `/chat` and adds a runtime lookup step.
 
 Behavior:
 
@@ -184,7 +184,7 @@ This is the key reason dynamic MCP does not need to be visible in the global too
 
 ## Pod Teardown
 
-Application teardown is handled in `src/api/lifespan.py`.
+Application teardown is handled in `src/agentops/api/lifecycle.py`.
 
 The shutdown order is:
 
@@ -211,13 +211,13 @@ Bootstrap config shape:
   "name": "time-mcp",
   "type": "stdio",
   "command": "python",
-  "args": ["-m", "src.resources.mcp_servers.example"],
+  "args": ["-m", "agentops.resources.mcp_servers.example"],
   "env": {"KEY": "VALUE"},
   "cwd": "/path/to/project"
 }
 ```
 
-Relevant fields currently supported in `src/config/schemas.py`:
+Relevant fields currently supported in `src/agentops/config/schemas.py`:
 
 - `name`
 - `type = "stdio"`
@@ -246,7 +246,7 @@ Bootstrap config shape:
 }
 ```
 
-Relevant fields currently supported in `src/config/schemas.py`:
+Relevant fields currently supported in `src/agentops/config/schemas.py`:
 
 - `name`
 - `type = "http"`
@@ -285,19 +285,19 @@ Conceptually, the bootstrap request is where the client can provide the runtime 
 - skill configuration
 - MCP configuration
 
-In the current implementation, MCP is the primary dynamic capability introduced at bootstrap time. The design keeps the boundary flexible enough for future runtime configuration expansion while avoiding unnecessary changes to the existing `AgentApp` and `/process` flow.
+In the current implementation, MCP is the primary dynamic capability introduced at bootstrap time. The design keeps the boundary flexible enough for future runtime configuration expansion while avoiding unnecessary changes to the existing `AgentApp` and `/chat` flow.
 
 ## Files Involved
 
 Implementation-relevant files in the current codebase:
 
-- `src/config/schemas.py`
-- `src/tools/__init__.py`
-- `src/runtime/session_runtime.py`
-- `src/application/chat_service.py`
-- `src/api/runtime_routes.py`
-- `src/api/lifespan.py`
-- `src/main.py`
+- `src/agentops/config/schemas.py`
+- `src/agentops/tools/registry.py`
+- `src/agentops/application/runtime_service.py`
+- `src/agentops/application/chat_service.py`
+- `src/agentops/api/runtime.py`
+- `src/agentops/api/lifecycle.py`
+- `src/agentops/main.py`
 - `tests/test_session_bootstrap.py`
 - `scripts/demos/demo_bootstrap_mcp.py`
 
@@ -307,7 +307,7 @@ The implemented runtime design can be summarized as:
 
 - bootstrap creates a **session-owned** runtime
 - that runtime owns its own toolkit and MCP clients
-- `/process` reuses the runtime's agent when `session_id` matches
+- `/chat` reuses the runtime's toolkit when `runtime_id` matches
 - shutdown and teardown close only the resources that runtime created
 - the legacy global toolkit remains available for non-bootstrap callers
 

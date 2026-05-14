@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from src.application.skill_install_service import (
+from agentops.application.skill_install_service import (
     ManagedSkillState,
     cleanup_removed_managed_skills,
     prepare_remote_skills,
 )
-from src.capabilities.schemas import SkillDownloadConfig
-from src.integrations.skill_api_client import SkillDownloadError, SkillInstallResult
+from agentops.capabilities.schemas import SkillDownloadConfig
+from agentops.integrations.skill_api_client import SkillDownloadError, SkillInstallResult
 
 
 def test_prepare_remote_skills_reinstalls_requested_skills(tmp_path):

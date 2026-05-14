@@ -73,7 +73,7 @@ def test_process_endpoint_removed(client, valid_payload):
 def test_chat_returns_sse_stream(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(["Hello"])
 
-    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200, (
@@ -90,7 +90,7 @@ def test_chat_passes_runtime_parameters(client, valid_payload):
     payload = {**valid_payload, "session_id": "compare-session"}
 
     with patch(
-        "src.application.chat_service._runtime_adapter.stream_chat",
+        "agentops.application.chat_service._runtime_adapter.stream_chat",
         _make_mock_runtime_stream(["Hello"], captured_calls=captured_calls),
     ):
         chat_response = client.post("/chat", json=payload)
@@ -113,7 +113,7 @@ def test_chat_accepts_string_content(client):
             }
         ]
     }
-    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=payload)
 
     assert response.status_code == 200, response.text
@@ -145,7 +145,7 @@ def test_chat_invalid_role_streams_error(client, role):
 def test_stream_lifecycle_events(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(["Hello", " World!"])
 
-    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200
@@ -171,7 +171,7 @@ def test_chat_streams_framework_text_deltas(client, valid_payload):
         ["你", "你好", "你好，我", "你好，我是", "你好，我是bob。"]
     )
 
-    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200
@@ -216,7 +216,7 @@ def test_repeated_requests_stable(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(["Hello"])
 
     for i in range(2):
-        with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+        with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
             response = client.post("/chat", json=valid_payload)
 
         assert response.status_code == 200, (
@@ -238,7 +238,7 @@ def test_repeated_requests_stable(client, valid_payload):
 def test_runtime_failure_emits_sse_error(client, valid_payload):
     failing_stream = _make_failing_runtime_stream()
 
-    with patch("src.application.chat_service._runtime_adapter.stream_chat", failing_stream):
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", failing_stream):
         response = client.post("/chat", json=valid_payload)
 
     # The framework catches the error and yields it as an SSE event

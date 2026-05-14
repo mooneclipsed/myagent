@@ -10,11 +10,11 @@ echo "--- Step 2: Verify fakeredis available ---"
 uv run python -c "import fakeredis.aioredis; print('OK: fakeredis.aioredis importable')"
 
 echo "--- Step 3: Source checks ---"
-grep -q "SESSION_BACKEND" src/core/settings.py && echo "OK: SESSION_BACKEND field in settings"
-grep -q "RedisSession" src/agent/session.py && echo "OK: RedisSession in session.py"
-grep -q "reset_session_backend" src/agent/session.py && echo "OK: reset_session_backend helper exists"
-grep -q "ping()" src/app/lifespan.py && echo "OK: Redis health check present"
-grep -q "close()" src/app/lifespan.py && echo "OK: shutdown close present"
+grep -q "session_backend" src/agentops/config/settings.py && echo "OK: session_backend field in settings"
+grep -q "RedisSession" src/agentops/sessions/backend.py && echo "OK: RedisSession in backend.py"
+grep -q "reset_session_backend" src/agentops/sessions/backend.py && echo "OK: reset_session_backend helper exists"
+grep -q "ping()" src/agentops/api/lifecycle.py && echo "OK: Redis health check present"
+grep -q "close()" src/agentops/api/lifecycle.py && echo "OK: shutdown close present"
 grep -q "fakeredis" pyproject.toml && echo "OK: fakeredis dev dependency"
 
 echo "--- Step 4: Run Phase 7 session tests ---"
@@ -24,11 +24,11 @@ echo "--- Step 5: Full regression ---"
 uv run pytest tests/ --ignore=tests/test_context.py -x -q
 
 echo "--- Step 6: query.py untouched ---"
-count=$(grep -c "RedisSession" src/agent/query.py || true)
+count=$(grep -c "RedisSession" src/agentops/application/chat_service.py || true)
 if [[ "$count" -eq 0 ]]; then
-    echo "OK: query.py has zero RedisSession references (untouched)"
+    echo "OK: chat_service.py has zero RedisSession references"
 else
-    echo "FAIL: query.py has $count RedisSession references (should be 0)"
+    echo "FAIL: chat_service.py has $count RedisSession references (should be 0)"
     exit 1
 fi
 

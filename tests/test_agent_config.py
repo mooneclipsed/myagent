@@ -12,7 +12,7 @@ import pytest
 from agentscope.message import Msg
 from pydantic import ValidationError
 
-from src.config.schemas import AgentConfig
+from agentops.config.schemas import AgentConfig
 
 
 # ---------------------------------------------------------------------------
@@ -40,8 +40,8 @@ def test_config_override_applied(client, config_override_payload):
     mock_model = MagicMock()
 
     with (
-        patch("src.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
-        patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
+        patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
+        patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
         response = client.post("/chat", json=config_override_payload)
 
@@ -65,8 +65,8 @@ def test_config_fallback_to_env(client, valid_payload):
     mock_model = MagicMock()
 
     with (
-        patch("src.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
-        patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
+        patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
+        patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
         response = client.post("/chat", json=valid_payload)
 
@@ -94,8 +94,8 @@ def test_partial_override(client, valid_payload):
     }
 
     with (
-        patch("src.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
-        patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
+        patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
+        patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
         response = client.post("/chat", json=payload)
 
@@ -122,8 +122,8 @@ def test_different_configs_sequential(client, valid_payload):
     payload_b = {**valid_payload, "agent_config": {"model_name": "model-b"}}
 
     with (
-        patch("src.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
-        patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
+        patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
+        patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
         response_a = client.post("/chat", json=payload_a)
         response_b = client.post("/chat", json=payload_b)
@@ -154,9 +154,9 @@ def test_config_trace_logging(client, config_override_payload, caplog):
     mock_model = MagicMock()
 
     with (
-        patch("src.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
-        patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
-        caplog.at_level(logging.INFO, logger="src.config.schemas"),
+        patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
+        patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
+        caplog.at_level(logging.INFO, logger="agentops.config.schemas"),
     ):
         response = client.post("/chat", json=config_override_payload)
 

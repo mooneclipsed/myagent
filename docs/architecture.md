@@ -86,24 +86,24 @@ flowchart TD
 
 | Path | Responsibility |
 | --- | --- |
-| `src/main.py` | Creates the `AgentApp`, registers `/chat` and `/runtimes/init`, and starts the app when run directly. |
-| `src/api/runtime.py` | Exposes `/runtimes/init` and maps runtime service exceptions to HTTP responses. |
-| `src/api/lifecycle.py` | Validates startup dependencies such as session storage and closes runtime/session resources on shutdown. |
-| `src/application/runtime_service.py` | Owns the single active runtime profile, runtime lock, managed skill cleanup, and initialization error normalization. |
-| `src/application/chat_service.py` | Adapts AgentApp chat requests, validates `runtime_id`/`session_id`, serializes same-session streams with locks, and calls `AgentScopeRuntime.stream_chat`. |
-| `src/application/skill_install_service.py` | Downloads and prepares remotely managed skills before runtime initialization. |
-| `src/adapters/agentscope/runtime.py` | Orchestrates AgentScope runtime initialization and per-request chat streaming. |
-| `src/adapters/agentscope/agent_factory.py` | Builds request-scoped `ReActAgent` instances and memory compression config. |
-| `src/adapters/agentscope/mcp_runtime.py` | Creates, connects, registers, summarizes, and closes MCP clients. |
-| `src/adapters/agentscope/session_memory.py` | Loads and saves AgentScope memory through the configured session backend. |
-| `src/adapters/agentscope/tracing.py` | Handles AgentScope tracing setup, session context binding, warning filtering, and trace flushing. |
-| `src/config/settings.py` | Loads environment-backed settings with snake_case Python fields and uppercase environment aliases. |
-| `src/config/schemas.py` | Defines API request/response models plus `AgentModelConfig` resolution from request overrides and environment defaults. |
-| `src/capabilities/schemas.py` | Defines tool, skill, skill download, and MCP capability declaration models. |
-| `src/tools/` | Defines local deterministic tools, native file/shell tools, and the tool registry. |
-| `src/runtime/skill_runtime.py` | Registers configured AgentScope skills and builds skill summaries. |
-| `src/sessions/backend.py` | Selects and caches the JSON or Redis session backend. |
-| `src/integrations/skill_api_client.py` | Downloads and extracts remote skill ZIP archives. |
+| `src/agentops/main.py` | Creates the `AgentApp`, registers `/chat` and `/runtimes/init`, and starts the app when run directly. |
+| `src/agentops/api/runtime.py` | Exposes `/runtimes/init` and maps runtime service exceptions to HTTP responses. |
+| `src/agentops/api/lifecycle.py` | Validates startup dependencies such as session storage and closes runtime/session resources on shutdown. |
+| `src/agentops/application/runtime_service.py` | Owns the single active runtime profile, runtime lock, managed skill cleanup, and initialization error normalization. |
+| `src/agentops/application/chat_service.py` | Adapts AgentApp chat requests, validates `runtime_id`/`session_id`, serializes same-session streams with locks, and calls `AgentScopeRuntime.stream_chat`. |
+| `src/agentops/application/skill_install_service.py` | Downloads and prepares remotely managed skills before runtime initialization. |
+| `src/agentops/adapters/agentscope/runtime.py` | Orchestrates AgentScope runtime initialization and per-request chat streaming. |
+| `src/agentops/adapters/agentscope/agent_factory.py` | Builds request-scoped `ReActAgent` instances and memory compression config. |
+| `src/agentops/adapters/agentscope/mcp_runtime.py` | Creates, connects, registers, summarizes, and closes MCP clients. |
+| `src/agentops/adapters/agentscope/session_memory.py` | Loads and saves AgentScope memory through the configured session backend. |
+| `src/agentops/adapters/agentscope/tracing.py` | Handles AgentScope tracing setup, session context binding, warning filtering, and trace flushing. |
+| `src/agentops/config/settings.py` | Loads environment-backed settings with snake_case Python fields and uppercase environment aliases. |
+| `src/agentops/config/schemas.py` | Defines API request/response models plus `AgentModelConfig` resolution from request overrides and environment defaults. |
+| `src/agentops/capabilities/schemas.py` | Defines tool, skill, skill download, and MCP capability declaration models. |
+| `src/agentops/tools/` | Defines local deterministic tools, native file/shell tools, and the tool registry. |
+| `src/agentops/runtime/skill_runtime.py` | Registers configured AgentScope skills and builds skill summaries. |
+| `src/agentops/sessions/backend.py` | Selects and caches the JSON or Redis session backend. |
+| `src/agentops/integrations/skill_api_client.py` | Downloads and extracts remote skill ZIP archives. |
 
 ## Configuration Model
 

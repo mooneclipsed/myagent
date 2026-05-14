@@ -39,7 +39,7 @@ def test_bootstrap_returns_skill_summary_and_chat_completes(client, valid_payloa
             }
         ]
 
-    with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream):
+    with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream):
         chat_payload = {
             **valid_payload,
             "runtime_id": "skill-chat-runtime-001",

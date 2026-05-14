@@ -18,7 +18,7 @@ env = {**os.environ,
     'MODEL_API_KEY': 'phase3-smoke-key',
     'MODEL_BASE_URL': 'http://127.0.0.1:9999'}
 p = subprocess.Popen(
-    ['uv', 'run', 'uvicorn', 'src.main:app', '--host', '127.0.0.1', '--port', '8013'],
+    ['uv', 'run', 'uvicorn', 'agentops.main:app', '--host', '127.0.0.1', '--port', '8013'],
     env=env)
 time.sleep(3)
 running = (p.poll() is None)
@@ -30,7 +30,7 @@ sys.exit(0 if running else 1)
 
 echo "--- Step 4: Verify config resolution module ---"
 uv run python -c "
-from src.config.schemas import AgentConfig, resolve_agent_model_config
+from agentops.config.schemas import AgentConfig, resolve_agent_model_config
 cfg = AgentConfig(model_name='test-model')
 assert cfg.model_name == 'test-model'
 assert cfg.api_key is None

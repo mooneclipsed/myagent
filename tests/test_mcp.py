@@ -40,7 +40,7 @@ class TestMCPClientLifecycle:
 
     def test_lifo_close_order(self):
         """MCP clients must be closed in reverse order of registration."""
-        from src.adapters.agentscope.mcp_runtime import close_mcp_clients
+        from agentops.adapters.agentscope.mcp_runtime import close_mcp_clients
 
         client1 = AsyncMock()
         client1.name = "first"
@@ -57,24 +57,24 @@ class TestMCPServerModule:
     """Tests verifying the MCP server module is importable and well-formed."""
 
     def test_mcp_server_module_importable(self):
-        """src.resources.mcp_servers.example module can be imported without errors."""
-        import src.resources.mcp_servers.example
+        """agentops.resources.mcp_servers.example module can be imported without errors."""
+        import agentops.resources.mcp_servers.example
 
-        assert hasattr(src.resources.mcp_servers.example, "server")
-        assert hasattr(src.resources.mcp_servers.example, "get_time")
-        assert hasattr(src.resources.mcp_servers.example, "main")
+        assert hasattr(agentops.resources.mcp_servers.example, "server")
+        assert hasattr(agentops.resources.mcp_servers.example, "get_time")
+        assert hasattr(agentops.resources.mcp_servers.example, "main")
 
     def test_mcp_server_is_fastmcp(self):
-        """src.resources.mcp_servers.example exports a FastMCP server instance."""
-        import src.resources.mcp_servers.example
+        """agentops.resources.mcp_servers.example exports a FastMCP server instance."""
+        import agentops.resources.mcp_servers.example
 
-        assert isinstance(src.resources.mcp_servers.example.server, FastMCP)
+        assert isinstance(agentops.resources.mcp_servers.example.server, FastMCP)
 
     def test_get_time_tool_contract(self):
         """get_time remains a zero-argument tool function returning text."""
-        import src.resources.mcp_servers.example
+        import agentops.resources.mcp_servers.example
 
-        assert len(inspect.signature(src.resources.mcp_servers.example.get_time).parameters) == 0
-        result = src.resources.mcp_servers.example.get_time()
+        assert len(inspect.signature(agentops.resources.mcp_servers.example.get_time).parameters) == 0
+        result = agentops.resources.mcp_servers.example.get_time()
         assert isinstance(result, str)
         assert result.startswith("Current time:")

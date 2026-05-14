@@ -13,7 +13,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from src.application.runtime_service import close_all_session_runtimes, get_runtime_profile
+from agentops.application.runtime_service import close_all_session_runtimes, get_runtime_profile
 from tests.test_chat_stream import _parse_sse_events
 
 
@@ -28,7 +28,7 @@ async def _mock_stream(*args, **kwargs):
 
 
 def test_run_agent_stream_does_not_close_owned_coroutine():
-    from src.adapters.agentscope import runtime
+    from agentops.adapters.agentscope import runtime
 
     close_called = False
 
@@ -58,7 +58,7 @@ def test_run_agent_stream_does_not_close_owned_coroutine():
         yield msg, True
 
     async def _run():
-        with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
+        with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
             items = []
             async for item in runtime._run_agent_stream(
                 AgentStub(),
@@ -90,14 +90,14 @@ def test_bootstrap_stdio_session_success(client):
                 "name": "time-mcp",
                 "type": "stdio",
                 "command": "python",
-                "args": ["-m", "src.resources.mcp_servers.example"],
+                "args": ["-m", "agentops.resources.mcp_servers.example"],
                 "env": {"DEMO": "1"},
                 "cwd": "/tmp/demo",
             }
         ],
     }
 
-    with patch("src.adapters.agentscope.mcp_runtime.StdIOStatefulClient") as mock_stdio:
+    with patch("agentops.adapters.agentscope.mcp_runtime.StdIOStatefulClient") as mock_stdio:
         mock_client = AsyncMock()
         mock_client.name = "time-mcp"
         mock_client.is_connected = True
@@ -114,7 +114,7 @@ def test_bootstrap_stdio_session_success(client):
     mock_stdio.assert_called_once_with(
         name="time-mcp",
         command="python",
-        args=["-m", "src.resources.mcp_servers.example"],
+        args=["-m", "agentops.resources.mcp_servers.example"],
         env={"DEMO": "1"},
         cwd="/tmp/demo",
     )
@@ -136,7 +136,7 @@ def test_bootstrap_http_session_success(client):
         ],
     }
 
-    with patch("src.adapters.agentscope.mcp_runtime.HttpStatefulClient") as mock_http:
+    with patch("agentops.adapters.agentscope.mcp_runtime.HttpStatefulClient") as mock_http:
         mock_client = AsyncMock()
         mock_client.name = "remote-mcp"
         mock_client.is_connected = True
@@ -196,8 +196,8 @@ def test_bootstrap_reloads_when_another_runtime_is_active(client):
 
 
 def test_bootstrap_reinit_closes_old_runtime_and_deletes_managed_skills(client, tmp_path):
-    from src.application.skill_install_service import ManagedSkillState, ManagedSkillSyncResult
-    from src.capabilities.schemas import SkillConfig, SkillDownloadSummary
+    from agentops.application.skill_install_service import ManagedSkillState, ManagedSkillSyncResult
+    from agentops.capabilities.schemas import SkillConfig, SkillDownloadSummary
 
     old_skill_dir = tmp_path / "skills" / ".managed" / "skill_1_v1"
     old_skill_dir.mkdir(parents=True)
@@ -240,7 +240,7 @@ def test_bootstrap_reinit_closes_old_runtime_and_deletes_managed_skills(client, 
             },
         )
 
-    with patch("src.application.runtime_service.prepare_remote_skills") as sync:
+    with patch("agentops.application.runtime_service.prepare_remote_skills") as sync:
         sync.side_effect = [build_old_sync_result(), build_new_sync_result()]
         response_a = client.post("/runtimes/init", json={"runtime_id": "bootstrap-reinit-a"})
         response_b = client.post(
@@ -311,9 +311,9 @@ def test_bootstrap_with_blank_system_prompt_uses_default_prompt(client):
 def test_build_react_agent_enables_console_output_from_settings(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.setenv("AGENT_CONSOLE_OUTPUT_ENABLED", "true")
 
-    from src.adapters.agentscope.agent_factory import build_react_agent
-    from src.config.schemas import AgentModelConfig
-    from src.config.settings import get_settings
+    from agentops.adapters.agentscope.agent_factory import build_react_agent
+    from agentops.config.schemas import AgentModelConfig
+    from agentops.config.settings import get_settings
     from agentscope.memory import InMemoryMemory
     from agentscope.tool import Toolkit
 
@@ -359,8 +359,8 @@ def test_build_react_agent_uses_bootstrap_memory_compression(configured_env, cle
     from agentscope.memory import InMemoryMemory
     from agentscope.tool import Toolkit
 
-    from src.adapters.agentscope.agent_factory import build_react_agent
-    from src.config.schemas import AgentModelConfig, MemoryCompressionConfig
+    from agentops.adapters.agentscope.agent_factory import build_react_agent
+    from agentops.config.schemas import AgentModelConfig, MemoryCompressionConfig
 
     agent = build_react_agent(
         resolved_config=AgentModelConfig(
@@ -386,7 +386,7 @@ def test_build_react_agent_uses_bootstrap_memory_compression(configured_env, cle
 
 
 def test_compression_fallback_model_wraps_plain_text_summary():
-    from src.adapters.agentscope.agent_factory import CompressionFallbackModel
+    from agentops.adapters.agentscope.agent_factory import CompressionFallbackModel
 
     class PlainTextModel:
         model_name = "test-model"
@@ -423,7 +423,7 @@ def test_bootstrap_memory_compression_overrides_env_defaults(client, monkeypatch
     monkeypatch.setenv("AGENT_MEMORY_COMPRESSION_TRIGGER_TOKENS", "60000")
     monkeypatch.setenv("AGENT_MEMORY_COMPRESSION_KEEP_RECENT", "8")
 
-    from src.config.settings import get_settings
+    from agentops.config.settings import get_settings
 
     get_settings.cache_clear()
 
@@ -450,7 +450,7 @@ def test_bootstrap_memory_compression_overrides_env_defaults(client, monkeypatch
 
 def test_thinking_formatter_warning_filter_is_installed_on_agentscope_logger():
     import logging
-    from src.adapters.agentscope.tracing import _AgentScopeThinkingWarningFilter
+    from agentops.adapters.agentscope.tracing import _AgentScopeThinkingWarningFilter
 
     logger = logging.getLogger("as")
 
@@ -477,7 +477,7 @@ def test_bootstrap_failure_rolls_back_connected_clients(client):
     second_client.is_connected = False
 
     with patch(
-        "src.adapters.agentscope.mcp_runtime.StdIOStatefulClient",
+        "agentops.adapters.agentscope.mcp_runtime.StdIOStatefulClient",
         side_effect=[first_client, second_client],
     ):
         response = client.post("/runtimes/init", json=payload)
@@ -509,7 +509,7 @@ def test_chat_uses_bootstrapped_runtime_profile_with_session_memory(client, vali
         )
         yield msg, True
 
-    with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
+    with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
         chat_payload = {
             **valid_payload,
             "runtime_id": "bootstrap-chat-001",
@@ -550,8 +550,8 @@ def test_chat_passes_runtime_memory_compression_to_agent(client, valid_payload):
         yield msg, True
 
     with (
-        patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime),
-        patch("src.adapters.agentscope.agent_factory.build_react_agent", wraps=__import__("src.adapters.agentscope.agent_factory", fromlist=["build_react_agent"]).build_react_agent) as mock_build,
+        patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime),
+        patch("agentops.adapters.agentscope.agent_factory.build_react_agent", wraps=__import__("agentops.adapters.agentscope.agent_factory", fromlist=["build_react_agent"]).build_react_agent) as mock_build,
     ):
         chat_response = client.post(
             "/chat",
@@ -588,7 +588,7 @@ def test_chat_binds_agentscope_request_context_for_bootstrapped_session(client, 
         )
         yield msg, True
 
-    with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
+    with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
         chat_response = client.post(
             "/chat",
             json={
@@ -607,11 +607,11 @@ def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, val
     session_id = "bootstrap-chat-trace-span"
     monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
 
-    from src.config.settings import get_settings
+    from agentops.config.settings import get_settings
 
     get_settings.cache_clear()
 
-    with patch("src.adapters.agentscope.runtime.agentscope.init"):
+    with patch("agentops.adapters.agentscope.runtime.agentscope.init"):
         response = client.post(
             "/runtimes/init",
             json={"runtime_id": runtime_id, "skills": [], "mcp_servers": []},
@@ -637,8 +637,8 @@ def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, val
             )
             yield msg, True
 
-    with patch("src.adapters.agentscope.tracing.ot_trace.get_tracer_provider", return_value=tracer_provider):
-        with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
+    with patch("agentops.adapters.agentscope.tracing.ot_trace.get_tracer_provider", return_value=tracer_provider):
+        with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
             chat_response = client.post(
                 "/chat",
                 json={
@@ -681,11 +681,11 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
     )
 
     def fake_sync(**kwargs):
-        from src.application.skill_install_service import (
+        from agentops.application.skill_install_service import (
             ManagedSkillState,
             ManagedSkillSyncResult,
         )
-        from src.capabilities.schemas import SkillConfig, SkillDownloadSummary
+        from agentops.capabilities.schemas import SkillConfig, SkillDownloadSummary
 
         assert kwargs["skills_download_url"] == "http://skills.example"
         return ManagedSkillSyncResult(
@@ -708,7 +708,7 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
             },
         )
 
-    with patch("src.application.runtime_service.prepare_remote_skills", fake_sync):
+    with patch("agentops.application.runtime_service.prepare_remote_skills", fake_sync):
         response = client.post(
             "/runtimes/init",
             json={
@@ -728,8 +728,8 @@ def test_bootstrap_downloads_remote_skills_and_loads_successes(client, tmp_path)
 
 def test_bootstrap_download_failure_fails_initialization(client):
     def fake_sync(**kwargs):
-        from src.application.skill_install_service import ManagedSkillSyncResult
-        from src.capabilities.schemas import SkillDownloadSummary
+        from agentops.application.skill_install_service import ManagedSkillSyncResult
+        from agentops.capabilities.schemas import SkillDownloadSummary
 
         return ManagedSkillSyncResult(
             summaries=[
@@ -742,7 +742,7 @@ def test_bootstrap_download_failure_fails_initialization(client):
             ],
         )
 
-    with patch("src.application.runtime_service.prepare_remote_skills", fake_sync):
+    with patch("agentops.application.runtime_service.prepare_remote_skills", fake_sync):
         response = client.post(
             "/runtimes/init",
             json={
@@ -796,7 +796,7 @@ def test_chat_without_session_id_uses_runtime_id_context(client, valid_payload):
         )
         yield msg, True
 
-    with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
+    with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
         chat_response = client.post(
             "/chat",
             json={**valid_payload, "runtime_id": runtime_id},
@@ -810,7 +810,7 @@ def test_chat_without_session_id_uses_runtime_id_context(client, valid_payload):
 
 
 def test_same_session_id_streams_are_serialized():
-    from src.application import chat_service
+    from agentops.application import chat_service
 
     entered = asyncio.Event()
     release_first = asyncio.Event()
@@ -845,7 +845,7 @@ def test_same_session_id_streams_are_serialized():
         return items
 
     async def _run():
-        with patch("src.application.chat_service._runtime_adapter.stream_chat", _mock_runtime_stream):
+        with patch("agentops.application.chat_service._runtime_adapter.stream_chat", _mock_runtime_stream):
             first = asyncio.create_task(_collect_stream())
             await entered.wait()
             second = asyncio.create_task(_collect_stream())
@@ -923,11 +923,11 @@ def test_bootstrap_initializes_agentscope_studio_when_configured(client, monkeyp
     monkeypatch.setenv("STUDIO_ENABLED", "true")
     monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
 
-    from src.config.settings import get_settings
+    from agentops.config.settings import get_settings
 
     get_settings.cache_clear()
 
-    with patch("src.adapters.agentscope.runtime.agentscope.init") as mock_init:
+    with patch("agentops.adapters.agentscope.runtime.agentscope.init") as mock_init:
         response = client.post(
             "/runtimes/init",
             json={"runtime_id": "bootstrap-studio-001", "skills": [], "mcp_servers": []},
@@ -945,11 +945,11 @@ def test_bootstrap_initializes_agentscope_studio_when_configured(client, monkeyp
 def test_bootstrap_skips_agentscope_studio_when_disabled(client, monkeypatch):
     monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
 
-    from src.config.settings import get_settings
+    from agentops.config.settings import get_settings
 
     get_settings.cache_clear()
 
-    with patch("src.adapters.agentscope.runtime.agentscope.init") as mock_init:
+    with patch("agentops.adapters.agentscope.runtime.agentscope.init") as mock_init:
         response = client.post(
             "/runtimes/init",
             json={"runtime_id": "bootstrap-studio-disabled-001", "skills": [], "mcp_servers": []},

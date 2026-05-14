@@ -1,7 +1,7 @@
 """Demo: Trigger a tool call through the chat endpoint (DEV-03).
 
 Sends a weather query that the ReActAgent should answer by calling
-the get_weather tool function registered in src/tools/examples.py.
+the get_weather tool function registered in src/agentops/tools/examples.py.
 
 Prerequisite: Service running at http://127.0.0.1:8000
 Start with: bash scripts/run_service.sh

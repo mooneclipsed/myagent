@@ -20,7 +20,7 @@ def test_multi_turn_passes_full_history(client, multi_turn_payload):
     captured_calls = []
     mock_stream = _make_mock_runtime_stream(["I remember"], captured_calls=captured_calls)
 
-    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=multi_turn_payload)
 
     assert response.status_code == 200
@@ -42,7 +42,7 @@ def test_multi_turn_passes_full_history(client, multi_turn_payload):
 def test_single_turn_backward_compatible(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(["Hello back"])
 
-    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200
@@ -59,7 +59,7 @@ def test_single_turn_backward_compatible(client, valid_payload):
 def test_multi_turn_sse_lifecycle(client, multi_turn_payload):
     mock_stream = _make_mock_runtime_stream(["I remember your name."])
 
-    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=multi_turn_payload)
 
     assert response.status_code == 200
@@ -89,7 +89,7 @@ def test_prior_assistant_messages_in_context(client):
     captured_calls = []
     mock_stream = _make_mock_runtime_stream(["Third answer"], captured_calls=captured_calls)
 
-    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=payload)
 
     assert response.status_code == 200

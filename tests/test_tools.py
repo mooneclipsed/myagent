@@ -7,9 +7,9 @@ These tests verify tool registration, invocation, and response format.
 import pytest
 from agentscope.tool import Toolkit, ToolResponse
 
-from src.config.schemas import ToolConfig
-from src.tools import TOOL_REGISTRY, ToolRegistryError, register_configured_tools
-from src.tools.registry import (
+from agentops.config.schemas import ToolConfig
+from agentops.tools import TOOL_REGISTRY, ToolRegistryError, register_configured_tools
+from agentops.tools.registry import (
     TOOL_REGISTRY as REGISTRY_TOOL_REGISTRY,
     ToolRegistryError as RegistryToolRegistryError,
     create_base_toolkit as registry_create_base_toolkit,
@@ -22,7 +22,7 @@ class TestToolRegistration:
 
     def test_toolkit_has_default_tools(self):
         """Toolkit singleton contains only default tools by default."""
-        from src.tools import toolkit
+        from agentops.tools import toolkit
 
         tool_names = list(toolkit.tools.keys())
         assert "get_weather" in tool_names, f"get_weather not in {tool_names}"
@@ -32,14 +32,14 @@ class TestToolRegistration:
 
     def test_toolkit_is_singleton(self):
         """Toolkit imported from different paths is the same object (D-02: shared)."""
-        from src.tools import toolkit as t1
-        from src.tools import toolkit as t2
+        from agentops.tools import toolkit as t1
+        from agentops.tools import toolkit as t2
 
         assert t1 is t2
 
     def test_toolkit_shared_across_imports(self):
         """Toolkit shared across requests — no per-request isolation needed."""
-        from src.tools import toolkit
+        from agentops.tools import toolkit
 
         initial_count = len(toolkit.tools)
         assert initial_count >= 2, f"Expected at least 2 tools, got {initial_count}"
@@ -50,7 +50,7 @@ class TestToolResponseFormat:
 
     def test_get_weather_returns_tool_response(self):
         """get_weather returns ToolResponse (not plain string/dict)."""
-        from src.tools.examples import get_weather
+        from agentops.tools.examples import get_weather
 
         result = get_weather(city="London")
         assert isinstance(result, ToolResponse)
@@ -61,7 +61,7 @@ class TestToolResponseFormat:
 
     def test_get_weather_is_deterministic(self):
         """Same input produces same output (no external API calls)."""
-        from src.tools.examples import get_weather
+        from agentops.tools.examples import get_weather
 
         r1 = get_weather(city="Tokyo")
         r2 = get_weather(city="Tokyo")
@@ -69,7 +69,7 @@ class TestToolResponseFormat:
 
     def test_calculate_add(self):
         """calculate performs addition correctly."""
-        from src.tools.examples import calculate
+        from agentops.tools.examples import calculate
 
         result = calculate(operation="add", a=2, b=3)
         assert isinstance(result, ToolResponse)
@@ -77,7 +77,7 @@ class TestToolResponseFormat:
 
     def test_calculate_divide_by_zero(self):
         """calculate handles division by zero gracefully."""
-        from src.tools.examples import calculate
+        from agentops.tools.examples import calculate
 
         result = calculate(operation="divide", a=10, b=0)
         assert isinstance(result, ToolResponse)
@@ -85,7 +85,7 @@ class TestToolResponseFormat:
 
     def test_calculate_unknown_operation(self):
         """calculate handles unknown operations gracefully."""
-        from src.tools.examples import calculate
+        from agentops.tools.examples import calculate
 
         result = calculate(operation="modulo", a=10, b=3)
         assert isinstance(result, ToolResponse)
@@ -93,7 +93,7 @@ class TestToolResponseFormat:
 
     def test_run_platform_report_returns_script_output(self):
         """run_platform_report executes the bundled script and returns raw stdout."""
-        from src.tools.examples import run_platform_report
+        from agentops.tools.examples import run_platform_report
 
         result = run_platform_report()
         assert isinstance(result, ToolResponse)

@@ -5,12 +5,12 @@ from pathlib import Path
 
 from agentscope.tool import ToolResponse
 
-from src.tools.native_tools import make_repo_file_editor, make_repo_file_reader, make_shell_runner
+from agentops.tools.native_tools import make_repo_file_editor, make_repo_file_reader, make_shell_runner
 
 
 def test_read_file_reads_repo_file():
     reader = make_repo_file_reader()
-    response = asyncio.run(reader("src/tools/examples.py", [1, 5]))
+    response = asyncio.run(reader("src/agentops/tools/examples.py", [1, 5]))
 
     assert isinstance(response, ToolResponse)
     assert "The content of" in response.content[0]["text"]

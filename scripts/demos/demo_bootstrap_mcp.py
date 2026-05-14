@@ -19,7 +19,7 @@ def main():
                 "name": "time-mcp",
                 "type": "stdio",
                 "command": "python",
-                "args": ["-m", "src.resources.mcp_servers.example"],
+                "args": ["-m", "agentops.resources.mcp_servers.example"],
             }
         ],
     }

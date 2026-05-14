@@ -14,7 +14,7 @@ from agentscope.tool import ToolResponse
 
 
 _SKILL_SCRIPT_PATH = (
-    Path(__file__).resolve().parents[2] / "skills" / "example_skill" / "platform_report.py"
+    Path(__file__).resolve().parents[3] / "skills" / "example_skill" / "platform_report.py"
 )
 
 

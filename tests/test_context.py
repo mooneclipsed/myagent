@@ -5,10 +5,8 @@ sends a multi-turn messages array. No production code changes needed --
 agentscope-runtime natively handles list[Msg] input via ReActAgent.reply().
 """
 
-import json
 from unittest.mock import patch
 
-import pytest
 
 from tests.test_chat_stream import _make_mock_runtime_stream, _parse_sse_events
 

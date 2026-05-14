@@ -2,7 +2,7 @@
 
 Provides AgentConfig for per-request model overrides,
 MCP runtime request/response models, skill runtime models, and
-resolve_effective_config for field-level fallback to .env defaults.
+resolve_agent_model_config for field-level fallback to .env defaults.
 
 Decisions: D-01 (minimally overridable), D-02 (field-level fallback),
 D-04 (optional request config), D-06 (config trace logging).
@@ -37,6 +37,16 @@ class AgentConfig(BaseModel):
     model_name: Optional[str] = None
     api_key: Optional[str] = None
     base_url: Optional[str] = None
+
+
+class AgentModelConfig(BaseModel):
+    """Fully resolved agent model configuration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model_name: str
+    api_key: str
+    base_url: str
 
 
 class MemoryCompressionConfig(BaseModel):
@@ -85,28 +95,28 @@ class RuntimeProfileResponse(BaseModel):
     mcp_servers: list[MCPServerSummary] = Field(default_factory=list)
 
 
-def resolve_effective_config(agent_config: AgentConfig | None = None) -> dict:
+def resolve_agent_model_config(agent_config: AgentConfig | None = None) -> AgentModelConfig:
     """Resolve effective model config by merging request overrides with .env defaults."""
     settings = get_settings()
 
     if agent_config is None:
-        effective = {
-            "model_name": settings.MODEL_NAME,
-            "api_key": settings.MODEL_API_KEY,
-            "base_url": settings.MODEL_BASE_URL,
-        }
+        effective = AgentModelConfig(
+            model_name=settings.MODEL_NAME,
+            api_key=settings.MODEL_API_KEY,
+            base_url=settings.MODEL_BASE_URL,
+        )
     else:
-        effective = {
-            "model_name": agent_config.model_name or settings.MODEL_NAME,
-            "api_key": agent_config.api_key or settings.MODEL_API_KEY,
-            "base_url": agent_config.base_url or settings.MODEL_BASE_URL,
-        }
+        effective = AgentModelConfig(
+            model_name=agent_config.model_name or settings.MODEL_NAME,
+            api_key=agent_config.api_key or settings.MODEL_API_KEY,
+            base_url=agent_config.base_url or settings.MODEL_BASE_URL,
+        )
 
     source = "request" if agent_config else "env"
     logger.info(
         "effective config: model_name=%s, base_url=%s, source=%s",
-        effective["model_name"],
-        effective["base_url"],
+        effective.model_name,
+        effective.base_url,
         source,
     )
 

@@ -30,14 +30,14 @@ sys.exit(0 if running else 1)
 
 echo "--- Step 4: Verify config resolution module ---"
 uv run python -c "
-from src.core.config import AgentConfig, resolve_effective_config
+from src.config.schemas import AgentConfig, resolve_agent_model_config
 cfg = AgentConfig(model_name='test-model')
 assert cfg.model_name == 'test-model'
 assert cfg.api_key is None
-result = resolve_effective_config(None)
-assert 'model_name' in result
-assert 'api_key' in result
-assert 'base_url' in result
+result = resolve_agent_model_config(None)
+assert result.model_name
+assert result.api_key
+assert result.base_url
 from pydantic import ValidationError
 try:
     AgentConfig(model_name='x', unknown='bad')

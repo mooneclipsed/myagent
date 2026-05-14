@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 from agentscope.message import Msg
 
-from src.main import app
 from tests.test_chat_stream import _parse_sse_events
 
 

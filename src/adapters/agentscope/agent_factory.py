@@ -15,7 +15,7 @@ from agentscope.model._model_base import ChatModelBase
 from agentscope.token import OpenAITokenCounter
 from agentscope.tool import Toolkit
 
-from ...config.schemas import MemoryCompressionConfig
+from ...config.schemas import AgentModelConfig, MemoryCompressionConfig
 from ...config.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class CompressionFallbackModel(ChatModelBase):
 
 
 def build_react_agent(
-    resolved_config: dict,
+    resolved_config: AgentModelConfig,
     memory: InMemoryMemory,
     toolkit: Toolkit,
     system_prompt: str | None = None,
@@ -72,8 +72,8 @@ def build_react_agent(
     )
     logger.info(
         "Building ReActAgent: model=%s base_url=%s system_prompt_len=%d console_output=%s formatter=%s compression=%s",
-        resolved_config["model_name"],
-        resolved_config["base_url"],
+        resolved_config.model_name,
+        resolved_config.base_url,
         len(effective_system_prompt),
         settings.AGENT_CONSOLE_OUTPUT_ENABLED,
         type(formatter).__name__,
@@ -82,9 +82,9 @@ def build_react_agent(
     agent = ReActAgent(
         name="agentops",
         model=OpenAIChatModel(
-            model_name=resolved_config["model_name"],
-            api_key=resolved_config["api_key"],
-            client_kwargs={"base_url": resolved_config["base_url"]},
+            model_name=resolved_config.model_name,
+            api_key=resolved_config.api_key,
+            client_kwargs={"base_url": resolved_config.base_url},
             stream=True,
         ),
         sys_prompt=effective_system_prompt,
@@ -100,7 +100,7 @@ def build_react_agent(
 
 
 def _build_compression_config(
-    resolved_config: dict,
+    resolved_config: AgentModelConfig,
     memory_compression: MemoryCompressionConfig | None = None,
 ) -> ReActAgent.CompressionConfig | None:
     """Resolve env/runtime settings into an AgentScope compression config."""
@@ -125,14 +125,14 @@ def _build_compression_config(
     )
     return ReActAgent.CompressionConfig(
         enable=True,
-        agent_token_counter=OpenAITokenCounter(resolved_config["model_name"]),
+        agent_token_counter=OpenAITokenCounter(resolved_config.model_name),
         trigger_threshold=trigger_tokens,
         keep_recent=keep_recent,
         compression_model=CompressionFallbackModel(
             OpenAIChatModel(
-                model_name=resolved_config["model_name"],
-                api_key=resolved_config["api_key"],
-                client_kwargs={"base_url": resolved_config["base_url"]},
+                model_name=resolved_config.model_name,
+                api_key=resolved_config.api_key,
+                client_kwargs={"base_url": resolved_config.base_url},
                 stream=False,
             ),
         ),

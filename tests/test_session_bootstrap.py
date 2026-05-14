@@ -312,6 +312,7 @@ def test_build_react_agent_enables_console_output_from_settings(configured_env, 
     monkeypatch.setenv("AGENT_CONSOLE_OUTPUT_ENABLED", "true")
 
     from src.adapters.agentscope.agent_factory import build_react_agent
+    from src.config.schemas import AgentModelConfig
     from src.config.settings import get_settings
     from agentscope.memory import InMemoryMemory
     from agentscope.tool import Toolkit
@@ -319,11 +320,11 @@ def test_build_react_agent_enables_console_output_from_settings(configured_env, 
     get_settings.cache_clear()
 
     agent = build_react_agent(
-        resolved_config={
-            "model_name": "test-model",
-            "api_key": "test-key",
-            "base_url": "http://localhost:9999/v1",
-        },
+        resolved_config=AgentModelConfig(
+            model_name="test-model",
+            api_key="test-key",
+            base_url="http://localhost:9999/v1",
+        ),
         memory=InMemoryMemory(),
         toolkit=Toolkit(),
     )
@@ -359,14 +360,14 @@ def test_build_react_agent_uses_bootstrap_memory_compression(configured_env, cle
     from agentscope.tool import Toolkit
 
     from src.adapters.agentscope.agent_factory import build_react_agent
-    from src.config.schemas import MemoryCompressionConfig
+    from src.config.schemas import AgentModelConfig, MemoryCompressionConfig
 
     agent = build_react_agent(
-        resolved_config={
-            "model_name": "gpt-4o",
-            "api_key": "test-key",
-            "base_url": "http://localhost:9999/v1",
-        },
+        resolved_config=AgentModelConfig(
+            model_name="gpt-4o",
+            api_key="test-key",
+            base_url="http://localhost:9999/v1",
+        ),
         memory=InMemoryMemory(),
         toolkit=Toolkit(),
         memory_compression=MemoryCompressionConfig(

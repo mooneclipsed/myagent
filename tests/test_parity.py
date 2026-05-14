@@ -6,7 +6,6 @@ content when resumed from JSON and Redis backends.
 import asyncio
 
 import fakeredis.aioredis
-import pytest
 from agentscope.memory import InMemoryMemory
 from agentscope.message import Msg
 from agentscope.session import JSONSession, RedisSession

@@ -8,7 +8,6 @@ Prerequisite: Service running at http://127.0.0.1:8000
 Start with: bash scripts/run_service.sh
 """
 
-import sys
 from _helpers import check_service_running, send_chat
 
 

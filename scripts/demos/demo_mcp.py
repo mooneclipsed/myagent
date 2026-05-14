@@ -8,7 +8,6 @@ Start with: bash scripts/run_service.sh
 """
 
 import re
-import sys
 from _helpers import check_service_running, send_chat
 
 

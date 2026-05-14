@@ -11,8 +11,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-import httpx
-from _helpers import SERVICE_URL, DEFAULT_TIMEOUT, check_service_running, bootstrap, chat, check
+from _helpers import check_service_running, bootstrap, chat, check
 
 SESSION_ID = "test-agent-tools"
 

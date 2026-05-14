@@ -26,9 +26,10 @@ from ...capabilities.schemas import (
 )
 from ...config.schemas import (
     AgentConfig,
+    AgentModelConfig,
     MemoryCompressionConfig,
     RuntimeInitializeRequest,
-    resolve_effective_config,
+    resolve_agent_model_config,
 )
 from ...config.settings import get_settings
 from ...runtime.skill_runtime import (
@@ -70,7 +71,7 @@ class AgentScopeRuntimeProfile:
     memory_compression: MemoryCompressionConfig | None = None
     skill_registry: SkillRuntimeRegistry = field(default_factory=SkillRuntimeRegistry)
     mcp_clients: list[StatefulClientBase] = field(default_factory=list)
-    resolved_config: dict = field(default_factory=dict)
+    resolved_config: AgentModelConfig | None = None
     tool_summaries: list[ToolSummary] = field(default_factory=list)
     skill_summaries: list[SkillSummary] = field(default_factory=list)
     skill_downloads: list[SkillDownloadSummary] = field(default_factory=list)
@@ -89,7 +90,7 @@ class AgentScopeRuntime:
         self._profile: AgentScopeRuntimeProfile | None = None
 
     async def initialize(self, request: RuntimeInitializeRequest) -> AgentScopeRuntimeProfile:
-        resolved_config = resolve_effective_config(request.agent_config)
+        resolved_config = resolve_agent_model_config(request.agent_config)
         settings = get_settings()
         studio_url = settings.STUDIO_URL
         if settings.STUDIO_ENABLED and studio_url:
@@ -193,7 +194,7 @@ class AgentScopeRuntime:
                 if session_id:
                     with bind_agentscope_session_context(
                         session_id,
-                        trace_enabled=bool(profile.resolved_config),
+                        trace_enabled=profile.resolved_config is not None,
                     ):
                         async for msg, last in _run_agent_stream(agent, messages):
                             yield msg, last
@@ -207,7 +208,7 @@ class AgentScopeRuntime:
                     await _save_session_state(session_id, agent)
             return
 
-        resolved_config = resolve_effective_config(agent_config)
+        resolved_config = resolve_agent_model_config(agent_config)
         memory = InMemoryMemory()
         if session_id:
             await get_session_backend().load_session_state(

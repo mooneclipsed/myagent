@@ -12,7 +12,7 @@ import pytest
 from agentscope.message import Msg
 from pydantic import ValidationError
 
-from src.config.schemas import AgentConfig, resolve_effective_config
+from src.config.schemas import AgentConfig
 
 
 # ---------------------------------------------------------------------------

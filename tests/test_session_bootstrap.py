@@ -27,9 +27,8 @@ async def _mock_stream(*args, **kwargs):
     yield msg, True
 
 
-def test_stream_agent_messages_does_not_close_owned_coroutine():
+def test_run_agent_stream_does_not_close_owned_coroutine():
     from src.adapters.agentscope import runtime
-    from src.core.interfaces import ChatMessage
 
     close_called = False
 
@@ -61,9 +60,9 @@ def test_stream_agent_messages_does_not_close_owned_coroutine():
     async def _run():
         with patch("src.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
             items = []
-            async for item in runtime._stream_agent_messages(
+            async for item in runtime._run_agent_stream(
                 AgentStub(),
-                [ChatMessage(role="user", content="hello", name="user")],
+                [Msg(name="user", content="hello", role="user")],
             ):
                 items.append(item)
             return items
@@ -505,7 +504,7 @@ def test_chat_passes_runtime_memory_compression_to_agent(client, valid_payload):
     assert build_kwargs["memory_compression"].keep_recent == 7
 
 
-def test_chat_rebinds_agentscope_run_context_for_bootstrapped_session(client, valid_payload):
+def test_chat_binds_agentscope_request_context_for_bootstrapped_session(client, valid_payload):
     runtime_id = "bootstrap-chat-trace-runtime"
     session_id = "bootstrap-chat-trace-bind"
     response = client.post("/runtimes/init", json={"runtime_id": runtime_id, "skills": [], "mcp_servers": []})
@@ -742,7 +741,7 @@ def test_chat_without_session_id_uses_runtime_id_context(client, valid_payload):
     assert chat_response.status_code == 200
     events = _parse_sse_events(chat_response.text)
     response_session_ids = [event.get("session_id") for event in events if event.get("session_id")]
-    assert response_session_ids == []
+    assert response_session_ids
     assert captured["run_id"]
 
 
@@ -753,30 +752,36 @@ def test_same_session_id_streams_are_serialized():
     release_first = asyncio.Event()
     events: list[str] = []
 
-    async def _mock_chat_stream(*args, **kwargs):
+    async def _mock_runtime_stream(*args, **kwargs):
         call_number = events.count("enter") + 1
         events.append("enter")
         if call_number == 1:
             entered.set()
             await release_first.wait()
         events.append("exit")
-        yield b"data: {}\n\n"
+        msg = Msg(
+            name="agentops",
+            content=[{"type": "text", "text": "ok"}],
+            role="assistant",
+        )
+        yield msg, True
 
-    request = chat_service.ChatRequest(
-        session_id="conversation-lock-001",
-        input=[chat_service.ChatInput(role="user", content="hello")],
-    )
+    class Request:
+        session_id = "conversation-lock-001"
+        runtime_id = None
+        agent_config = None
+
+    msgs = [Msg(name="user", content="hello", role="user")]
+    request = Request()
 
     async def _collect_stream():
         items = []
-        lock = await chat_service._get_session_lock(request.session_id)
-        async with lock:
-            async for item in chat_service._stream_chat_request([], request, request.session_id):
-                items.append(item)
+        async for item in chat_service.chat_service(None, msgs, request=request):
+            items.append(item)
         return items
 
     async def _run():
-        with patch("src.application.chat_service._stream_chat_request", _mock_chat_stream):
+        with patch("src.application.chat_service._runtime_adapter.stream_chat", _mock_runtime_stream):
             first = asyncio.create_task(_collect_stream())
             await entered.wait()
             second = asyncio.create_task(_collect_stream())

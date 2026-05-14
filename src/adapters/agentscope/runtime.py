@@ -25,6 +25,7 @@ from ...capabilities.schemas import (
     ToolSummary,
 )
 from ...config.schemas import (
+    AgentConfig,
     MemoryCompressionConfig,
     resolve_effective_config,
 )
@@ -151,9 +152,12 @@ class AgentScopeRuntime:
         return profile
 
     async def chat(self, request: ChatRequest):
-        async for msg, last, _agent in self.stream_with_profile(
+        async for msg, last in self.stream_chat(
             profile=self._profile,
-            request=request,
+            messages=_to_agentscope_msgs(request.messages),
+            runtime_id=request.runtime_id,
+            session_id=request.session_id,
+            agent_config=request.agent_config,
             default_toolkit=Toolkit(),
         ):
             yield agentscope_msg_to_chat_event(msg, last)
@@ -167,30 +171,33 @@ class AgentScopeRuntime:
             await self._profile.close()
             self._profile = None
 
-    async def stream_with_profile(
+    async def stream_chat(
         self,
         *,
         profile: AgentScopeRuntimeProfile | None,
-        request: ChatRequest,
+        messages: list[Msg],
+        runtime_id: str | None = None,
+        session_id: str | None = None,
+        agent_config: AgentConfig | None = None,
         default_toolkit: Toolkit,
     ):
         """Stream a chat response using an initialized profile or request-scoped config."""
         if profile is not None:
-            if request.agent_config:
+            if agent_config:
                 raise ValueError(
                     "Initialized runtimes do not accept agent_config on /chat. Re-initialize the runtime instead.",
                 )
             memory = InMemoryMemory()
-            if request.session_id:
+            if session_id:
                 await get_session_backend().load_session_state(
-                    session_id=request.session_id,
+                    session_id=session_id,
                     memory=memory,
                 )
             _print_toolkit_loaded(
                 "Chat",
                 profile.toolkit,
                 runtime_id=profile.runtime_id,
-                session_id=request.session_id,
+                session_id=session_id,
             )
             agent = agent_factory.build_react_agent(
                 resolved_config=profile.resolved_config,
@@ -199,53 +206,57 @@ class AgentScopeRuntime:
                 system_prompt=profile.system_prompt,
                 memory_compression=profile.memory_compression,
             )
-            trace_label = request.session_id or request.runtime_id or "no-session"
-            log_tracing_state(f"query-start:{trace_label}")
+            trace_label = session_id or runtime_id or "no-session"
+            if _query_tracing_enabled():
+                log_tracing_state(f"query-start:{trace_label}")
             try:
-                if request.session_id:
-                    with bind_agentscope_run_context(
-                        request.session_id,
+                if session_id:
+                    with bind_agentscope_session_context(
+                        session_id,
                         trace_enabled=bool(profile.resolved_config),
                     ):
-                        async for msg, last in _stream_agent_messages(agent, request.messages):
-                            yield msg, last, agent
+                        async for msg, last in _run_agent_stream(agent, messages):
+                            yield msg, last
                 else:
-                    async for msg, last in _stream_agent_messages(agent, request.messages):
-                        yield msg, last, agent
+                    async for msg, last in _run_agent_stream(agent, messages):
+                        yield msg, last
             finally:
-                _flush_tracing(trace_label)
-                if request.session_id:
-                    await _save_session_state(request.session_id, agent)
+                if _query_tracing_enabled():
+                    _flush_tracing(trace_label)
+                if session_id:
+                    await _save_session_state(session_id, agent)
             return
 
-        resolved_config = resolve_effective_config(request.agent_config)
+        resolved_config = resolve_effective_config(agent_config)
         memory = InMemoryMemory()
-        if request.session_id:
+        if session_id:
             await get_session_backend().load_session_state(
-                session_id=request.session_id,
+                session_id=session_id,
                 memory=memory,
             )
 
         _print_toolkit_loaded(
             "Chat",
             default_toolkit,
-            runtime_id=request.runtime_id,
-            session_id=request.session_id,
+            runtime_id=runtime_id,
+            session_id=session_id,
         )
         agent = agent_factory.build_react_agent(
             resolved_config=resolved_config,
             memory=memory,
             toolkit=default_toolkit,
         )
-        trace_label = request.session_id or request.runtime_id or "no-session"
-        log_tracing_state(f"query-start:{trace_label}")
+        trace_label = session_id or runtime_id or "no-session"
+        if _query_tracing_enabled():
+            log_tracing_state(f"query-start:{trace_label}")
         try:
-            async for msg, last in _stream_agent_messages(agent, request.messages):
-                yield msg, last, agent
+            async for msg, last in _run_agent_stream(agent, messages):
+                yield msg, last
         finally:
-            _flush_tracing(trace_label)
-            if request.session_id:
-                await _save_session_state(request.session_id, agent)
+            if _query_tracing_enabled():
+                _flush_tracing(trace_label)
+            if session_id:
+                await _save_session_state(session_id, agent)
 
 
 class AgentScopeInitializationError(RuntimeError):
@@ -300,13 +311,17 @@ def log_tracing_state(context: str) -> None:
         logger.warning("Failed to inspect tracing state [%s]: %s", context, exc)
 
 
+def _query_tracing_enabled() -> bool:
+    return get_settings().STUDIO_ENABLED
+
+
 @contextmanager
-def bind_agentscope_run_context(
+def bind_agentscope_session_context(
     session_id: str,
     project: str = "agentops",
     trace_enabled: bool | None = None,
 ) -> Iterator[None]:
-    """Bind AgentScope ContextVar-backed run metadata for a single request."""
+    """Bind the current session to AgentScope's run context during one agent call."""
     run_token = agentscope._config._run_id.set(session_id)
     project_token = agentscope._config._project.set(project)
     trace_token = None
@@ -377,7 +392,7 @@ async def close_mcp_clients(mcp_clients: list[StatefulClientBase]) -> None:
             logger.warning("Error closing initialized MCP client %s: %s", client.name, exc)
 
 
-def chat_messages_to_agentscope(messages: list[ChatMessage]) -> list[Msg]:
+def _to_agentscope_msgs(messages: list[ChatMessage]) -> list[Msg]:
     """Convert framework-neutral messages into AgentScope messages."""
     converted = []
     for item in messages:
@@ -402,11 +417,9 @@ def agentscope_msg_to_chat_event(msg: Msg, last: bool) -> ChatEvent:
     )
 
 
-async def _stream_agent_messages(agent, messages: list[ChatMessage]):
-    msgs = chat_messages_to_agentscope(messages)
-    stream_messages = stream_printing_messages
-    coroutine_task = agent(msgs)
-    async for msg, last in stream_messages(
+async def _run_agent_stream(agent, messages: list[Msg]):
+    coroutine_task = agent(messages)
+    async for msg, last in stream_printing_messages(
         agents=[agent],
         coroutine_task=coroutine_task,
     ):

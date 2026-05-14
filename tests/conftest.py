@@ -61,7 +61,7 @@ def client(configured_env, clear_settings_cache):
 
 @pytest.fixture
 def valid_payload():
-    """Minimal valid /chat request payload per D-01 and D-02."""
+    """Minimal valid AgentScope Runtime /chat request payload."""
     return {
         "input": [
             {
@@ -74,7 +74,7 @@ def valid_payload():
 
 @pytest.fixture
 def multi_turn_payload():
-    """Multi-turn /chat request payload with 3 messages (user-assistant-user)."""
+    """Multi-turn /chat request payload with 3 messages."""
     return {
         "input": [
             {"role": "user", "content": [{"type": "text", "text": "My name is Alice."}]},

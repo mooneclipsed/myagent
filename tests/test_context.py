@@ -19,21 +19,21 @@ from tests.test_chat_stream import _make_mock_runtime_stream, _parse_sse_events
 
 
 def test_multi_turn_passes_full_history(client, multi_turn_payload):
-    captured_requests = []
-    mock_stream = _make_mock_runtime_stream(["I remember"], captured_requests=captured_requests)
+    captured_calls = []
+    mock_stream = _make_mock_runtime_stream(["I remember"], captured_calls=captured_calls)
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=multi_turn_payload)
 
     assert response.status_code == 200
-    captured_msgs = captured_requests[0].messages
+    captured_msgs = captured_calls[0]["messages"]
     assert len(captured_msgs) == 3
     assert captured_msgs[0].role == "user"
-    assert captured_msgs[0].content == "My name is Alice."
+    assert captured_msgs[0].content == [{"type": "text", "text": "My name is Alice."}]
     assert captured_msgs[1].role == "assistant"
-    assert captured_msgs[1].content == "Hello Alice!"
+    assert captured_msgs[1].content == [{"type": "text", "text": "Hello Alice!"}]
     assert captured_msgs[2].role == "user"
-    assert captured_msgs[2].content == "What is my name?"
+    assert captured_msgs[2].content == [{"type": "text", "text": "What is my name?"}]
 
 
 # ---------------------------------------------------------------------------
@@ -44,7 +44,7 @@ def test_multi_turn_passes_full_history(client, multi_turn_payload):
 def test_single_turn_backward_compatible(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(["Hello back"])
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200
@@ -61,7 +61,7 @@ def test_single_turn_backward_compatible(client, valid_payload):
 def test_multi_turn_sse_lifecycle(client, multi_turn_payload):
     mock_stream = _make_mock_runtime_stream(["I remember your name."])
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=multi_turn_payload)
 
     assert response.status_code == 200
@@ -88,16 +88,16 @@ def test_prior_assistant_messages_in_context(client):
         ]
     }
 
-    captured_requests = []
-    mock_stream = _make_mock_runtime_stream(["Third answer"], captured_requests=captured_requests)
+    captured_calls = []
+    mock_stream = _make_mock_runtime_stream(["Third answer"], captured_calls=captured_calls)
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
-    captured_msgs = captured_requests[0].messages
+    captured_msgs = captured_calls[0]["messages"]
     assert len(captured_msgs) == 5
     assert captured_msgs[1].role == "assistant"
-    assert captured_msgs[1].content == "First answer"
+    assert captured_msgs[1].content == [{"type": "text", "text": "First answer"}]
     assert captured_msgs[3].role == "assistant"
-    assert captured_msgs[3].content == "Second answer"
+    assert captured_msgs[3].content == [{"type": "text", "text": "Second answer"}]

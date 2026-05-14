@@ -56,7 +56,7 @@ def test_session_persists_to_json(client, session_env):
         "session_id": session_id,
     }
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
@@ -89,7 +89,7 @@ def test_session_resume_has_prior_context(client, session_env):
         "session_id": session_id,
     }
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", first_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", first_stream):
         response1 = client.post("/chat", json=payload1)
 
     assert response1.status_code == 200
@@ -103,7 +103,7 @@ def test_session_resume_has_prior_context(client, session_env):
         "session_id": session_id,
     }
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", second_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", second_stream):
         response2 = client.post("/chat", json=payload2)
 
     assert response2.status_code == 200
@@ -121,7 +121,7 @@ def test_no_session_id_backward_compatible(client, valid_payload):
     """D-05/D-12: Request without session_id works identically to Phase 5."""
     mock_stream = _make_mock_runtime_stream(["Hello back"])
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200
@@ -275,7 +275,7 @@ def test_session_persists_to_redis(client, configured_env, clear_settings_cache,
         "session_id": session_id,
     }
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
@@ -323,7 +323,7 @@ def test_session_resume_from_redis(client, configured_env, clear_settings_cache,
         "session_id": session_id,
     }
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=payload)
 
     assert response.status_code == 200
@@ -336,7 +336,7 @@ def test_session_resume_from_redis(client, configured_env, clear_settings_cache,
         "session_id": session_id,
     }
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response2 = client.post("/chat", json=payload2)
 
     assert response2.status_code == 200
@@ -369,7 +369,7 @@ def test_json_backend_still_works(client, session_env, configured_env, clear_set
         "session_id": session_id,
     }
 
-    with patch("src.application.chat_service._runtime_adapter.stream_with_profile", mock_stream):
+    with patch("src.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=payload)
 
     assert response.status_code == 200

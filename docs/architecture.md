@@ -2,6 +2,84 @@
 
 This document describes the current `/runtimes/init`, `/chat`, and compatibility `/process` execution flow.
 
+## System Component Architecture
+
+This diagram shows the static component boundaries, long-lived runtime state, and external dependencies. Request-specific flows are described in the later sections.
+
+```mermaid
+flowchart TD
+    Client[Client / SDK / UI]
+
+    subgraph API[API Layer]
+        RuntimeAPI["Runtime API<br/>/runtimes/init<br/>/runtimes/:runtime_id/shutdown"]
+        ChatAPI[Chat API<br/>/chat]
+        ProcessAPI[Compatibility API<br/>/process]
+    end
+
+    subgraph App[Application Services]
+        RuntimeService[Runtime Management Service]
+        ChatService[Chat Management Service<br/>chat execution management]
+        SkillInstallService[Skill Install Service<br/>remote skill preparation]
+    end
+
+    subgraph Runtime[Runtime Adapter Layer]
+        AgentScopeRuntime[AgentScope Runtime Adapter]
+        RequestAgent[Request-scoped ReActAgent]
+    end
+
+    subgraph Capabilities[Capability Layer]
+        Toolkit[Runtime Toolkit]
+        NativeTools[Native Tools]
+        ConfigTools[Configured Tools]
+        Skills[Local / Managed Skills]
+        MCPClients[MCP Clients]
+    end
+
+    subgraph State[State Layer]
+        RuntimeProfile[(Active Runtime Profile<br/>single per process)]
+        SessionBackend[(Session Backend / Memory)]
+    end
+
+    subgraph External[External Systems]
+        LLM[LLM Provider]
+        MCPServers[MCP Servers]
+        SkillStore[Remote Skill Download Source]
+        Tracing[Tracing / Phoenix]
+    end
+
+    Client --> RuntimeAPI
+    Client --> ChatAPI
+    Client --> ProcessAPI
+
+    RuntimeAPI --> RuntimeService
+    ChatAPI --> ChatService
+    ProcessAPI --> ChatService
+
+    RuntimeService --> SkillInstallService
+    RuntimeService --> AgentScopeRuntime
+    RuntimeService --> RuntimeProfile
+    SkillInstallService --> SkillStore
+
+    ChatService --> RuntimeService
+    ChatService --> AgentScopeRuntime
+
+    AgentScopeRuntime --> RuntimeProfile
+    AgentScopeRuntime --> RequestAgent
+    AgentScopeRuntime --> SessionBackend
+    AgentScopeRuntime --> Tracing
+    RuntimeProfile --> Toolkit
+    RuntimeProfile --> MCPClients
+
+    Toolkit --> NativeTools
+    Toolkit --> ConfigTools
+    Toolkit --> Skills
+    Toolkit --> MCPClients
+    MCPClients --> MCPServers
+
+    RequestAgent --> LLM
+    RequestAgent --> Toolkit
+```
+
 ## Runtime Initialization Flow
 
 `/runtimes/init` prepares a reusable runtime profile. It does not create a `ReActAgent`. The agent is created later during `/chat`.
@@ -15,17 +93,12 @@ flowchart TD
     E -- no --> F[Return validation error]
     E -- yes --> G[Acquire runtime lock]
     G --> H{active runtime exists?}
-    H -- yes --> I[Reload active runtime]
-    H -- no --> J[Prepare runtime spec]
-    I --> J
+    H -- yes --> I[Prepare replacement runtime using previous managed skill state]
+    H -- no --> J[Prepare first runtime from empty managed skill state]
+    I --> K[Build prepared RuntimeSpec]
+    J --> K
 
-    J --> K[prepare_remote_skills]
-    K --> L[Reuse already downloaded managed skills]
-    K --> M[Download and extract requested remote skills]
-    L --> N[Build prepared RuntimeSpec]
-    M --> N
-
-    N --> O[AgentScopeRuntime.initialize]
+    K --> O[AgentScopeRuntime.initialize]
     O --> P[Resolve effective model config]
     P --> Q[Create runtime-owned Toolkit]
     Q --> R[Register configured tools]
@@ -35,7 +108,7 @@ flowchart TD
     U --> V[Register MCP tools into Toolkit]
     V --> W[Create AgentScopeRuntimeProfile]
     W --> X[Print initialization toolkit skills/tools]
-    X --> Y[Publish active runtime profile]
+    X --> Y[Publish or replace active runtime profile]
     Y --> Z[Return runtime profile response]
 
     U -- connect/register failed --> AA[Close connected MCP clients]
@@ -57,26 +130,33 @@ flowchart TD
     F --> G[Validate session_id]
     G --> H[Yield status created]
     H --> I[Yield status in_progress]
-    I --> J{valid session_id?}
+    I --> J{session_id valid and present?}
     J -- yes --> K[Acquire per-session lock]
     J -- no --> L[Run without session lock]
     K --> M[_stream_chat_request]
     L --> M
 
     M --> N[Extract runtime_id and session_id]
-    N --> O[get_runtime_profile runtime_id]
-    O --> P{runtime profile found?}
-    P -- no --> Q[Yield status failed]
-    P -- yes --> R[Build RuntimeChatRequest]
+    N --> O{runtime_id supplied?}
+    O -- yes --> P[get_runtime_profile runtime_id]
+    O -- no --> RN[Use request-scoped config and default toolkit]
+    RN --> R[Build RuntimeChatRequest]
+    P --> QA{matches active runtime?}
+    QA -- no --> Q[Yield status failed]
+    QA -- yes --> R[Build RuntimeChatRequest]
     R --> S[AgentScopeRuntime.stream_with_profile]
 
-    S --> T[Create InMemoryMemory]
-    T --> U{session_id present?}
-    U -- yes --> V[Load session memory from backend]
-    U -- no --> W[Use empty memory]
+    S --> TA{runtime profile provided?}
+    TA -- yes --> T[Use profile config and toolkit]
+    TA -- no --> TB[Use request-scoped config and default toolkit]
+    T --> U[Create InMemoryMemory]
+    TB --> U
+    U --> UA{session_id present?}
+    UA -- yes --> V[Load session memory from backend]
+    UA -- no --> W[Use empty memory]
     V --> X[Print chat toolkit skills/tools]
     W --> X
-    X --> Y[Build ReActAgent with runtime config/toolkit/memory]
+    X --> Y[Build request-scoped ReActAgent]
     Y --> Z[Bind AgentScope run context if session_id exists]
     Z --> AA[agent receives messages]
     AA --> AB[AgentScope may compress memory before reasoning]
@@ -108,27 +188,34 @@ flowchart TD
     A[Client POST /process] --> B[agentscope_runtime validates request]
     B --> C[Route to process_query registered by AgentApp.query]
     C --> D[_stream_process_messages]
-    D --> E{valid session_id?}
+    D --> E{session_id valid and present?}
     E -- yes --> F[Acquire per-session lock]
     E -- no --> G[Run without session lock]
     F --> H[_stream_process_messages_locked]
     G --> H
 
     H --> I[Extract runtime_id and session_id]
-    I --> J[get_runtime_profile runtime_id]
-    J --> K{runtime profile found?}
-    K -- no --> L[Raise framework-handled error]
-    K -- yes --> M[Normalize process Msg objects to ChatMessage list]
+    I --> J{runtime_id supplied?}
+    J -- yes --> K[get_runtime_profile runtime_id]
+    J -- no --> MN[Use request-scoped config and default toolkit]
+    MN --> M[Normalize process Msg objects to ChatMessage list]
+    K --> KA{matches active runtime?}
+    KA -- no --> L[Raise framework-handled error]
+    KA -- yes --> M[Normalize process Msg objects to ChatMessage list]
     M --> N[Build RuntimeChatRequest]
     N --> O[AgentScopeRuntime.stream_with_profile]
 
-    O --> P[Create InMemoryMemory]
-    P --> Q{session_id present?}
-    Q -- yes --> R[Load session memory from backend]
-    Q -- no --> S[Use empty memory]
+    O --> PA{runtime profile provided?}
+    PA -- yes --> P[Use profile config and toolkit]
+    PA -- no --> PB[Use request-scoped config and default toolkit]
+    P --> Q[Create InMemoryMemory]
+    PB --> Q
+    Q --> QB{session_id present?}
+    QB -- yes --> R[Load session memory from backend]
+    QB -- no --> S[Use empty memory]
     R --> T[Print chat toolkit skills/tools]
     S --> T
-    T --> U[Build ReActAgent with runtime config/toolkit/memory]
+    T --> U[Build request-scoped ReActAgent]
     U --> V[Bind AgentScope run context if session_id exists]
     V --> W[agent receives messages]
     W --> X[AgentScope may compress memory before reasoning]
@@ -171,33 +258,39 @@ Use `/chat` as the stable public API when clients depend on a predictable SSE JS
 sequenceDiagram
     participant Client
     participant API
+    participant ChatService
     participant RuntimeService
     participant RuntimeProfile
-    participant AgentScope
+    participant AgentScopeRuntime
     participant SessionBackend
 
     Client->>API: POST /runtimes/init
     API->>RuntimeService: initialize_runtime_from_request(request)
-    RuntimeService->>AgentScope: initialize(RuntimeSpec)
-    AgentScope-->>RuntimeService: AgentScopeRuntimeProfile
+    RuntimeService->>AgentScopeRuntime: initialize(RuntimeSpec)
+    AgentScopeRuntime-->>RuntimeService: AgentScopeRuntimeProfile
     RuntimeService-->>API: runtime profile summary
     API-->>Client: runtime profile response
 
     Client->>API: POST /chat
     API-->>Client: SSE status=created
     API-->>Client: SSE status=in_progress
-    API->>RuntimeService: get_runtime_profile(runtime_id)
-    RuntimeService-->>API: RuntimeProfile
-    API->>SessionBackend: load_session_state(session_id)
-    SessionBackend-->>API: memory
-    API->>AgentScope: build ReActAgent from RuntimeProfile
-    AgentScope-->>API: stream messages
+    API->>ChatService: chat_via_agentscope(request)
+    ChatService->>RuntimeService: get_runtime_profile(runtime_id)
+    RuntimeService-->>ChatService: RuntimeProfile
+    ChatService->>AgentScopeRuntime: stream_with_profile(RuntimeChatRequest)
+    AgentScopeRuntime->>SessionBackend: load_session_state(session_id)
+    SessionBackend-->>AgentScopeRuntime: memory
+    AgentScopeRuntime-->>ChatService: stream messages
+    ChatService-->>API: SSE message events
     API-->>Client: SSE message events
-    API->>SessionBackend: save_session_state(session_id, agent.memory)
+    AgentScopeRuntime->>SessionBackend: save_session_state(session_id, agent.memory)
     API-->>Client: SSE status=completed
 
     Client->>API: POST /process
-    API->>AgentScope: stream_with_profile(RuntimeChatRequest)
-    AgentScope-->>API: stream Msg events
+    API->>ChatService: process_query(msgs, request)
+    ChatService->>RuntimeService: get_runtime_profile(runtime_id)
+    ChatService->>AgentScopeRuntime: stream_with_profile(RuntimeChatRequest)
+    AgentScopeRuntime-->>ChatService: stream Msg events
+    ChatService-->>API: Msg events
     API-->>Client: agentscope_runtime SSE events
 ```

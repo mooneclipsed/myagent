@@ -1,9 +1,8 @@
-"""HTTP endpoints for chat and runtime lifecycle."""
+"""HTTP endpoints for runtime lifecycle."""
 
 from fastapi import HTTPException
 from agentscope_runtime.engine import AgentApp
 
-from ..application.chat_service import chat_via_agentscope
 from ..config.schemas import (
     RuntimeInitializeRequest,
     RuntimeProfileResponse,
@@ -21,9 +20,7 @@ from ..sessions.backend import validate_session_id
 
 
 def register_runtime_routes(app: AgentApp) -> None:
-    """Register chat and runtime lifecycle endpoints on the AgentApp."""
-
-    app.post("/chat")(chat_via_agentscope)
+    """Register runtime lifecycle endpoints on the AgentApp."""
 
     @app.post(
         "/runtimes/init",

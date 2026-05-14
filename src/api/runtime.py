@@ -9,7 +9,6 @@ from ..config.schemas import (
 )
 from ..application.runtime_service import (
     RuntimeInitializationError,
-    SessionRuntimeConflictError,
     SessionRuntimeValidationError,
     initialize_runtime_from_request,
 )
@@ -30,8 +29,6 @@ def register_runtime_routes(app: AgentApp) -> None:
             runtime, _ = await initialize_runtime_from_request(request)
         except SessionRuntimeValidationError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except SessionRuntimeConflictError as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
         except RuntimeInitializationError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 

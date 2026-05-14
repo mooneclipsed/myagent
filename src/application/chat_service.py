@@ -5,7 +5,7 @@ from typing import Any
 
 from agentscope_runtime.engine import AgentApp
 
-from ..adapters.agentscope.runtime import AgentScopeRuntime
+from ..adapters.agentscope.runtime import AgentScopeRuntime, AgentScopeRuntimeProfile
 from ..config.schemas import AgentConfig
 from .runtime_service import (
     get_runtime_profile,
@@ -28,7 +28,7 @@ async def _get_session_lock(session_id: str) -> asyncio.Lock:
         return lock
 
 
-def _resolve_chat_context(request: Any) -> tuple[str | None, str | None, Any, Any]:
+def _resolve_chat_context(request: Any) -> tuple[str | None, str | None, AgentScopeRuntimeProfile | None, Any]:
     session_id = None
     runtime_id = None
     runtime = None
@@ -53,7 +53,10 @@ def _resolve_chat_context(request: Any) -> tuple[str | None, str | None, Any, An
     return session_id, runtime_id, runtime, agent_config
 
 
-def _resolve_chat_execution(msgs, request: Any):
+def _build_chat_stream_args(
+    msgs: Any,
+    request: Any,
+) -> tuple[Any, str | None, str | None, AgentConfig | None, AgentScopeRuntimeProfile | None]:
     session_id, runtime_id, runtime, agent_config = _resolve_chat_context(request)
     return (
         msgs,
@@ -66,7 +69,7 @@ def _resolve_chat_execution(msgs, request: Any):
 
 async def chat_service(self, msgs, request=None, **kwargs):
     """Handle runtime-hosted chat queries with optional session persistence."""
-    messages, runtime_id, session_id, agent_config, runtime = _resolve_chat_execution(msgs, request)
+    messages, runtime_id, session_id, agent_config, runtime = _build_chat_stream_args(msgs, request)
 
     lock = await _get_session_lock(session_id) if session_id else None
     if lock is None:

@@ -25,10 +25,6 @@ class SessionRuntimeError(RuntimeError):
     """Base error for runtime profile operations."""
 
 
-class SessionRuntimeConflictError(SessionRuntimeError):
-    """Raised when a runtime id conflicts with active pod state."""
-
-
 class SessionRuntimeValidationError(SessionRuntimeError):
     """Raised when a supplied runtime identifier is invalid."""
 

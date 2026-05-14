@@ -30,7 +30,7 @@ from ...config.schemas import (
     resolve_effective_config,
 )
 from ...config.settings import get_settings
-from ...core.interfaces import ChatEvent, ChatMessage, ChatRequest, RuntimeSpec
+from ...core.interfaces import RuntimeSpec
 from ...runtime.skill_runtime import (
     SkillRuntimeRegistry,
     register_configured_skills,
@@ -83,7 +83,7 @@ class AgentScopeRuntimeProfile:
 
 
 class AgentScopeRuntime:
-    """AgentRuntime implementation backed by AgentScope."""
+    """AgentScope runtime adapter for initialization and chat streaming."""
 
     def __init__(self) -> None:
         self._profile: AgentScopeRuntimeProfile | None = None
@@ -150,17 +150,6 @@ class AgentScopeRuntime:
         _print_toolkit_loaded("Initialize", session_toolkit, runtime_id=spec.runtime_id)
         self._profile = profile
         return profile
-
-    async def chat(self, request: ChatRequest):
-        async for msg, last in self.stream_chat(
-            profile=self._profile,
-            messages=_to_agentscope_msgs(request.messages),
-            runtime_id=request.runtime_id,
-            session_id=request.session_id,
-            agent_config=request.agent_config,
-            default_toolkit=Toolkit(),
-        ):
-            yield agentscope_msg_to_chat_event(msg, last)
 
     async def reload(self, spec: RuntimeSpec) -> AgentScopeRuntimeProfile:
         return await self.initialize(spec)
@@ -390,31 +379,6 @@ async def close_mcp_clients(mcp_clients: list[StatefulClientBase]) -> None:
             await client.close(ignore_errors=True)
         except Exception as exc:  # pragma: no cover - defensive logging
             logger.warning("Error closing initialized MCP client %s: %s", client.name, exc)
-
-
-def _to_agentscope_msgs(messages: list[ChatMessage]) -> list[Msg]:
-    """Convert framework-neutral messages into AgentScope messages."""
-    converted = []
-    for item in messages:
-        name = item.name or item.role
-        converted.append(Msg(item.role, item.content, name))
-    return converted
-
-
-def agentscope_msg_to_chat_event(msg: Msg, last: bool) -> ChatEvent:
-    """Convert an AgentScope message into a framework-neutral chat event."""
-    text = None
-    if msg.content:
-        first = msg.content[0]
-        if isinstance(first, dict) and first.get("type") == "text":
-            text = first.get("text", "")
-    return ChatEvent(
-        role=msg.role,
-        name=msg.name,
-        content=msg.content,
-        last=last,
-        text=text,
-    )
 
 
 async def _run_agent_stream(agent, messages: list[Msg]):

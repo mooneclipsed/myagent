@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 
 from agentscope.tool import (
     ToolResponse,
@@ -12,6 +13,10 @@ from agentscope.tool import (
     view_text_file,
     write_text_file,
 )
+
+
+WINDOWS_SHELLS = ("powershell", "cmd")
+POSIX_SHELLS = ("bash", "zsh")
 
 
 def make_repo_file_reader() -> callable:
@@ -45,15 +50,12 @@ def make_shell_runner() -> callable:
 
     async def run_local_shell(
         command: str,
-        shell: str = "zsh",
+        shell: str = "auto",
         cwd: str | None = None,
         timeout: int = 300,
     ) -> ToolResponse:
-        chosen_shell = shell if shell in {"zsh", "bash"} else "zsh"
         workdir = cwd or os.getcwd()
-        wrapped = (
-            f"cd {json.dumps(workdir)} && exec {chosen_shell} -lc {json.dumps(command)}"
-        )
+        wrapped = _build_shell_command(command, shell, workdir)
         return await execute_shell_command(command=wrapped, timeout=timeout)
 
     run_local_shell.__name__ = "run_local_shell"
@@ -63,9 +65,39 @@ def make_shell_runner() -> callable:
     return run_local_shell
 
 
+def _build_shell_command(command: str, shell: str, workdir: str) -> str:
+    shell_name = _select_shell(shell)
+    if shell_name is None:
+        return command
+    if os.name == "nt":
+        return _build_windows_shell_command(command, shell_name, workdir)
+    return f"cd {json.dumps(workdir)} && exec {shell_name} -lc {json.dumps(command)}"
+
+
+def _select_shell(shell: str) -> str | None:
+    requested_shell = shell.lower()
+    available_shells = WINDOWS_SHELLS if os.name == "nt" else POSIX_SHELLS
+    if requested_shell in available_shells and shutil.which(requested_shell):
+        return requested_shell
+    for candidate in available_shells:
+        if shutil.which(candidate):
+            return candidate
+    return None
+
+
+def _build_windows_shell_command(command: str, shell: str, workdir: str) -> str:
+    if shell == "cmd":
+        return f"cd /d {json.dumps(workdir)} && {command}"
+    ps_script = f"Set-Location -LiteralPath {_quote_powershell_string(workdir)}; {command}"
+    return f"powershell -NoProfile -ExecutionPolicy Bypass -Command {json.dumps(ps_script)}"
+
+
+def _quote_powershell_string(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
 def register_native_tools(toolkit: Toolkit) -> None:
     """Register native file and shell capability tools for a runtime-owned toolkit."""
     toolkit.register_tool_function(make_repo_file_reader(), group_name="basic")
     toolkit.register_tool_function(make_repo_file_editor(), group_name="basic")
     toolkit.register_tool_function(make_shell_runner(), group_name="basic")
-

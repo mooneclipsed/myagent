@@ -22,6 +22,7 @@ Main fields:
   - `enabled`
   - `trigger_tokens`
   - `keep_recent`
+- `system_prompt` — optional runtime-level system prompt. When omitted or blank, the service uses its built-in default prompt.
 - `tools` — optional list of tools to enable
   - `name`
 - `skills` — optional list of skills to load
@@ -50,6 +51,7 @@ Main fields:
 ```json
 {
   "runtime_id": "runtime-001",
+  "system_prompt": "You are a concise assistant. Prefer direct answers and actionable steps.",
   "skills_download_url": "https://skills.example.com",
   "skill_downloads": [
     {

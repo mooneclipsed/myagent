@@ -130,7 +130,7 @@ Request-level model overrides are accepted as `AgentConfig` and resolved into an
 ```mermaid
 flowchart TD
     A[Client POST /runtimes/init] --> B[Runtime API handler]
-    B --> C[initialize_runtime_from_request]
+    B --> C[initialize_runtime]
     C --> D{runtime_id valid?}
     D -- no --> E[Raise SessionRuntimeValidationError]
     D -- yes --> F[Acquire runtime lock]
@@ -277,7 +277,7 @@ sequenceDiagram
     participant Agent
 
     Client->>RuntimeAPI: POST /runtimes/init
-    RuntimeAPI->>RuntimeService: initialize_runtime_from_request(request)
+    RuntimeAPI->>RuntimeService: initialize_runtime(request)
     RuntimeService->>AgentScopeRuntime: initialize(request)
     AgentScopeRuntime->>MCPRuntime: connect_all(toolkit, mcp_servers)
     MCPRuntime-->>AgentScopeRuntime: clients, summaries

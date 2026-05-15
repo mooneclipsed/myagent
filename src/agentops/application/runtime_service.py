@@ -57,13 +57,6 @@ def get_runtime_profile(runtime_id: str | None) -> AgentScopeRuntimeProfile | No
     return None
 
 
-async def initialize_runtime_from_request(
-    request: RuntimeInitializeRequest,
-) -> tuple[AgentScopeRuntimeProfile, bool]:
-    """Create and register the single active pod runtime profile."""
-    return await initialize_runtime(request)
-
-
 async def initialize_runtime(request: RuntimeInitializeRequest) -> tuple[AgentScopeRuntimeProfile, bool]:
     """Create and register the single active pod runtime profile."""
     global _active_runtime, _active_managed_skills

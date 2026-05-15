@@ -106,7 +106,7 @@ Important elements:
   - `_runtime_lock`
 
 - lifecycle helpers
-- `initialize_runtime_from_request(...)`
+- `initialize_runtime(...)`
   - `close_all_session_runtimes()`
   - `get_runtime_profile(...)`
 

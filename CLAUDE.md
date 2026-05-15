@@ -84,12 +84,13 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Repository Architecture
 
-- `src/main.py` builds the `AgentApp`, installs lifespan hooks, registers session routes, and imports `src.agent` to register query handlers.
-- `src/app/lifespan.py` prepares JSON session storage, checks Redis when enabled, registers the always-on local MCP client, and closes session runtimes plus MCP clients on shutdown.
-- `src/agent/query.py` owns `/process` plus the shared chat execution helpers `_build_query_execution_context()` and `_stream_agent_messages()`, while `src/app/session_routes.py` registers the explicit `/chat`, bootstrap, and shutdown HTTP routes.
-- `src/agent/session.py` handles persisted conversation state with `JSONSession` or `RedisSession`.
-- `src/agent/session_runtime.py` handles the in-memory bootstrapped runtime for the active session, including the agent, toolkit, dynamic skills, and per-session MCP clients. Only one bootstrapped runtime can be active at once.
-- `src/tools/registry.py` is the name-based tool registry used during session bootstrap.
-- `src/agent/skill_runtime.py` loads `SKILL.md` frontmatter, registers dynamic skills, and exposes session-local helpers like `list_available_skills`, `activate_skill`, `read_file`, `edit_file`, and `run_local_shell`.
-- There are two MCP paths: the startup stdio MCP registered in `src/app/lifespan.py`, and per-session stdio/HTTP MCP clients created from `/sessions/bootstrap`.
+- `src/agentops/main.py` builds the `AgentApp`, installs lifespan hooks, registers `/chat`, and registers runtime lifecycle routes.
+- `src/agentops/api/lifespan.py` prepares session storage and closes the active runtime profile on shutdown.
+- `src/agentops/application/chat_service.py` owns `/chat` context resolution, session locking, and dispatch to the AgentScope runtime adapter.
+- `src/agentops/application/runtime_service.py` owns the single active runtime profile and managed remote skill cleanup lifecycle.
+- `src/agentops/adapters/agentscope/runtime.py` initializes runtime-owned toolkits, skills, MCP clients, model config, and per-request `ReActAgent` instances.
+- `src/agentops/sessions/backend.py` handles persisted conversation state with `JSONSession` or `RedisSession`.
+- `src/agentops/tools/registry.py` is the name-based tool registry used during runtime initialization.
+- `src/agentops/runtime/skill_runtime.py` loads `SKILL.md` frontmatter and registers dynamic skills.
+- Dynamic stdio/HTTP MCP clients are created from `/runtimes/init` and stored on the active runtime profile.
 - Tests in `tests/conftest.py` auto-mock the startup MCP client, so streaming and bootstrap tests usually do not spawn a real MCP subprocess.

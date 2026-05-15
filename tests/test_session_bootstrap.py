@@ -759,7 +759,7 @@ def test_bootstrap_download_failure_fails_initialization(client):
     assert get_runtime_profile("bootstrap-download-skill-failure") is None
 
 
-def test_chat_rejects_agent_config_for_bootstrapped_session(client, valid_payload):
+def test_chat_rejects_model_config_for_bootstrapped_session(client, valid_payload):
     bootstrap_payload = {"runtime_id": "bootstrap-chat-002", "skills": [], "mcp_servers": []}
     response = client.post("/runtimes/init", json=bootstrap_payload)
     assert response.status_code == 200
@@ -768,7 +768,7 @@ def test_chat_rejects_agent_config_for_bootstrapped_session(client, valid_payloa
         **valid_payload,
         "runtime_id": "bootstrap-chat-002",
         "session_id": "conversation-chat-002",
-        "agent_config": {"model_name": "other-model"},
+        "model_config": {"model_name": "other-model"},
     }
     chat_response = client.post("/chat", json=chat_payload)
 
@@ -833,7 +833,7 @@ def test_same_session_id_streams_are_serialized():
     class Request:
         session_id = "conversation-lock-001"
         runtime_id = None
-        agent_config = None
+        model_config = None
 
     msgs = [Msg(name="user", content="hello", role="user")]
     request = Request()

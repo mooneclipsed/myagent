@@ -3,18 +3,18 @@
   "description": "Business API reference only.",
   "endpoints": [
     {
-      "path": "/sessions/bootstrap",
+      "path": "/runtimes/init",
       "method": "POST",
-      "purpose": "Create a session-scoped runtime with optional tools, skills, MCP servers, and model overrides.",
+      "purpose": "Create a runtime profile with optional tools, skills, remote skill downloads, MCP servers, system prompt, and model overrides.",
       "input": {
         "content_type": "application/json",
         "fields": {
-          "session_id": {
-            "type": "string|null",
-            "required": false,
-            "description": "Optional session identifier."
+          "runtime_id": {
+            "type": "string",
+            "required": true,
+            "description": "Runtime identifier."
           },
-          "agent_config": {
+          "model_config": {
             "type": "object|null",
             "required": false,
             "description": "Optional model settings.",
@@ -37,10 +37,27 @@
             "required": false,
             "description": "Optional list of skills to load.",
             "items": {
-              "skill_dir": "string",
-              "activation_mode": "lazy|eager",
-              "expose_structured_tools": "boolean"
+              "skill_dir": "string"
             }
+          },
+          "skill_downloads": {
+            "type": "array",
+            "required": false,
+            "description": "Optional list of remote skills to download and load.",
+            "items": {
+              "skill_id": "integer",
+              "version_id": "integer"
+            }
+          },
+          "skills_download_url": {
+            "type": "string|null",
+            "required": false,
+            "description": "Optional remote skill service base URL."
+          },
+          "system_prompt": {
+            "type": "string|null",
+            "required": false,
+            "description": "Optional runtime-level system prompt."
           },
           "mcp_servers": {
             "type": "array",
@@ -72,41 +89,12 @@
         "200": {
           "content_type": "application/json",
           "fields": {
-            "session_id": "string",
+            "runtime_id": "string",
             "status": "ready",
             "tools": "array",
             "skills": "array",
+            "skill_downloads": "array",
             "mcp_servers": "array"
-          }
-        },
-        "422": {
-          "content_type": "application/json",
-          "fields": {
-            "detail": "validation error"
-          }
-        }
-      }
-    },
-    {
-      "path": "/sessions/{session_id}/shutdown",
-      "method": "POST",
-      "purpose": "Close an existing bootstrapped session runtime.",
-      "input": {
-        "path_params": {
-          "session_id": {
-            "type": "string",
-            "required": true,
-            "description": "Session identifier."
-          }
-        },
-        "body": null
-      },
-      "output": {
-        "200": {
-          "content_type": "application/json",
-          "fields": {
-            "session_id": "string",
-            "status": "closed"
           }
         },
         "422": {
@@ -198,7 +186,7 @@
             "required": false,
             "description": "Optional session identifier."
           },
-          "agent_config": {
+          "model_config": {
             "type": "object|null",
             "required": false,
             "description": "Optional model settings.",

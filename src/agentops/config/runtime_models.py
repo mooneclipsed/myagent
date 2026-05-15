@@ -1,6 +1,6 @@
 """Request-scoped and runtime initialization configuration with .env fallback.
 
-Provides AgentConfig for per-request model overrides,
+Provides ModelConfig for per-request model overrides,
 MCP runtime request/response models, skill runtime models, and
 resolve_agent_model_config for field-level fallback to .env defaults.
 
@@ -29,8 +29,8 @@ from .settings import get_settings
 logger = logging.getLogger(__name__)
 
 
-class AgentConfig(BaseModel):
-    """Per-request agent model configuration overrides."""
+class ModelConfig(BaseModel):
+    """Per-request model configuration overrides."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -62,10 +62,10 @@ class MemoryCompressionConfig(BaseModel):
 class RuntimeInitializeRequest(BaseModel):
     """Request for creating a runtime profile."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     runtime_id: str
-    agent_config: AgentConfig | None = None
+    requested_model_config: ModelConfig | None = Field(default=None, alias="model_config")
     memory_compression: MemoryCompressionConfig | None = None
     system_prompt: str | None = None
     tools: list[ToolConfig] = Field(default_factory=list)
@@ -95,11 +95,11 @@ class RuntimeProfileResponse(BaseModel):
     mcp_servers: list[MCPServerSummary] = Field(default_factory=list)
 
 
-def resolve_agent_model_config(agent_config: AgentConfig | None = None) -> AgentModelConfig:
+def resolve_agent_model_config(model_config: ModelConfig | None = None) -> AgentModelConfig:
     """Resolve effective model config by merging request overrides with .env defaults."""
     settings = get_settings()
 
-    if agent_config is None:
+    if model_config is None:
         effective = AgentModelConfig(
             model_name=settings.model_name,
             api_key=settings.model_api_key,
@@ -107,12 +107,12 @@ def resolve_agent_model_config(agent_config: AgentConfig | None = None) -> Agent
         )
     else:
         effective = AgentModelConfig(
-            model_name=agent_config.model_name or settings.model_name,
-            api_key=agent_config.api_key or settings.model_api_key,
-            base_url=agent_config.base_url or settings.model_base_url,
+            model_name=model_config.model_name or settings.model_name,
+            api_key=model_config.api_key or settings.model_api_key,
+            base_url=model_config.base_url or settings.model_base_url,
         )
 
-    source = "request" if agent_config else "env"
+    source = "request" if model_config else "env"
     logger.info(
         "effective config: model_name=%s, base_url=%s, source=%s",
         effective.model_name,

@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 
 from ..adapters.agentscope.runtime import AgentScopeRuntime, AgentScopeRuntimeProfile
-from ..config.runtime_models import AgentConfig
+from ..config.runtime_models import ModelConfig
 from .runtime_service import (
     get_runtime_profile,
 )
@@ -47,27 +47,44 @@ def _resolve_chat_context(request: Any) -> tuple[str | None, str | None, AgentSc
         if runtime is None:
             raise ValueError(f"No active runtime found for '{runtime_id}'.")
 
-    agent_config = getattr(request, "agent_config", None) if request else None
-    return session_id, runtime_id, runtime, agent_config
+    model_config = _get_request_model_config(request)
+    return session_id, runtime_id, runtime, model_config
+
+
+def _get_request_model_config(request: Any) -> Any:
+    if request is None:
+        return None
+    extra_fields = getattr(request, "__pydantic_extra__", None)
+    if isinstance(extra_fields, dict) and "model_config" in extra_fields:
+        return extra_fields["model_config"]
+    if isinstance(request, dict):
+        return request.get("model_config")
+    try:
+        instance_fields = vars(request)
+    except TypeError:
+        return None
+    if "model_config" in instance_fields:
+        return instance_fields["model_config"]
+    return None
 
 
 def _build_chat_stream_args(
     msgs: Any,
     request: Any,
-) -> tuple[Any, str | None, str | None, AgentConfig | None, AgentScopeRuntimeProfile | None]:
-    session_id, runtime_id, runtime, agent_config = _resolve_chat_context(request)
+) -> tuple[Any, str | None, str | None, ModelConfig | None, AgentScopeRuntimeProfile | None]:
+    session_id, runtime_id, runtime, model_config = _resolve_chat_context(request)
     return (
         msgs,
         runtime_id,
         session_id,
-        AgentConfig(**agent_config) if agent_config else None,
+        ModelConfig(**model_config) if model_config else None,
         runtime,
     )
 
 
 async def chat_service(self, msgs, request=None, **kwargs):
     """Handle runtime-hosted chat queries with optional session persistence."""
-    messages, runtime_id, session_id, agent_config, runtime = _build_chat_stream_args(msgs, request)
+    messages, runtime_id, session_id, model_config, runtime = _build_chat_stream_args(msgs, request)
 
     lock = await _get_session_lock(session_id) if session_id else None
     if lock is None:
@@ -76,7 +93,7 @@ async def chat_service(self, msgs, request=None, **kwargs):
             messages=messages,
             runtime_id=runtime_id,
             session_id=session_id,
-            agent_config=agent_config,
+            model_config=model_config,
             default_toolkit=toolkit,
         ):
             yield msg, last
@@ -88,7 +105,7 @@ async def chat_service(self, msgs, request=None, **kwargs):
             messages=messages,
             runtime_id=runtime_id,
             session_id=session_id,
-            agent_config=agent_config,
+            model_config=model_config,
             default_toolkit=toolkit,
         ):
             yield msg, last

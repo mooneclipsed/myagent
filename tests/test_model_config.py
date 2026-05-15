@@ -12,7 +12,7 @@ import pytest
 from agentscope.message import Msg
 from pydantic import ValidationError
 
-from agentops.config.runtime_models import AgentConfig
+from agentops.config.runtime_models import ModelConfig
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ async def _mock_stream(*args, **kwargs):
 
 
 # ---------------------------------------------------------------------------
-# Test 1: Request with agent_config uses override values (CORE-02)
+# Test 1: Request with model_config uses override values (CORE-02)
 # ---------------------------------------------------------------------------
 
 
@@ -57,7 +57,7 @@ def test_config_override_applied(client, config_override_payload):
 
 
 # ---------------------------------------------------------------------------
-# Test 2: Request without agent_config falls back to .env defaults
+# Test 2: Request without model_config falls back to .env defaults
 # ---------------------------------------------------------------------------
 
 
@@ -90,7 +90,7 @@ def test_partial_override(client, valid_payload):
     mock_model = MagicMock()
     payload = {
         **valid_payload,
-        "agent_config": {"model_name": "gpt-4o-mini"},
+        "model_config": {"model_name": "gpt-4o-mini"},
     }
 
     with (
@@ -118,8 +118,8 @@ def test_partial_override(client, valid_payload):
 def test_different_configs_sequential(client, valid_payload):
     mock_model = MagicMock()
 
-    payload_a = {**valid_payload, "agent_config": {"model_name": "model-a"}}
-    payload_b = {**valid_payload, "agent_config": {"model_name": "model-b"}}
+    payload_a = {**valid_payload, "model_config": {"model_name": "model-a"}}
+    payload_b = {**valid_payload, "model_config": {"model_name": "model-b"}}
 
     with (
         patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
@@ -186,10 +186,10 @@ def test_config_trace_logging(client, config_override_payload, caplog):
 
 
 # ---------------------------------------------------------------------------
-# Test 6: AgentConfig rejects extra fields with ValidationError (T-03-02)
+# Test 6: ModelConfig rejects extra fields with ValidationError (T-03-02)
 # ---------------------------------------------------------------------------
 
 
-def test_agent_config_rejects_extra_fields():
+def test_model_config_rejects_extra_fields():
     with pytest.raises(ValidationError):
-        AgentConfig(model_name="test", unknown_field="bad")
+        ModelConfig(model_name="test", unknown_field="bad")

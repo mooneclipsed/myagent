@@ -18,9 +18,9 @@ from ...capabilities.models import (
     ToolSummary,
 )
 from ...config.runtime_models import (
-    AgentConfig,
     AgentModelConfig,
     MemoryCompressionConfig,
+    ModelConfig,
     RuntimeInitializeRequest,
     resolve_agent_model_config,
 )
@@ -73,11 +73,8 @@ class AgentScopeRuntimeProfile:
 class AgentScopeRuntime:
     """AgentScope runtime adapter for initialization and chat streaming."""
 
-    def __init__(self) -> None:
-        self._profile: AgentScopeRuntimeProfile | None = None
-
     async def initialize(self, request: RuntimeInitializeRequest) -> AgentScopeRuntimeProfile:
-        resolved_config = resolve_agent_model_config(request.agent_config)
+        resolved_config = resolve_agent_model_config(request.requested_model_config)
         settings = get_settings()
         studio_url = settings.studio_url
         if settings.studio_enabled and studio_url:
@@ -123,7 +120,6 @@ class AgentScopeRuntime:
             mcp_servers=summaries,
         )
         _print_toolkit_loaded("Initialize", session_toolkit, runtime_id=request.runtime_id)
-        self._profile = profile
         return profile
 
     async def stream_chat(
@@ -133,7 +129,7 @@ class AgentScopeRuntime:
         messages: list[Msg],
         runtime_id: str | None = None,
         session_id: str | None = None,
-        agent_config: AgentConfig | None = None,
+        model_config: ModelConfig | None = None,
         default_toolkit: Toolkit,
     ):
         """Stream a chat response using an initialized profile or request-scoped config."""
@@ -143,16 +139,16 @@ class AgentScopeRuntime:
                 messages=messages,
                 runtime_id=runtime_id,
                 session_id=session_id,
-                agent_config=agent_config,
+                model_config=model_config,
             ):
                 yield msg, last
             return
 
-        async for msg, last in self._stream_request_chat(
+        async for msg, last in self._stream_request_scoped_chat(
             messages=messages,
             runtime_id=runtime_id,
             session_id=session_id,
-            agent_config=agent_config,
+            model_config=model_config,
             default_toolkit=default_toolkit,
         ):
             yield msg, last
@@ -164,11 +160,11 @@ class AgentScopeRuntime:
         messages: list[Msg],
         runtime_id: str | None,
         session_id: str | None,
-        agent_config: AgentConfig | None,
+        model_config: ModelConfig | None,
     ):
-        if agent_config:
+        if model_config:
             raise ValueError(
-                "Initialized runtimes do not accept agent_config on /chat. Re-initialize the runtime instead.",
+                "Initialized runtimes do not accept model_config on /chat. Re-initialize the runtime instead.",
             )
         memory = await load_session_memory(session_id)
         _print_toolkit_loaded(
@@ -203,16 +199,16 @@ class AgentScopeRuntime:
                 flush_tracing(trace_label)
             await save_session_memory(session_id, agent)
 
-    async def _stream_request_chat(
+    async def _stream_request_scoped_chat(
         self,
         *,
         messages: list[Msg],
         runtime_id: str | None,
         session_id: str | None,
-        agent_config: AgentConfig | None,
+        model_config: ModelConfig | None,
         default_toolkit: Toolkit,
     ):
-        resolved_config = resolve_agent_model_config(agent_config)
+        resolved_config = resolve_agent_model_config(model_config)
         memory = await load_session_memory(session_id)
 
         _print_toolkit_loaded(

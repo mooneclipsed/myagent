@@ -86,7 +86,7 @@ def multi_turn_payload():
 
 @pytest.fixture
 def config_override_payload():
-    """Payload with agent_config override per D-03."""
+    """Payload with model_config override per D-03."""
     return {
         "input": [
             {
@@ -94,7 +94,7 @@ def config_override_payload():
                 "content": [{"type": "text", "text": "Hello, reply with one word."}],
             }
         ],
-        "agent_config": {
+        "model_config": {
             "model_name": "gpt-4o",
             "api_key": "sk-override-key",
             "base_url": "http://custom-api.example.com/v1",

@@ -121,7 +121,7 @@ Examples:
 | `settings.session_backend` | `SESSION_BACKEND` |
 | `settings.studio_enabled` | `STUDIO_ENABLED` |
 
-Request-level model overrides are accepted as `AgentConfig` and resolved into an `AgentModelConfig` by `resolve_agent_model_config()`. Runtime profiles store the resolved config so initialized runtimes reject per-chat `agent_config` overrides; callers must reinitialize the runtime to change model settings.
+Request-level model overrides are accepted as `ModelConfig` and resolved into an `AgentModelConfig` by `resolve_agent_model_config()`. Runtime profiles store the resolved config so initialized runtimes reject per-chat `model_config` overrides; callers must reinitialize the runtime to change model settings.
 
 ## Runtime Initialization Flow
 
@@ -196,7 +196,7 @@ flowchart TD
     O --> P
     P --> Q{runtime profile provided?}
     Q -- yes --> R[_stream_profile_chat]
-    Q -- no --> S[_stream_request_chat]
+    Q -- no --> S[_stream_request_scoped_chat]
     R --> T[Build request-scoped ReActAgent]
     S --> T
     T --> U[stream_printing_messages]
@@ -208,7 +208,7 @@ flowchart TD
 
 When a request includes `runtime_id`, chat execution uses the active `AgentScopeRuntimeProfile`:
 
-1. Reject per-chat `agent_config`; initialized runtimes use the model config resolved during `/runtimes/init`.
+1. Reject per-chat `model_config`; initialized runtimes use the model config resolved during `/runtimes/init`.
 2. Load session memory through `load_session_memory(session_id)`.
 3. Build a request-scoped `ReActAgent` with the profile toolkit, system prompt, and memory compression config.
 4. Bind the AgentScope session context when `session_id` is present.
@@ -220,7 +220,7 @@ When a request includes `runtime_id`, chat execution uses the active `AgentScope
 
 When no runtime profile is supplied, chat execution uses request-scoped config and the default toolkit:
 
-1. Resolve `AgentModelConfig` from request `agent_config` and environment defaults.
+1. Resolve `AgentModelConfig` from request `model_config` and environment defaults.
 2. Load optional session memory.
 3. Build a request-scoped `ReActAgent` with the default toolkit.
 4. Stream messages, flush tracing when enabled, and save session memory if `session_id` is present.
@@ -304,5 +304,5 @@ sequenceDiagram
 
 - Only one active runtime profile is kept per process. Reinitializing closes the previous runtime and removes managed skill directories no longer referenced by the active runtime.
 - `/chat` with a `runtime_id` must target the active runtime id. If no matching runtime exists, chat resolution fails before agent execution.
-- Initialized runtimes do not accept per-chat `agent_config`. Reinitialize the runtime to change model settings.
+- Initialized runtimes do not accept per-chat `model_config`. Reinitialize the runtime to change model settings.
 - UAT scripts generate unique UUID-based runtime/session ids to avoid stale JSON session files from previous runs.

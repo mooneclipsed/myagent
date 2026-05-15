@@ -12,9 +12,9 @@ The implemented model is:
 
 - **single active runtime profile per pod**
 - **runtime-owned toolkit**
-- **legacy global toolkit retained for non-bootstrap callers**
+- **legacy global toolkit retained for callers without runtime initialization**
 
-This means the process can hold one active bootstrapped runtime profile in memory at a time. That runtime owns its own `Toolkit` and MCP client list. Each `/chat` request builds a temporary agent with conversation memory keyed by `session_id`.
+This means the process can hold one active runtime profile in memory at a time. That runtime owns its own `Toolkit` and MCP client list. Each `/chat` request builds a temporary agent with conversation memory keyed by `session_id`.
 
 The runtime-scoped profile is coordinated from `src/agentops/application/runtime_service.py` and implemented by `src/agentops/adapters/agentscope/runtime.py`.
 
@@ -82,10 +82,9 @@ The main change is not the transport layer. The main change is **when and how th
 `src/agentops/tools/registry.py` now provides:
 
 - `register_default_tools(target_toolkit)`
-- `register_default_skills(target_toolkit)`
 - `create_base_toolkit()`
 
-This allows the bootstrap path to reuse the same default tool and skill registration logic without writing session-scoped MCP configuration into the global singleton.
+This allows the runtime initialization path to reuse the same default tool registration logic without writing runtime-scoped MCP configuration into the global singleton.
 
 ### 2. Runtime Profile Registry
 
@@ -93,7 +92,7 @@ This allows the bootstrap path to reuse the same default tool and skill registra
 
 Important elements:
 
-- `SessionRuntime`
+- `AgentScopeRuntimeProfile`
   - `runtime_id`
   - `toolkit`
   - `system_prompt`
@@ -140,7 +139,7 @@ This enables reusable runtime-level config and isolated conversation memory.
 Input:
 
 - required `runtime_id`
-- optional `agent_config`
+- optional `model_config`
 - optional `memory_compression`
 - `mcp_servers`
 
@@ -189,7 +188,7 @@ Application teardown is handled in `src/agentops/api/lifespan.py`.
 
 The shutdown order is:
 
-1. close all bootstrapped runtime profiles
+1. close all active runtime profiles
 2. close the configured session backend if needed
 3. close the legacy startup MCP clients tracked in `_mcp_clients`
 
@@ -264,7 +263,7 @@ For `http`, the transport is limited to:
 - `sse`
 - `streamable_http`
 
-This is enforced by the bootstrap config schema.
+This is enforced by the runtime initialization schema.
 
 ### Not Included in This Design
 
@@ -275,11 +274,11 @@ The current implementation deliberately does **not** include:
 - optional/partial MCP bootstrap success
 - multi-runtime-per-pod registry
 
-## Session Bootstrap as the Runtime Boundary
+## Runtime Initialization as the Runtime Boundary
 
-Although this document focuses on MCP, the overall runtime boundary is the session bootstrap request.
+Although this document focuses on MCP, the overall runtime boundary is the `/runtimes/init` request.
 
-Conceptually, the bootstrap request is where the client can provide the runtime contract for a session, including:
+Conceptually, the initialization request is where the client can provide the runtime contract, including:
 
 - model configuration
 - tool configuration
@@ -301,13 +300,13 @@ Implementation-relevant files in the current codebase:
 - `src/agentops/api/lifespan.py`
 - `src/agentops/main.py`
 - `tests/test_session_bootstrap.py`
-- `scripts/demos/demo_bootstrap_mcp.py`
+- `scripts/demos/demo_mcp.py`
 
 ## Practical Summary
 
 The implemented runtime design can be summarized as:
 
-- bootstrap creates a **session-owned** runtime
+- `/runtimes/init` creates a **runtime-owned** profile
 - that runtime owns its own toolkit and MCP clients
 - `/chat` reuses the runtime's toolkit when `runtime_id` matches
 - shutdown and teardown close only the resources that runtime created

@@ -14,7 +14,7 @@ Recreate the pod runtime profile with optional tools, local skills, remote skill
 
 Main fields:
 - `runtime_id` — required runtime identifier supplied by the caller
-- `agent_config` — optional model settings
+- `model_config` — optional runtime-level model settings
   - `model_name`
   - `api_key`
   - `base_url`
@@ -119,7 +119,7 @@ Main fields:
   - `content` — usually a list like `[{"type": "text", "text": "Hello"}]`
 - `runtime_id` — optional runtime profile identifier
 - `session_id` — optional conversation identifier used for memory persistence
-- `agent_config` — optional model settings
+- `model_config` — optional model settings. This is rejected when `runtime_id` targets an initialized runtime; reinitialize the runtime to change model settings.
   - `model_name`
   - `api_key`
   - `base_url`
@@ -151,7 +151,7 @@ Main fields:
   - `content` — usually a list like `[{"type": "text", "text": "Hello"}]`
 - `runtime_id` — optional runtime profile identifier
 - `session_id` — optional conversation identifier used for memory persistence. When omitted, the runtime framework may assign a generated session identifier.
-- `agent_config` — optional model settings
+- `model_config` — optional model settings
   - `model_name`
   - `api_key`
   - `base_url`
@@ -161,7 +161,7 @@ Main fields:
 - Streamed SSE events produced by `agentscope_runtime` from the yielded AgentScope `Msg` stream.
 
 Notes:
-- `/chat` and `/process` both call `AgentScopeRuntime.stream_with_profile`.
+- `/chat` and `/process` both call `AgentScopeRuntime.stream_chat`.
 - `/chat` owns its SSE JSON shape and normalizes cumulative text into incremental `delta.text`.
 - `/process` is useful for comparing the framework-provided stream serialization with the explicit `/chat` SSE contract.
 

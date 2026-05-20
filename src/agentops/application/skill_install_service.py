@@ -18,7 +18,7 @@ from ..integrations.skill_api_client import (
     SkillApiClient,
     SkillDownloadError,
     SkillInstallResult,
-    _resolve_base_url,
+    _require_base_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ def prepare_remote_skills(
 
     if requested_keys:
         try:
-            base_url = _resolve_base_url(skills_download_url)
+            base_url = _require_base_url(skills_download_url)
         except SkillDownloadError as exc:
             for key in requested_keys:
                 _append_failure(result, key, exc)
@@ -136,28 +136,63 @@ def _install_managed_skill(
     skill_id, version_id = key
     skill_dir = managed_root / f"skill_{skill_id}_v{version_id}"
     try:
-        if skill_dir.exists():
-            shutil.rmtree(skill_dir)
-        active_downloader = downloader or _download_with_client
-        install = active_downloader(base_url, key, skill_dir, download_root)
+        _prepare_managed_skill_dir(skill_dir)
+        install = _download_and_extract_managed_skill(
+            base_url=base_url,
+            key=key,
+            skill_dir=skill_dir,
+            download_root=download_root,
+            downloader=downloader,
+        )
         _validate_extracted_skill(skill_dir)
         return install
     except Exception as exc:
-        if skill_dir.exists():
-            shutil.rmtree(skill_dir, ignore_errors=True)
-        logger.warning(
-            "Managed skill install failed: skill_id=%s version_id=%s error=%s",
-            skill_id,
-            version_id,
-            exc,
+        return _handle_managed_skill_install_failure(
+            key=key,
+            skill_dir=skill_dir,
+            error=exc,
         )
-        return SkillDownloadSummary(
-            skill_id=skill_id,
-            version_id=version_id,
-            status="failed",
-            skill_dir=str(skill_dir),
-            error=str(exc),
-        )
+
+
+def _prepare_managed_skill_dir(skill_dir: Path) -> None:
+    if skill_dir.exists():
+        shutil.rmtree(skill_dir)
+
+
+def _download_and_extract_managed_skill(
+    *,
+    base_url: str,
+    key: ManagedSkillKey,
+    skill_dir: Path,
+    download_root: Path,
+    downloader: Downloader | None,
+) -> SkillInstallResult:
+    download_and_extract = downloader or _download_with_client
+    return download_and_extract(base_url, key, skill_dir, download_root)
+
+
+def _handle_managed_skill_install_failure(
+    *,
+    key: ManagedSkillKey,
+    skill_dir: Path,
+    error: Exception,
+) -> SkillDownloadSummary:
+    skill_id, version_id = key
+    if skill_dir.exists():
+        shutil.rmtree(skill_dir, ignore_errors=True)
+    logger.warning(
+        "Managed skill install failed: skill_id=%s version_id=%s error=%s",
+        skill_id,
+        version_id,
+        error,
+    )
+    return SkillDownloadSummary(
+        skill_id=skill_id,
+        version_id=version_id,
+        status="failed",
+        skill_dir=str(skill_dir),
+        error=str(error),
+    )
 
 
 def _download_with_client(

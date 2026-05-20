@@ -26,12 +26,8 @@ def test_prepare_remote_skills_reinstalls_requested_skills(tmp_path):
         zip_path.parent.mkdir(parents=True, exist_ok=True)
         zip_path.write_bytes(b"zip")
         return SkillInstallResult(
-            skill_id=skill_id,
-            version_id=version_id,
             zip_path=zip_path,
             extracted_to=skill_dir,
-            content_type="application/zip",
-            content_disposition=None,
         )
 
     result = prepare_remote_skills(
@@ -60,12 +56,8 @@ def test_prepare_remote_skills_keeps_request_order_after_deduplication(tmp_path)
         skill_dir.mkdir(parents=True)
         (skill_dir / "SKILL.md").write_text("---\nname: remote\n---\n", encoding="utf-8")
         return SkillInstallResult(
-            skill_id=skill_id,
-            version_id=version_id,
             zip_path=download_root / f"skill_{skill_id}_v{version_id}.zip",
             extracted_to=skill_dir,
-            content_type="application/zip",
-            content_disposition=None,
         )
 
     prepare_remote_skills(
@@ -90,12 +82,8 @@ def test_prepare_remote_skills_continues_after_install_failure(tmp_path, caplog)
         skill_dir.mkdir(parents=True)
         (skill_dir / "SKILL.md").write_text("---\nname: remote\n---\n", encoding="utf-8")
         return SkillInstallResult(
-            skill_id=skill_id,
-            version_id=version_id,
             zip_path=download_root / f"skill_{skill_id}_v{version_id}.zip",
             extracted_to=skill_dir,
-            content_type="application/zip",
-            content_disposition=None,
         )
 
     result = prepare_remote_skills(

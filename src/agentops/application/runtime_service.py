@@ -3,14 +3,21 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 
-from ..capabilities.models import SkillDownloadSummary
+from ..capabilities.models import (
+    MCPServerConfig,
+    SkillConfig,
+    SkillDownloadConfig,
+    SkillDownloadSummary,
+    ToolConfig,
+)
 from ..adapters.agentscope.runtime import (
     AgentScopeInitializationError,
     AgentScopeRuntime,
     AgentScopeRuntimeProfile,
 )
-from ..config.runtime_models import RuntimeInitializeRequest
+from ..config.runtime_models import MemoryCompressionConfig, ModelConfig, RuntimeInitializeRequest
 from ..tools import ToolRegistryError
 from .skill_install_service import (
     ManagedSkillKey,
@@ -32,6 +39,15 @@ class RuntimeInitializationError(SessionRuntimeError):
     """Raised when runtime initialization cannot complete successfully."""
 
 
+@dataclass(frozen=True)
+class PreparedRuntimeSkills:
+    """Runtime skill inputs after remote skill preparation."""
+
+    skills: list[SkillConfig]
+    download_summaries: list[SkillDownloadSummary]
+    managed_skills: dict[ManagedSkillKey, ManagedSkillState]
+
+
 _active_runtime: AgentScopeRuntimeProfile | None = None
 _active_managed_skills: dict[ManagedSkillKey, ManagedSkillState] = {}
 _runtime_lock = asyncio.Lock()
@@ -44,78 +60,125 @@ def get_active_runtime_profile() -> AgentScopeRuntimeProfile | None:
 
 
 async def initialize_runtime(request: RuntimeInitializeRequest) -> tuple[AgentScopeRuntimeProfile, bool]:
-    """Create and register the single active pod runtime profile."""
-    global _active_runtime, _active_managed_skills
+    """Create and publish the single active runtime profile."""
 
     async with _runtime_lock:
-        previous_runtime = _active_runtime
-        previous_managed_skills = list(_active_managed_skills.values())
-        _active_runtime = None
-        _active_managed_skills = {}
+        previous_runtime, previous_managed_skills = _detach_active_runtime()
 
-        if previous_runtime is not None:
-            await previous_runtime.close()
-        cleanup_managed_skills(previous_managed_skills)
+        await _cleanup_previous_runtime(previous_runtime, previous_managed_skills)
 
-        runtime = await _initialize_runtime_locked(request)
-        _active_runtime = runtime
-        return _active_runtime, True
+        prepared_skills = _prepare_runtime_skills(
+            existing_skills=request.skills,
+            requested_downloads=request.skill_downloads,
+            skills_download_url=request.skills_download_url,
+        )
+
+        runtime = await _create_runtime_profile(
+            requested_model_config=request.requested_model_config,
+            memory_compression=request.memory_compression,
+            system_prompt=request.system_prompt,
+            tools=request.tools,
+            mcp_servers=request.mcp_servers,
+            prepared_skills=prepared_skills,
+        )
+
+        _publish_active_runtime(runtime, prepared_skills.managed_skills)
+        return runtime, True
 
 
-async def close_all_session_runtimes() -> None:
-    """Close any active runtime profile during application shutdown."""
+def _detach_active_runtime() -> tuple[AgentScopeRuntimeProfile | None, list[ManagedSkillState]]:
+    """Remove and return the currently published runtime state."""
     global _active_runtime, _active_managed_skills
 
-    async with _runtime_lock:
-        runtime = _active_runtime
-        managed_skills = list(_active_managed_skills.values())
-        _active_runtime = None
-        _active_managed_skills = {}
+    runtime = _active_runtime
+    managed_skills = list(_active_managed_skills.values())
+    _active_runtime = None
+    _active_managed_skills = {}
+    return runtime, managed_skills
 
+
+async def _cleanup_previous_runtime(
+    runtime: AgentScopeRuntimeProfile | None,
+    managed_skills: list[ManagedSkillState],
+) -> None:
+    """Close previous runtime resources and delete managed skill directories."""
     if runtime is not None:
         await runtime.close()
     cleanup_managed_skills(managed_skills)
 
 
-async def _initialize_runtime_locked(request: RuntimeInitializeRequest) -> AgentScopeRuntimeProfile:
-    global _active_managed_skills
+def _publish_active_runtime(
+    runtime: AgentScopeRuntimeProfile,
+    managed_skills: dict[ManagedSkillKey, ManagedSkillState],
+) -> None:
+    """Publish the newly created runtime state."""
+    global _active_runtime, _active_managed_skills
 
-    prepared_request, download_summaries, managed_skills = _prepare_runtime_request(request)
+    _active_runtime = runtime
+    _active_managed_skills = managed_skills
+
+
+async def close_all_session_runtimes() -> None:
+    """Close any active runtime profile during application shutdown."""
+    async with _runtime_lock:
+        runtime, managed_skills = _detach_active_runtime()
+
+    await _cleanup_previous_runtime(runtime, managed_skills)
+
+
+async def _create_runtime_profile(
+    *,
+    requested_model_config: ModelConfig | None,
+    memory_compression: MemoryCompressionConfig | None,
+    system_prompt: str | None,
+    tools: list[ToolConfig],
+    mcp_servers: list[MCPServerConfig],
+    prepared_skills: PreparedRuntimeSkills,
+) -> AgentScopeRuntimeProfile:
     try:
-        _raise_for_failed_skill_downloads(download_summaries)
+        _raise_for_failed_skill_downloads(prepared_skills.download_summaries)
     except RuntimeInitializationError:
-        cleanup_managed_skills(list(managed_skills.values()))
+        cleanup_managed_skills(list(prepared_skills.managed_skills.values()))
         raise
 
+    runtime_request = RuntimeInitializeRequest(
+        model_config=requested_model_config,
+        memory_compression=memory_compression,
+        system_prompt=system_prompt,
+        tools=tools,
+        skills=prepared_skills.skills,
+        mcp_servers=mcp_servers,
+    )
     try:
-        runtime = await _runtime_adapter.initialize(prepared_request)
+        runtime = await _runtime_adapter.initialize(runtime_request)
     except ToolRegistryError as exc:
-        cleanup_managed_skills(list(managed_skills.values()))
+        cleanup_managed_skills(list(prepared_skills.managed_skills.values()))
         raise SessionRuntimeValidationError(str(exc)) from exc
     except AgentScopeInitializationError as exc:
-        cleanup_managed_skills(list(managed_skills.values()))
+        cleanup_managed_skills(list(prepared_skills.managed_skills.values()))
         raise RuntimeInitializationError(str(exc)) from exc
     except Exception as exc:
-        cleanup_managed_skills(list(managed_skills.values()))
+        cleanup_managed_skills(list(prepared_skills.managed_skills.values()))
         raise RuntimeInitializationError(str(exc)) from exc
 
-    runtime.skill_downloads = download_summaries
-    _active_managed_skills = managed_skills
+    runtime.skill_downloads = prepared_skills.download_summaries
     return runtime
 
 
-def _prepare_runtime_request(
-    request: RuntimeInitializeRequest,
-) -> tuple[RuntimeInitializeRequest, list[SkillDownloadSummary], dict[ManagedSkillKey, ManagedSkillState]]:
+def _prepare_runtime_skills(
+    *,
+    existing_skills: list[SkillConfig],
+    requested_downloads: list[SkillDownloadConfig],
+    skills_download_url: str | None,
+) -> PreparedRuntimeSkills:
     sync_result = prepare_remote_skills(
-        requested=request.skill_downloads,
-        skills_download_url=request.skills_download_url,
+        requested=requested_downloads,
+        skills_download_url=skills_download_url,
     )
-    prepared_request = request.model_copy(update={"skills": [*request.skills, *sync_result.skills]})
-    return (
-        prepared_request,
-        sync_result.summaries,
-        sync_result.managed_skills,
+    return PreparedRuntimeSkills(
+        skills=[*existing_skills, *sync_result.skills],
+        download_summaries=sync_result.summaries,
+        managed_skills=sync_result.managed_skills,
     )
 
 

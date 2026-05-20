@@ -11,7 +11,7 @@ import zipfile
 import requests
 
 DEFAULT_SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
-SKILLS_DOWNLOAD_URL_ENV = "SKILLS_DOWNLOAD_URL"
+SKILLS_DOWNLOAD_URL = "SKILLS_DOWNLOAD_URL"
 
 
 class SkillDownloadError(RuntimeError):
@@ -33,12 +33,8 @@ class SkillDownloadResult:
 class SkillInstallResult:
     """Local artifacts created from a remote skill version install."""
 
-    skill_id: int
-    version_id: int
     zip_path: Path
     extracted_to: Path
-    content_type: str | None
-    content_disposition: str | None
 
 
 class SkillApiClient:
@@ -136,12 +132,8 @@ class SkillApiClient:
         download = self.download_skill_version(skill_id, version_id, archive_dir)
         extracted_to = extract_skill_zip(download.path, target_skills_dir)
         return SkillInstallResult(
-            skill_id=download.skill_id,
-            version_id=download.version_id,
             zip_path=download.path,
             extracted_to=extracted_to,
-            content_type=download.content_type,
-            content_disposition=download.content_disposition,
         )
 
 
@@ -171,7 +163,7 @@ def download_and_extract_skill_version(
     timeout: float = 60,
 ) -> SkillInstallResult:
     """Convenience function for installing a remote skill version into ./skills."""
-    with SkillApiClient(_resolve_base_url(base_url), timeout=timeout) as client:
+    with SkillApiClient(_require_base_url(base_url), timeout=timeout) as client:
         return client.download_and_extract_skill_version(
             skill_id,
             version_id,
@@ -180,10 +172,10 @@ def download_and_extract_skill_version(
         )
 
 
-def _resolve_base_url(base_url: str | None = None) -> str:
-    resolved = base_url or os.getenv(SKILLS_DOWNLOAD_URL_ENV)
+def _require_base_url(base_url: str | None = None) -> str:
+    resolved = base_url or os.getenv(SKILLS_DOWNLOAD_URL)
     if not resolved:
-        raise SkillDownloadError(f"{SKILLS_DOWNLOAD_URL_ENV} is not configured")
+        raise SkillDownloadError(f"{SKILLS_DOWNLOAD_URL} is not configured")
     return resolved
 
 

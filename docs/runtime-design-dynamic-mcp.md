@@ -1,5 +1,9 @@
 # Dynamic MCP Runtime Design
 
+> Historical design note: this document predates the simplified single-active-profile API.
+> The current `/chat` path requires an initialized active runtime profile and no longer
+> accepts or routes by `runtime_id`.
+
 ## Purpose
 
 This document explains the runtime design used for dynamic MCP bootstrap in the current codebase. The design is implementation-oriented and describes how runtime-scoped MCP resources are created, reused, and cleaned up without mutating the process-wide shared toolkit.
@@ -43,13 +47,9 @@ Using a runtime-owned toolkit has several advantages:
    - Bootstrap is all-or-nothing.
    - If any MCP server fails to connect or register, the partially created MCP clients are closed and the runtime is not published.
 
-4. **Legacy compatibility**
-   - The original shared toolkit remains available for callers that still use `/chat` without first bootstrapping a runtime.
-
-The helper `create_base_toolkit()` in `src/agentops/tools/registry.py` is the bridge between the two worlds:
-
-- the request-scoped fallback path still uses the module-level `toolkit`
-- the initialization path creates a fresh runtime-owned toolkit
+4. **Explicit initialization**
+   - `/chat` requires an active runtime profile created by `/runtimes/init`.
+   - The initialization path creates a fresh runtime-owned toolkit.
 
 ## How This Reuses AgentScope Runtime
 
@@ -93,7 +93,6 @@ This allows the runtime initialization path to reuse the same default tool regis
 Important elements:
 
 - `AgentScopeRuntimeProfile`
-  - `runtime_id`
   - `toolkit`
   - `system_prompt`
   - `mcp_clients`
@@ -107,9 +106,9 @@ Important elements:
 - lifecycle helpers
 - `initialize_runtime(...)`
   - `close_all_session_runtimes()`
-  - `get_runtime_profile(...)`
+  - `get_active_runtime_profile()`
 
-This is intentionally a **single-active-runtime** implementation. It matches the deployment assumption of one `runtime_id` per pod.
+This is intentionally a **single-active-runtime** implementation. It matches the deployment assumption of one profile per process.
 
 ### 3. Runtime Routes
 
@@ -125,8 +124,8 @@ These routes are registered from `src/agentops/main.py` and live alongside the `
 
 Behavior:
 
-- if `runtime_id` matches the active initialized runtime, build a temporary agent from the runtime profile and the request `session_id` memory
-- otherwise, return an error for unknown runtime ids
+- if an active runtime exists, build a temporary agent from the runtime profile and the request `session_id` memory
+- otherwise, return an error telling the caller to initialize the runtime first
 
 This enables reusable runtime-level config and isolated conversation memory.
 
@@ -138,22 +137,20 @@ This enables reusable runtime-level config and isolated conversation memory.
 
 Input:
 
-- required `runtime_id`
 - optional `model_config`
 - optional `memory_compression`
 - `mcp_servers`
 
 The initialization handler does the following:
 
-1. Validate the requested `runtime_id`
-2. Enforce the single-active-runtime-per-pod rule
-3. Resolve the effective model configuration
-4. Resolve runtime-level memory compression settings
-5. Build a fresh runtime-owned toolkit
-6. Create MCP clients from request configuration
-7. Connect each MCP client
-8. Register MCP tools into the runtime-owned toolkit
-9. Publish the runtime profile only after all MCP initialization steps succeed
+1. Enforce the single-active-runtime-per-process rule
+2. Resolve the effective model configuration
+3. Resolve runtime-level memory compression settings
+4. Build a fresh runtime-owned toolkit
+5. Create MCP clients from request configuration
+6. Connect each MCP client
+7. Register MCP tools into the runtime-owned toolkit
+8. Publish the runtime profile only after all MCP initialization steps succeed
 
 If any MCP server fails during connect or registration:
 
@@ -172,11 +169,11 @@ When a request includes `session_id`:
 - the handler uses it as the conversation memory key
 - same-`session_id` requests are serialized to avoid memory lost updates
 
-When a request includes `runtime_id`:
+For every chat request:
 
-- the handler checks whether that `runtime_id` maps to the active pod runtime
-- if yes, it loads memory by `session_id`, builds a temporary `ReActAgent` with the runtime toolkit/config, runs it, then saves memory
-- if no `runtime_id` is provided, it follows the legacy path and creates a temporary per-request agent using the shared global toolkit
+- the handler loads the active runtime profile
+- if no active runtime exists, it fails before agent execution
+- if a runtime exists, it loads memory by `session_id`, builds a temporary `ReActAgent` with the runtime toolkit/config, runs it, then saves memory
 
 When an initialized runtime is reused, dynamic MCP tools are already present because the temporary agent is bound to the runtime-owned toolkit.
 
@@ -308,8 +305,7 @@ The implemented runtime design can be summarized as:
 
 - `/runtimes/init` creates a **runtime-owned** profile
 - that runtime owns its own toolkit and MCP clients
-- `/chat` reuses the runtime's toolkit when `runtime_id` matches
+- `/chat` reuses the active runtime's toolkit
 - shutdown and teardown close only the resources that runtime created
-- the legacy global toolkit remains available for non-bootstrap callers
 
 This keeps dynamic MCP behavior isolated, reusable, and aligned with the current AgentScope Runtime architecture instead of replacing it.

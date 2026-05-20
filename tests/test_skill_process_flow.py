@@ -20,7 +20,6 @@ async def _mock_stream(*args, **kwargs):
 
 def test_bootstrap_returns_skill_summary_and_chat_completes(client, valid_payload):
     bootstrap_payload = {
-        "runtime_id": "skill-chat-runtime-001",
         "skills": [
             {
                 "skill_dir": "skills/example_skill",

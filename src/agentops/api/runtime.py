@@ -33,7 +33,6 @@ def register_runtime_routes(app: AgentApp) -> None:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
         return RuntimeProfileResponse(
-            runtime_id=runtime.runtime_id,
             tools=runtime.tool_summaries,
             skills=runtime.skill_summaries,
             skill_downloads=runtime.skill_downloads,

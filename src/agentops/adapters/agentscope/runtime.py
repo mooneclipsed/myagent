@@ -52,7 +52,6 @@ logger = logging.getLogger(__name__)
 class AgentScopeRuntimeProfile:
     """In-memory profile for one AgentScope runtime."""
 
-    runtime_id: str
     toolkit: Toolkit
     system_prompt: str | None = None
     memory_compression: MemoryCompressionConfig | None = None
@@ -83,10 +82,10 @@ class AgentScopeRuntime:
                 project="agentops",
                 studio_url=studio_url,
                 tracing_url=tracing_url,
-                run_id=request.runtime_id,
+                run_id="agentops-runtime",
             )
-            logger.info("AgentScope Studio connected: %s (run_id=%s)", studio_url, request.runtime_id)
-            log_tracing_state(f"initialize:{request.runtime_id}")
+            logger.info("AgentScope Studio connected: %s", studio_url)
+            log_tracing_state("initialize")
 
         session_toolkit = Toolkit()
         try:
@@ -108,7 +107,6 @@ class AgentScopeRuntime:
             raise AgentScopeInitializationError(str(exc)) from exc
 
         profile = AgentScopeRuntimeProfile(
-            runtime_id=request.runtime_id,
             toolkit=session_toolkit,
             system_prompt=request.system_prompt,
             memory_compression=request.memory_compression,
@@ -119,7 +117,7 @@ class AgentScopeRuntime:
             skill_summaries=skill_registry.list_skill_summaries(),
             mcp_servers=summaries,
         )
-        _print_toolkit_loaded("Initialize", session_toolkit, runtime_id=request.runtime_id)
+        _print_toolkit_loaded("Initialize", session_toolkit)
         return profile
 
     async def stream_chat(
@@ -127,17 +125,14 @@ class AgentScopeRuntime:
         *,
         profile: AgentScopeRuntimeProfile | None,
         messages: list[Msg],
-        runtime_id: str | None = None,
         session_id: str | None = None,
         model_config: ModelConfig | None = None,
-        default_toolkit: Toolkit | None = None,
     ):
         """Stream a chat response using an initialized runtime profile."""
         if profile is not None:
             async for msg, last in self._stream_profile_chat(
                 profile=profile,
                 messages=messages,
-                runtime_id=runtime_id,
                 session_id=session_id,
                 model_config=model_config,
             ):
@@ -151,7 +146,6 @@ class AgentScopeRuntime:
         *,
         profile: AgentScopeRuntimeProfile,
         messages: list[Msg],
-        runtime_id: str | None,
         session_id: str | None,
         model_config: ModelConfig | None,
     ):
@@ -163,7 +157,6 @@ class AgentScopeRuntime:
         _print_toolkit_loaded(
             "Chat",
             profile.toolkit,
-            runtime_id=profile.runtime_id,
             session_id=session_id,
         )
         agent = agent_factory.build_react_agent(
@@ -173,7 +166,7 @@ class AgentScopeRuntime:
             system_prompt=profile.system_prompt,
             memory_compression=profile.memory_compression,
         )
-        trace_label = session_id or runtime_id or "no-session"
+        trace_label = session_id or "no-session"
         if query_tracing_enabled():
             log_tracing_state(f"query-start:{trace_label}")
         try:
@@ -192,6 +185,7 @@ class AgentScopeRuntime:
                 flush_tracing(trace_label)
             await save_session_memory(session_id, agent)
 
+
 class AgentScopeInitializationError(RuntimeError):
     """Raised when AgentScope runtime initialization fails."""
 
@@ -200,14 +194,11 @@ def _print_toolkit_loaded(
     phase: str,
     toolkit: Toolkit,
     *,
-    runtime_id: str | None,
     session_id: str | None = None,
 ) -> None:
     loaded_skills = sorted(toolkit.skills.keys())
     loaded_tools = sorted(toolkit.tools.keys())
-    context = f"runtime_id={runtime_id or 'none'}"
-    if session_id:
-        context = f"{context} session_id={session_id}"
+    context = f"session_id={session_id}" if session_id else "no-session"
     message = f"{phase} toolkit loaded: {context} skills={loaded_skills} tools={loaded_tools}"
     print(message)
     logger.info(message)

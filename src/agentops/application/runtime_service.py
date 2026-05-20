@@ -11,7 +11,6 @@ from ..adapters.agentscope.runtime import (
     AgentScopeRuntimeProfile,
 )
 from ..config.runtime_models import RuntimeInitializeRequest
-from ..sessions.backend import validate_session_id
 from ..tools import ToolRegistryError
 from .skill_install_service import (
     ManagedSkillKey,
@@ -26,7 +25,7 @@ class SessionRuntimeError(RuntimeError):
 
 
 class SessionRuntimeValidationError(SessionRuntimeError):
-    """Raised when a supplied runtime identifier is invalid."""
+    """Raised when a runtime request is invalid."""
 
 
 class RuntimeInitializationError(SessionRuntimeError):
@@ -44,19 +43,9 @@ def get_active_runtime_profile() -> AgentScopeRuntimeProfile | None:
     return _active_runtime
 
 
-def get_runtime_profile(runtime_id: str | None) -> AgentScopeRuntimeProfile | None:
-    """Return the active runtime profile if its runtime_id matches."""
-    if runtime_id and _active_runtime and _active_runtime.runtime_id == runtime_id:
-        return _active_runtime
-    return None
-
-
 async def initialize_runtime(request: RuntimeInitializeRequest) -> tuple[AgentScopeRuntimeProfile, bool]:
     """Create and register the single active pod runtime profile."""
     global _active_runtime, _active_managed_skills
-
-    if not validate_session_id(request.runtime_id):
-        raise SessionRuntimeValidationError("Invalid runtime_id format.")
 
     async with _runtime_lock:
         previous_runtime = _active_runtime

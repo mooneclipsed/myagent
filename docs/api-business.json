@@ -9,11 +9,6 @@
       "input": {
         "content_type": "application/json",
         "fields": {
-          "runtime_id": {
-            "type": "string",
-            "required": true,
-            "description": "Runtime identifier."
-          },
           "model_config": {
             "type": "object|null",
             "required": false,
@@ -89,7 +84,6 @@
         "200": {
           "content_type": "application/json",
           "fields": {
-            "runtime_id": "string",
             "status": "ready",
             "tools": "array",
             "skills": "array",

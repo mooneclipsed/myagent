@@ -91,7 +91,7 @@ flowchart TD
 | `src/agentops/api/runtime.py` | Exposes `/runtimes/init` and maps runtime service exceptions to HTTP responses. |
 | `src/agentops/api/lifespan.py` | Validates startup dependencies such as session storage and closes runtime/session resources on shutdown. |
 | `src/agentops/application/runtime_service.py` | Owns the single active runtime profile, runtime lock, managed skill cleanup, and initialization error normalization. |
-| `src/agentops/application/chat_service.py` | Adapts AgentApp chat requests, validates `runtime_id`/`session_id`, serializes same-session streams with locks, and calls `AgentScopeRuntime.stream_chat`. |
+| `src/agentops/application/chat_service.py` | Adapts AgentApp chat requests, validates `session_id`, resolves the active runtime profile, serializes same-session streams with locks, and calls `AgentScopeRuntime.stream_chat`. |
 | `src/agentops/application/skill_install_service.py` | Downloads and prepares remotely managed skills before runtime initialization. |
 | `src/agentops/adapters/agentscope/runtime.py` | Orchestrates AgentScope runtime initialization and per-request chat streaming. |
 | `src/agentops/adapters/agentscope/agent_factory.py` | Builds request-scoped `ReActAgent` instances and memory compression config. |
@@ -131,9 +131,7 @@ Request-level model overrides are accepted as `ModelConfig` and resolved into an
 flowchart TD
     A[Client POST /runtimes/init] --> B[Runtime API handler]
     B --> C[initialize_runtime]
-    C --> D{runtime_id valid?}
-    D -- no --> E[Raise SessionRuntimeValidationError]
-    D -- yes --> F[Acquire runtime lock]
+    C --> F[Acquire runtime lock]
     F --> G[Close previous active runtime]
     G --> H[Cleanup previous managed skills]
     H --> I[prepare_remote_skills]
@@ -166,7 +164,7 @@ The application service raises domain-specific errors and the API layer maps the
 
 | Exception | Meaning | HTTP response |
 | --- | --- | --- |
-| `SessionRuntimeValidationError` | Invalid runtime id or invalid capability declaration such as an unknown tool name. | `400 Bad Request` |
+| `SessionRuntimeValidationError` | Invalid capability declaration such as an unknown tool name. | `400 Bad Request` |
 | `RuntimeInitializationError` | Runtime setup failed after request validation, such as MCP initialization or remote skill download failure. | `502 Bad Gateway` |
 
 `SessionRuntimeError` is the common base class for runtime service errors.
@@ -181,24 +179,17 @@ flowchart TD
     B --> C[chat_service]
     C --> D[_build_chat_stream_args]
     D --> E[_resolve_chat_context]
-    E --> F{runtime_id provided?}
-    F -- yes --> G[Validate runtime_id]
-    G --> H[get_runtime_profile]
+    E --> H[get_active_runtime_profile]
     H --> I{active runtime found?}
     I -- no --> J[Raise ValueError]
     I -- yes --> K[Use runtime profile]
-    F -- no --> L[Use request-scoped config and default toolkit]
     K --> M{session_id present?}
-    L --> M
     M -- yes --> N[Acquire per-session asyncio lock]
     M -- no --> O[Run without lock]
     N --> P[AgentScopeRuntime.stream_chat]
     O --> P
-    P --> Q{runtime profile provided?}
-    Q -- yes --> R[_stream_profile_chat]
-    Q -- no --> S[_stream_request_scoped_chat]
+    P --> R[_stream_profile_chat]
     R --> T[Build request-scoped ReActAgent]
-    S --> T
     T --> U[stream_printing_messages]
     U --> V[Yield AgentScope Msg and last flag]
     V --> W[AgentApp serializes SSE response]
@@ -206,7 +197,7 @@ flowchart TD
 
 ### Profile Chat Path
 
-When a request includes `runtime_id`, chat execution uses the active `AgentScopeRuntimeProfile`:
+Chat execution uses the active `AgentScopeRuntimeProfile`:
 
 1. Reject per-chat `model_config`; initialized runtimes use the model config resolved during `/runtimes/init`.
 2. Load session memory through `load_session_memory(session_id)`.
@@ -215,15 +206,6 @@ When a request includes `runtime_id`, chat execution uses the active `AgentScope
 5. Stream agent messages through `stream_printing_messages()`.
 6. Flush tracing when enabled.
 7. Save session memory through `save_session_memory(session_id, agent)`.
-
-### Request-Scoped Chat Path
-
-When no runtime profile is supplied, chat execution uses request-scoped config and the default toolkit:
-
-1. Resolve `AgentModelConfig` from request `model_config` and environment defaults.
-2. Load optional session memory.
-3. Build a request-scoped `ReActAgent` with the default toolkit.
-4. Stream messages, flush tracing when enabled, and save session memory if `session_id` is present.
 
 ## MCP Runtime Boundary
 
@@ -260,7 +242,7 @@ The session backend is selected by `settings.session_backend`:
 - `query_tracing_enabled()` reads `settings.studio_enabled`.
 - `flush_tracing(trace_label)` calls provider `force_flush()` when available and logs final tracing state.
 
-When `settings.studio_enabled` and `settings.studio_url` are set, `AgentScopeRuntime.initialize()` calls `agentscope.init()` with `studio_url`, `tracing_url`, and `run_id` equal to the runtime id.
+When `settings.studio_enabled` and `settings.studio_url` are set, `AgentScopeRuntime.initialize()` calls `agentscope.init()` with `studio_url`, `tracing_url`, and a fixed service-level `run_id`.
 
 ## Lifecycle Summary
 
@@ -286,7 +268,7 @@ sequenceDiagram
     RuntimeAPI-->>Client: RuntimeProfileResponse
 
     Client->>ChatService: POST /chat
-    ChatService->>RuntimeService: get_runtime_profile(runtime_id)
+    ChatService->>RuntimeService: get_active_runtime_profile()
     RuntimeService-->>ChatService: active profile or None
     ChatService->>AgentScopeRuntime: stream_chat(profile, messages, session_id)
     AgentScopeRuntime->>SessionMemory: load_session_memory(session_id)
@@ -303,6 +285,6 @@ sequenceDiagram
 ## Operational Notes
 
 - Only one active runtime profile is kept per process. Reinitializing closes the previous runtime and removes managed skill directories no longer referenced by the active runtime.
-- `/chat` with a `runtime_id` must target the active runtime id. If no matching runtime exists, chat resolution fails before agent execution.
+- `/chat` requires an active runtime profile. If `/runtimes/init` has not completed successfully, chat resolution fails before agent execution.
 - Initialized runtimes do not accept per-chat `model_config`. Reinitialize the runtime to change model settings.
-- UAT scripts generate unique UUID-based runtime/session ids to avoid stale JSON session files from previous runs.
+- UAT scripts generate unique UUID-based session ids to avoid stale JSON session files from previous runs.

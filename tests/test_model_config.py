@@ -15,8 +15,8 @@ from pydantic import ValidationError
 from agentops.config.runtime_models import ModelConfig
 
 
-def _bootstrap_runtime(client, *, model_config=None, runtime_id="model-config-runtime"):
-    payload = {"runtime_id": runtime_id}
+def _bootstrap_runtime(client, *, model_config=None):
+    payload = {}
     if model_config:
         payload["model_config"] = model_config
     response = client.post("/runtimes/init", json=payload)
@@ -134,9 +134,9 @@ def test_different_configs_sequential(client, valid_payload):
         patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
-        _bootstrap_runtime(client, model_config={"model_name": "model-a"}, runtime_id="model-config-a")
+        _bootstrap_runtime(client, model_config={"model_name": "model-a"})
         response_a = client.post("/chat", json=valid_payload)
-        _bootstrap_runtime(client, model_config={"model_name": "model-b"}, runtime_id="model-config-b")
+        _bootstrap_runtime(client, model_config={"model_name": "model-b"})
         response_b = client.post("/chat", json=valid_payload)
 
     assert response_a.status_code == 200

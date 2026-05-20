@@ -39,6 +39,11 @@ def session_env(configured_env, session_dir, monkeypatch):
     return session_dir
 
 
+def _bootstrap_runtime(client):
+    response = client.post("/runtimes/init", json={})
+    assert response.status_code == 200, response.text
+
+
 # ---------------------------------------------------------------------------
 # Test 1: Chat with session_id creates a session file (RES-01)
 # ---------------------------------------------------------------------------
@@ -48,6 +53,7 @@ def test_session_persists_to_json(client, session_env):
     """RES-01: A chat request with session_id creates a session JSON file."""
     mock_stream = _make_mock_runtime_stream(["Hello"])
     session_id = "test-persist-session-001"
+    _bootstrap_runtime(client)
 
     payload = {
         "input": [
@@ -79,6 +85,7 @@ def test_session_persists_to_json(client, session_env):
 def test_session_resume_has_prior_context(client, session_env):
     """RES-03: A subsequent chat with same session_id has access to prior context."""
     session_id = "test-resume-session-002"
+    _bootstrap_runtime(client)
 
     first_stream = _make_mock_runtime_stream(["First reply"])
 
@@ -120,6 +127,7 @@ def test_session_resume_has_prior_context(client, session_env):
 def test_no_session_id_backward_compatible(client, valid_payload):
     """D-05/D-12: Request without session_id works identically to Phase 5."""
     mock_stream = _make_mock_runtime_stream(["Hello back"])
+    _bootstrap_runtime(client)
 
     with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
@@ -267,6 +275,7 @@ def test_session_persists_to_redis(client, configured_env, clear_settings_cache,
 
     mock_stream = _make_mock_runtime_stream(["Redis reply"])
     session_id = "test-redis-persist-001"
+    _bootstrap_runtime(client)
 
     payload = {
         "input": [
@@ -315,6 +324,7 @@ def test_session_resume_from_redis(client, configured_env, clear_settings_cache,
 
     session_id = "test-redis-resume-001"
     mock_stream = _make_mock_runtime_stream(["Reply"])
+    _bootstrap_runtime(client)
 
     payload = {
         "input": [
@@ -361,6 +371,7 @@ def test_json_backend_still_works(client, session_env, configured_env, clear_set
 
     mock_stream = _make_mock_runtime_stream(["JSON still works"])
     session_id = "test-json-backward-compat-001"
+    _bootstrap_runtime(client)
 
     payload = {
         "input": [

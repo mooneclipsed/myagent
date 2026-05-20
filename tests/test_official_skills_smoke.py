@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from agentops.application.runtime_service import get_runtime_profile
+from agentops.application.runtime_service import get_active_runtime_profile
 
 SELECTED_SKILLS = [
     "doc-coauthoring",
@@ -18,7 +18,6 @@ SELECTED_SKILLS = [
 def test_bootstrap_selected_official_skills(client):
     base = Path(__file__).resolve().parents[1] / "skills"
     payload = {
-        "runtime_id": "bootstrap-official-skills-001",
         "skills": [
             {
                 "skill_dir": str((base / name).resolve()),
@@ -35,7 +34,7 @@ def test_bootstrap_selected_official_skills(client):
     assert [item["name"] for item in body["skills"]] == SELECTED_SKILLS
     assert all(item["structured_tools"] == [] for item in body["skills"])
 
-    runtime = get_runtime_profile("bootstrap-official-skills-001")
+    runtime = get_active_runtime_profile()
     assert runtime is not None
     assert set(runtime.skill_registry.skills) == set(SELECTED_SKILLS)
     assert "read_file" in runtime.toolkit.tools

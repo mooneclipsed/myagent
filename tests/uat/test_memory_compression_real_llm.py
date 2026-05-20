@@ -65,11 +65,10 @@ def parse_sse_events(response_text: str) -> list[dict]:
     return events
 
 
-def bootstrap_runtime(runtime_id: str) -> None:
+def bootstrap_runtime() -> None:
     response = httpx.post(
         f"{SERVICE_URL}/runtimes/init",
         json={
-            "runtime_id": runtime_id,
             "memory_compression": {
                 "enabled": True,
                 "trigger_tokens": 1,
@@ -83,11 +82,10 @@ def bootstrap_runtime(runtime_id: str) -> None:
     check(response.status_code == 200, "runtime bootstrap completed", response.text[:200])
 
 
-def chat(runtime_id: str, session_id: str, text: str) -> str:
+def chat(session_id: str, text: str) -> str:
     response = httpx.post(
         f"{SERVICE_URL}/chat",
         json={
-            "runtime_id": runtime_id,
             "session_id": session_id,
             "input": [
                 {
@@ -142,29 +140,25 @@ def compressed_mark_count(memory: dict) -> int:
 
 
 def main() -> None:
-    runtime_id = f"compression-runtime-{uuid.uuid4().hex[:8]}"
     session_id = f"compression-session-{uuid.uuid4().hex[:8]}"
 
     print("=" * 60)
     print("TEST: Real LLM Memory Compression")
     print("=" * 60)
     print(f"  Service URL: {SERVICE_URL}")
-    print(f"  Runtime ID: {runtime_id}")
     print(f"  Session ID: {session_id}")
     print(f"  Session dir: {SESSION_DIR}")
 
     check_service_running()
-    bootstrap_runtime(runtime_id)
+    bootstrap_runtime()
 
     first_text = chat(
-        runtime_id,
         session_id,
         "Remember this exact test fact: ALPHA-COMPRESSION-FACT. Reply briefly.",
     )
     check(first_text.strip() != "", "first LLM response is non-empty", first_text[:120])
 
     second_text = chat(
-        runtime_id,
         session_id,
         "Now answer briefly: what exact test fact did I ask you to remember?",
     )

@@ -114,7 +114,6 @@ def main() -> None:
             bootstrap_response = client.post(
                 "/runtimes/init",
                 json={
-                    "runtime_id": RUNTIME_ID,
                     "system_prompt": (
                         "你必须严格遵守已注册 skill 的说明。"
                         "当 test-skill 可用时，必须调用它处理用户请求，"
@@ -135,7 +134,6 @@ def main() -> None:
             chat_response = client.post(
                 "/chat",
                 json={
-                    "runtime_id": RUNTIME_ID,
                     "session_id": RUNTIME_ID,
                     "input": [
                         {

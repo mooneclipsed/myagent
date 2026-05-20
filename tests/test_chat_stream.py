@@ -7,8 +7,8 @@ import pytest
 from agentscope.message import Msg
 
 
-def _bootstrap_runtime(client, runtime_id="chat-stream-runtime"):
-    response = client.post("/runtimes/init", json={"runtime_id": runtime_id})
+def _bootstrap_runtime(client):
+    response = client.post("/runtimes/init", json={})
     assert response.status_code == 200, response.text
 
 

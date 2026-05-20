@@ -20,7 +20,7 @@ DEFAULT_TIMEOUT = float(os.getenv("TEST_TIMEOUT", "90"))
 
 
 def make_session_id(prefix: str) -> str:
-    """Return a unique session/runtime id with a readable test prefix."""
+    """Return a unique session id with a readable test prefix."""
     normalized_prefix = prefix.strip("-")
     return f"{normalized_prefix}-{uuid.uuid4().hex}"
 
@@ -148,7 +148,7 @@ def extract_text(events: list[dict]) -> str:
 def initialize_runtime(session_id: str, payload: dict) -> dict:
     resp = httpx.post(
         f"{SERVICE_URL}/runtimes/init",
-        json={"runtime_id": session_id, **payload},
+        json=payload,
         timeout=DEFAULT_TIMEOUT,
     )
     if resp.status_code != 200:
@@ -163,7 +163,6 @@ bootstrap = initialize_runtime
 def chat(session_id: str, text: str, path: str | None = None) -> ChatResult:
     """Send a natural language message and return structured ChatResult."""
     payload = {
-        "runtime_id": session_id,
         "session_id": session_id,
         "input": [{"role": "user", "content": [{"type": "text", "text": text}]}],
     }

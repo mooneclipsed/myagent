@@ -11,7 +11,7 @@ D-04 (optional request config), D-06 (config trace logging).
 import logging
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..capabilities.models import (
     MCPServerConfig,
@@ -64,7 +64,6 @@ class RuntimeInitializeRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    runtime_id: str
     requested_model_config: ModelConfig | None = Field(default=None, alias="model_config")
     memory_compression: MemoryCompressionConfig | None = None
     system_prompt: str | None = None
@@ -74,20 +73,12 @@ class RuntimeInitializeRequest(BaseModel):
     skills_download_url: str | None = None
     mcp_servers: list[MCPServerConfig] = Field(default_factory=list)
 
-    @field_validator("runtime_id", mode="before")
-    @classmethod
-    def coerce_runtime_id(cls, value: object) -> object:
-        if isinstance(value, int):
-            return str(value)
-        return value
-
 
 class RuntimeProfileResponse(BaseModel):
     """Response for a ready runtime profile."""
 
     model_config = ConfigDict(extra="forbid")
 
-    runtime_id: str
     status: Literal["ready"] = "ready"
     tools: list[ToolSummary] = Field(default_factory=list)
     skills: list[SkillSummary] = Field(default_factory=list)

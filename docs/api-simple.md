@@ -13,7 +13,6 @@ Recreate the pod runtime profile with optional tools, local skills, remote skill
 `application/json`
 
 Main fields:
-- `runtime_id` — required runtime identifier supplied by the caller
 - `model_config` — optional runtime-level model settings
   - `model_name`
   - `api_key`
@@ -37,7 +36,6 @@ Main fields:
 
 **Output**  
 - `200 application/json`
-  - `runtime_id`
   - `status` = `ready`
   - `tools` — enabled tool summaries
   - `skills` — loaded skill summaries
@@ -50,7 +48,6 @@ Main fields:
 
 ```json
 {
-  "runtime_id": "runtime-001",
   "system_prompt": "You are a concise assistant. Prefer direct answers and actionable steps.",
   "skills_download_url": "https://skills.example.com",
   "skill_downloads": [
@@ -72,7 +69,6 @@ Example response:
 
 ```json
 {
-  "runtime_id": "runtime-001",
   "status": "ready",
   "tools": [],
   "skills": [
@@ -109,6 +105,7 @@ Remote skill behavior:
 
 **Purpose**  
 Send a direct chat request and receive Server-Sent Events (SSE) for lifecycle and message updates.
+The service uses the single active runtime profile created by `/runtimes/init`; chat fails if no runtime has been initialized.
 
 **Input**  
 `application/json`
@@ -117,9 +114,8 @@ Main fields:
 - `input` — required list of chat messages
   - `role`
   - `content` — usually a list like `[{"type": "text", "text": "Hello"}]`
-- `runtime_id` — optional runtime profile identifier
 - `session_id` — optional conversation identifier used for memory persistence
-- `model_config` — optional model settings. This is rejected when `runtime_id` targets an initialized runtime; reinitialize the runtime to change model settings.
+- `model_config` — rejected for initialized runtime chats; reinitialize the runtime to change model settings.
   - `model_name`
   - `api_key`
   - `base_url`
@@ -140,7 +136,7 @@ Main fields:
 ## POST `/process`
 
 **Purpose**  
-Compatibility and comparison endpoint backed by the AgentScope runtime query handler. It uses the same agent runtime path as `/chat`, but lets `agentscope_runtime` serialize the streamed `Msg` objects into SSE.
+Compatibility and comparison endpoint backed by the AgentScope runtime query handler. It uses the same active runtime profile as `/chat`, but lets `agentscope_runtime` serialize the streamed `Msg` objects into SSE.
 
 **Input**  
 `application/json`
@@ -149,9 +145,8 @@ Main fields:
 - `input` — required list of chat messages
   - `role`
   - `content` — usually a list like `[{"type": "text", "text": "Hello"}]`
-- `runtime_id` — optional runtime profile identifier
 - `session_id` — optional conversation identifier used for memory persistence. When omitted, the runtime framework may assign a generated session identifier.
-- `model_config` — optional model settings
+- `model_config` — rejected for initialized runtime chats
   - `model_name`
   - `api_key`
   - `base_url`

@@ -9,7 +9,6 @@ def main():
     check_service_running()
 
     bootstrap_payload = {
-        "runtime_id": "demo-skill-activation",
         "skills": [
             {
                 "skill_dir": "skills/example_skill",
@@ -29,7 +28,6 @@ def main():
     body = bootstrap_response.json()
     assert body["skills"][0]["name"] == "example-skill"
     assert body["skills"][0]["structured_tools"] == []
-    runtime_id = body["runtime_id"]
 
     text = send_chat(
         {
@@ -46,7 +44,6 @@ def main():
                     ],
                 }
             ],
-            "runtime_id": runtime_id,
             "session_id": "demo-skill-activation-chat",
         }
     )

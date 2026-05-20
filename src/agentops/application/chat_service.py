@@ -6,10 +6,9 @@ from typing import Any
 from ..adapters.agentscope.runtime import AgentScopeRuntime, AgentScopeRuntimeProfile
 from ..config.runtime_models import ModelConfig
 from .runtime_service import (
-    get_runtime_profile,
+    get_active_runtime_profile,
 )
 from ..sessions.backend import validate_session_id
-from ..tools import toolkit
 
 
 _session_locks: dict[str, asyncio.Lock] = {}
@@ -26,29 +25,21 @@ async def _get_session_lock(session_id: str) -> asyncio.Lock:
         return lock
 
 
-def _resolve_chat_context(request: Any) -> tuple[str | None, str | None, AgentScopeRuntimeProfile | None, Any]:
+def _resolve_chat_context(request: Any) -> tuple[str | None, AgentScopeRuntimeProfile, Any]:
     session_id = None
-    runtime_id = None
-    runtime = None
 
     if request and hasattr(request, "session_id") and request.session_id:
         raw_session_id = request.session_id
         if validate_session_id(raw_session_id):
             session_id = raw_session_id
-        elif request and hasattr(request, "runtime_id") and request.runtime_id:
+        else:
             raise ValueError("Invalid session_id format.")
 
-    if request and hasattr(request, "runtime_id") and request.runtime_id:
-        raw_runtime_id = request.runtime_id
-        if not validate_session_id(raw_runtime_id):
-            raise ValueError("Invalid runtime_id format.")
-        runtime_id = raw_runtime_id
-        runtime = get_runtime_profile(runtime_id)
-        if runtime is None:
-            raise ValueError(f"No active runtime found for '{runtime_id}'.")
-
+    runtime = get_active_runtime_profile()
+    if runtime is None:
+        raise ValueError("Runtime has not been initialized. Call /runtimes/init first.")
     model_config = _get_request_model_config(request)
-    return session_id, runtime_id, runtime, model_config
+    return session_id, runtime, model_config
 
 
 def _get_request_model_config(request: Any) -> Any:
@@ -71,11 +62,10 @@ def _get_request_model_config(request: Any) -> Any:
 def _build_chat_stream_args(
     msgs: Any,
     request: Any,
-) -> tuple[Any, str | None, str | None, ModelConfig | None, AgentScopeRuntimeProfile | None]:
-    session_id, runtime_id, runtime, model_config = _resolve_chat_context(request)
+) -> tuple[Any, str | None, ModelConfig | None, AgentScopeRuntimeProfile]:
+    session_id, runtime, model_config = _resolve_chat_context(request)
     return (
         msgs,
-        runtime_id,
         session_id,
         ModelConfig(**model_config) if model_config else None,
         runtime,
@@ -84,17 +74,15 @@ def _build_chat_stream_args(
 
 async def chat_service(self, msgs, request=None, **kwargs):
     """Handle runtime-hosted chat queries with optional session persistence."""
-    messages, runtime_id, session_id, model_config, runtime = _build_chat_stream_args(msgs, request)
+    messages, session_id, model_config, runtime = _build_chat_stream_args(msgs, request)
 
     lock = await _get_session_lock(session_id) if session_id else None
     if lock is None:
         async for msg, last in _runtime_adapter.stream_chat(
             profile=runtime,
             messages=messages,
-            runtime_id=runtime_id,
             session_id=session_id,
             model_config=model_config,
-            default_toolkit=toolkit,
         ):
             yield msg, last
         return
@@ -103,9 +91,7 @@ async def chat_service(self, msgs, request=None, **kwargs):
         async for msg, last in _runtime_adapter.stream_chat(
             profile=runtime,
             messages=messages,
-            runtime_id=runtime_id,
             session_id=session_id,
             model_config=model_config,
-            default_toolkit=toolkit,
         ):
             yield msg, last

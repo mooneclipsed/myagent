@@ -39,6 +39,11 @@ _runtime_lock = asyncio.Lock()
 _runtime_adapter = AgentScopeRuntime()
 
 
+def get_active_runtime_profile() -> AgentScopeRuntimeProfile | None:
+    """Return the active runtime profile for this process."""
+    return _active_runtime
+
+
 def get_runtime_profile(runtime_id: str | None) -> AgentScopeRuntimeProfile | None:
     """Return the active runtime profile if its runtime_id matches."""
     if runtime_id and _active_runtime and _active_runtime.runtime_id == runtime_id:

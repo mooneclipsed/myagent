@@ -512,7 +512,6 @@ def test_chat_uses_bootstrapped_runtime_profile_with_session_memory(client, vali
     with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
         chat_payload = {
             **valid_payload,
-            "runtime_id": "bootstrap-chat-001",
             "session_id": "conversation-chat-001",
         }
         chat_response = client.post("/chat", json=chat_payload)
@@ -557,7 +556,6 @@ def test_chat_passes_runtime_memory_compression_to_agent(client, valid_payload):
             "/chat",
             json={
                 **valid_payload,
-                "runtime_id": "bootstrap-chat-compression",
                 "session_id": "conversation-chat-compression",
             },
         )
@@ -593,7 +591,6 @@ def test_chat_binds_agentscope_request_context_for_bootstrapped_session(client, 
             "/chat",
             json={
                 **valid_payload,
-                "runtime_id": runtime_id,
                 "session_id": session_id,
             },
         )
@@ -643,7 +640,6 @@ def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, val
                 "/chat",
                 json={
                     **valid_payload,
-                    "runtime_id": runtime_id,
                     "session_id": session_id,
                 },
             )
@@ -766,7 +762,6 @@ def test_chat_rejects_model_config_for_bootstrapped_session(client, valid_payloa
 
     chat_payload = {
         **valid_payload,
-        "runtime_id": "bootstrap-chat-002",
         "session_id": "conversation-chat-002",
         "model_config": {"model_name": "other-model"},
     }
@@ -777,7 +772,7 @@ def test_chat_rejects_model_config_for_bootstrapped_session(client, valid_payloa
     assert any(event.get("status") == "failed" for event in events)
 
 
-def test_chat_without_session_id_uses_runtime_id_context(client, valid_payload):
+def test_chat_without_session_id_uses_active_runtime_context(client, valid_payload):
     runtime_id = "bootstrap-chat-no-session"
     bootstrap_payload = {"runtime_id": runtime_id, "skills": [], "mcp_servers": []}
     response = client.post("/runtimes/init", json=bootstrap_payload)
@@ -799,7 +794,7 @@ def test_chat_without_session_id_uses_runtime_id_context(client, valid_payload):
     with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
         chat_response = client.post(
             "/chat",
-            json={**valid_payload, "runtime_id": runtime_id},
+            json=valid_payload,
         )
 
     assert chat_response.status_code == 200
@@ -832,7 +827,6 @@ def test_same_session_id_streams_are_serialized():
 
     class Request:
         session_id = "conversation-lock-001"
-        runtime_id = None
         model_config = None
 
     msgs = [Msg(name="user", content="hello", role="user")]
@@ -845,7 +839,13 @@ def test_same_session_id_streams_are_serialized():
         return items
 
     async def _run():
-        with patch("agentops.application.chat_service._runtime_adapter.stream_chat", _mock_runtime_stream):
+        class Runtime:
+            runtime_id = "conversation-lock-runtime"
+
+        with (
+            patch("agentops.application.chat_service.get_active_runtime_profile", return_value=Runtime()),
+            patch("agentops.application.chat_service._runtime_adapter.stream_chat", _mock_runtime_stream),
+        ):
             first = asyncio.create_task(_collect_stream())
             await entered.wait()
             second = asyncio.create_task(_collect_stream())

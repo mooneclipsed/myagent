@@ -1,6 +1,6 @@
-"""Request-scoped agent configuration tests.
+"""Runtime profile model configuration tests.
 
-Validates config override, .env fallback, partial override, instance
+Validates config override, .env fallback, partial override, runtime
 isolation, config trace logging (without api_key exposure), and extra
 field rejection. Covers CORE-02, CORE-03, D-02, D-06, T-03-02.
 """
@@ -13,6 +13,14 @@ from agentscope.message import Msg
 from pydantic import ValidationError
 
 from agentops.config.runtime_models import ModelConfig
+
+
+def _bootstrap_runtime(client, *, model_config=None, runtime_id="model-config-runtime"):
+    payload = {"runtime_id": runtime_id}
+    if model_config:
+        payload["model_config"] = model_config
+    response = client.post("/runtimes/init", json=payload)
+    assert response.status_code == 200, response.text
 
 
 # ---------------------------------------------------------------------------
@@ -38,12 +46,18 @@ async def _mock_stream(*args, **kwargs):
 
 def test_config_override_applied(client, config_override_payload):
     mock_model = MagicMock()
+    _bootstrap_runtime(client, model_config=config_override_payload["model_config"])
+    chat_payload = {
+        key: value
+        for key, value in config_override_payload.items()
+        if key != "model_config"
+    }
 
     with (
         patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
-        response = client.post("/chat", json=config_override_payload)
+        response = client.post("/chat", json=chat_payload)
 
     assert response.status_code == 200, (
         f"Expected 200, got {response.status_code}: {response.text[:200]}"
@@ -63,6 +77,7 @@ def test_config_override_applied(client, config_override_payload):
 
 def test_config_fallback_to_env(client, valid_payload):
     mock_model = MagicMock()
+    _bootstrap_runtime(client)
 
     with (
         patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
@@ -88,16 +103,13 @@ def test_config_fallback_to_env(client, valid_payload):
 
 def test_partial_override(client, valid_payload):
     mock_model = MagicMock()
-    payload = {
-        **valid_payload,
-        "model_config": {"model_name": "gpt-4o-mini"},
-    }
+    _bootstrap_runtime(client, model_config={"model_name": "gpt-4o-mini"})
 
     with (
         patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
-        response = client.post("/chat", json=payload)
+        response = client.post("/chat", json=valid_payload)
 
     assert response.status_code == 200, (
         f"Expected 200, got {response.status_code}: {response.text[:200]}"
@@ -118,15 +130,14 @@ def test_partial_override(client, valid_payload):
 def test_different_configs_sequential(client, valid_payload):
     mock_model = MagicMock()
 
-    payload_a = {**valid_payload, "model_config": {"model_name": "model-a"}}
-    payload_b = {**valid_payload, "model_config": {"model_name": "model-b"}}
-
     with (
         patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
     ):
-        response_a = client.post("/chat", json=payload_a)
-        response_b = client.post("/chat", json=payload_b)
+        _bootstrap_runtime(client, model_config={"model_name": "model-a"}, runtime_id="model-config-a")
+        response_a = client.post("/chat", json=valid_payload)
+        _bootstrap_runtime(client, model_config={"model_name": "model-b"}, runtime_id="model-config-b")
+        response_b = client.post("/chat", json=valid_payload)
 
     assert response_a.status_code == 200
     assert response_b.status_code == 200
@@ -152,13 +163,19 @@ def test_different_configs_sequential(client, valid_payload):
 
 def test_config_trace_logging(client, config_override_payload, caplog):
     mock_model = MagicMock()
+    _bootstrap_runtime(client, model_config=config_override_payload["model_config"])
+    chat_payload = {
+        key: value
+        for key, value in config_override_payload.items()
+        if key != "model_config"
+    }
 
     with (
         patch("agentops.adapters.agentscope.agent_factory.OpenAIChatModel", mock_model),
         patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream),
         caplog.at_level(logging.INFO, logger="agentops.config.runtime_models"),
     ):
-        response = client.post("/chat", json=config_override_payload)
+        response = client.post("/chat", json=chat_payload)
 
     assert response.status_code == 200
 

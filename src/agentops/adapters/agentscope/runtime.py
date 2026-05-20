@@ -130,9 +130,9 @@ class AgentScopeRuntime:
         runtime_id: str | None = None,
         session_id: str | None = None,
         model_config: ModelConfig | None = None,
-        default_toolkit: Toolkit,
+        default_toolkit: Toolkit | None = None,
     ):
-        """Stream a chat response using an initialized profile or request-scoped config."""
+        """Stream a chat response using an initialized runtime profile."""
         if profile is not None:
             async for msg, last in self._stream_profile_chat(
                 profile=profile,
@@ -144,14 +144,7 @@ class AgentScopeRuntime:
                 yield msg, last
             return
 
-        async for msg, last in self._stream_request_scoped_chat(
-            messages=messages,
-            runtime_id=runtime_id,
-            session_id=session_id,
-            model_config=model_config,
-            default_toolkit=default_toolkit,
-        ):
-            yield msg, last
+        raise ValueError("Runtime has not been initialized. Call /runtimes/init first.")
 
     async def _stream_profile_chat(
         self,
@@ -198,41 +191,6 @@ class AgentScopeRuntime:
             if query_tracing_enabled():
                 flush_tracing(trace_label)
             await save_session_memory(session_id, agent)
-
-    async def _stream_request_scoped_chat(
-        self,
-        *,
-        messages: list[Msg],
-        runtime_id: str | None,
-        session_id: str | None,
-        model_config: ModelConfig | None,
-        default_toolkit: Toolkit,
-    ):
-        resolved_config = resolve_agent_model_config(model_config)
-        memory = await load_session_memory(session_id)
-
-        _print_toolkit_loaded(
-            "Chat",
-            default_toolkit,
-            runtime_id=runtime_id,
-            session_id=session_id,
-        )
-        agent = agent_factory.build_react_agent(
-            resolved_config=resolved_config,
-            memory=memory,
-            toolkit=default_toolkit,
-        )
-        trace_label = session_id or runtime_id or "no-session"
-        if query_tracing_enabled():
-            log_tracing_state(f"query-start:{trace_label}")
-        try:
-            async for msg, last in _run_agent_stream(agent, messages):
-                yield msg, last
-        finally:
-            if query_tracing_enabled():
-                flush_tracing(trace_label)
-            await save_session_memory(session_id, agent)
-
 
 class AgentScopeInitializationError(RuntimeError):
     """Raised when AgentScope runtime initialization fails."""

@@ -7,6 +7,11 @@ import pytest
 from agentscope.message import Msg
 
 
+def _bootstrap_runtime(client, runtime_id="chat-stream-runtime"):
+    response = client.post("/runtimes/init", json={"runtime_id": runtime_id})
+    assert response.status_code == 200, response.text
+
+
 def _make_mock_runtime_stream(text_chunks, *, captured_calls=None):
     """Build an async generator that replaces the chat runtime stream."""
 
@@ -72,6 +77,7 @@ def test_process_endpoint_removed(client, valid_payload):
 
 def test_chat_returns_sse_stream(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(["Hello"])
+    _bootstrap_runtime(client)
 
     with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
@@ -88,6 +94,7 @@ def test_chat_returns_sse_stream(client, valid_payload):
 def test_chat_passes_runtime_parameters(client, valid_payload):
     captured_calls = []
     payload = {**valid_payload, "session_id": "compare-session"}
+    _bootstrap_runtime(client)
 
     with patch(
         "agentops.application.chat_service._runtime_adapter.stream_chat",
@@ -99,11 +106,13 @@ def test_chat_passes_runtime_parameters(client, valid_payload):
     assert len(captured_calls) == 1
     call = captured_calls[0]
     assert call["session_id"] == payload["session_id"]
+    assert call["profile"] is not None
     assert call["messages"][0].role == "user"
 
 
 def test_chat_accepts_string_content(client):
     mock_stream = _make_mock_runtime_stream(["Hello"])
+    _bootstrap_runtime(client)
 
     payload = {
         "input": [
@@ -122,6 +131,7 @@ def test_chat_accepts_string_content(client):
 
 @pytest.mark.parametrize("role", ["developer", "invalid"])
 def test_chat_invalid_role_streams_error(client, role):
+    _bootstrap_runtime(client)
     payload = {
         "input": [
             {
@@ -144,6 +154,7 @@ def test_chat_invalid_role_streams_error(client, role):
 
 def test_stream_lifecycle_events(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(["Hello", " World!"])
+    _bootstrap_runtime(client)
 
     with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
@@ -170,6 +181,7 @@ def test_chat_streams_framework_text_deltas(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(
         ["你", "你好", "你好，我", "你好，我是", "你好，我是bob。"]
     )
+    _bootstrap_runtime(client)
 
     with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
         response = client.post("/chat", json=valid_payload)
@@ -201,10 +213,23 @@ def test_invalid_input_returns_http_error(client):
         "Invalid content-type should not return SSE stream"
     )
 
+    _bootstrap_runtime(client)
     response2 = client.post("/chat", json={})
     assert response2.status_code == 200
     events = _parse_sse_events(response2.text)
     assert any(event.get("error") for event in events)
+
+
+def test_chat_without_initialized_runtime_streams_error(client, valid_payload):
+    response = client.post("/chat", json=valid_payload)
+
+    assert response.status_code == 200
+    events = _parse_sse_events(response.text)
+    assert any(
+        "Call /runtimes/init first" in str(event.get("error"))
+        or "Call /runtimes/init first" in str(event)
+        for event in events
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -214,6 +239,7 @@ def test_invalid_input_returns_http_error(client):
 
 def test_repeated_requests_stable(client, valid_payload):
     mock_stream = _make_mock_runtime_stream(["Hello"])
+    _bootstrap_runtime(client)
 
     for i in range(2):
         with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
@@ -237,6 +263,7 @@ def test_repeated_requests_stable(client, valid_payload):
 
 def test_runtime_failure_emits_sse_error(client, valid_payload):
     failing_stream = _make_failing_runtime_stream()
+    _bootstrap_runtime(client)
 
     with patch("agentops.application.chat_service._runtime_adapter.stream_chat", failing_stream):
         response = client.post("/chat", json=valid_payload)

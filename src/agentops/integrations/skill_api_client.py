@@ -90,20 +90,51 @@ class SkillApiClient:
         try:
             response = self.client.get(url, timeout=self.timeout, verify=False)
         except requests.RequestException as exc:
-            raise SkillDownloadError(str(exc)) from exc
+            message = _format_download_error(
+                skill_id=skill_id,
+                version_id=version_id,
+                url=url,
+                reason="request failed",
+                detail=str(exc),
+            )
+            raise SkillDownloadError(message) from exc
 
         if response.status_code == 404:
             detail = _extract_error_detail(response)
-            raise SkillDownloadError(detail or "Skill version not found")
+            message = _format_download_error(
+                skill_id=skill_id,
+                version_id=version_id,
+                url=url,
+                reason="skill version not found",
+                status_code=response.status_code,
+                detail=detail or "Skill version not found",
+            )
+            raise SkillDownloadError(message)
         try:
             response.raise_for_status()
         except requests.HTTPError as exc:
             detail = _extract_error_detail(response)
-            raise SkillDownloadError(detail or str(exc)) from exc
+            message = _format_download_error(
+                skill_id=skill_id,
+                version_id=version_id,
+                url=url,
+                reason="remote service returned an error",
+                status_code=response.status_code,
+                detail=detail or str(exc),
+            )
+            raise SkillDownloadError(message) from exc
 
         content_type = response.headers.get("content-type")
         if content_type and "application/zip" not in content_type.lower():
-            raise SkillDownloadError(f"Unexpected content type: {content_type}")
+            message = _format_download_error(
+                skill_id=skill_id,
+                version_id=version_id,
+                url=url,
+                reason="unexpected response content type",
+                status_code=response.status_code,
+                detail=f"Expected application/zip, got {content_type}",
+            )
+            raise SkillDownloadError(message)
 
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -191,3 +222,28 @@ def _extract_error_detail(response: requests.Response) -> str | None:
         if isinstance(detail, str):
             return detail
     return None
+
+
+def _format_download_error(
+    *,
+    skill_id: int,
+    version_id: int,
+    url: str,
+    reason: str,
+    status_code: int | None = None,
+    detail: str | None = None,
+) -> str:
+    message = (
+        f"Skill version download failed: skill_id={skill_id} "
+        f"version_id={version_id} reason={reason}"
+    )
+    if status_code is not None:
+        message += f" status_code={status_code}"
+    message += f" url={url}"
+    if detail:
+        message += f" detail={detail}"
+    message += (
+        ". Check skills_download_url, skill_id/version_id, and the remote skill "
+        "service file storage."
+    )
+    return message

@@ -79,16 +79,25 @@ def test_download_skill_version_raises_business_404(tmp_path):
     response = make_response(404, content=b'{"detail": "Version not found for this skill"}')
     client = SkillApiClient("http://skills.example", client=FakeSession(response))
 
-    with pytest.raises(SkillDownloadError, match="Version not found for this skill"):
+    with pytest.raises(SkillDownloadError) as exc_info:
         client.download_skill_version(1, 3, tmp_path)
+    message = str(exc_info.value)
+    assert "Skill version download failed" in message
+    assert "skill_id=1 version_id=3" in message
+    assert "status_code=404" in message
+    assert "Version not found for this skill" in message
+    assert "/api/v1/skills/1/versions/3/download" in message
 
 
 def test_download_skill_version_rejects_non_zip(tmp_path):
     response = make_response(200, content=b"{}", headers={"content-type": "application/json"})
     client = SkillApiClient("http://skills.example", client=FakeSession(response))
 
-    with pytest.raises(SkillDownloadError, match="Unexpected content type"):
+    with pytest.raises(SkillDownloadError) as exc_info:
         client.download_skill_version(1, 3, tmp_path)
+    message = str(exc_info.value)
+    assert "unexpected response content type" in message
+    assert "Expected application/zip, got application/json" in message
 
 
 def test_extract_skill_zip_into_skills_dir(tmp_path):

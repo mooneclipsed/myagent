@@ -188,7 +188,13 @@ def _raise_for_failed_skill_downloads(summaries: list[SkillDownloadSummary]) -> 
         return
 
     details = [
-        f"skill_id={summary.skill_id} version_id={summary.version_id}: {summary.error or 'download failed'}"
+        (
+            f"skill_id={summary.skill_id} version_id={summary.version_id} "
+            f"error={summary.error or 'download failed'}"
+        )
         for summary in failed
     ]
-    raise RuntimeInitializationError("Remote skill download failed: " + "; ".join(details))
+    raise RuntimeInitializationError(
+        "Runtime initialization failed while installing remote skills. "
+        + "; ".join(details),
+    )

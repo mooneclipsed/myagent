@@ -723,7 +723,8 @@ def test_bootstrap_download_failure_fails_initialization(client):
         )
 
     assert response.status_code == 502, response.text
-    assert "Remote skill download failed" in response.json()["detail"]
+    assert "Runtime initialization failed while installing remote skills" in response.json()["detail"]
+    assert "skill_id=1 version_id=1 error=download failed" in response.json()["detail"]
     assert get_active_runtime_profile() is None
 
 

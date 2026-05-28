@@ -18,6 +18,7 @@ from ..adapters.agentscope.runtime import (
     AgentScopeRuntimeProfile,
 )
 from ..config.runtime_models import MemoryCompressionConfig, ModelConfig, RuntimeInitializeRequest
+from ..sessions.backend import validate_session_id
 from ..tools import ToolRegistryError
 from .skill_install_service import (
     ManagedSkillKey,
@@ -63,6 +64,8 @@ async def initialize_runtime(request: RuntimeInitializeRequest) -> tuple[AgentSc
     """Create and publish the single active runtime profile."""
 
     async with _runtime_lock:
+        _validate_runtime_scope(request.tenant_id)
+
         previous_runtime, previous_managed_skills = _detach_active_runtime()
 
         await _cleanup_previous_runtime(previous_runtime, previous_managed_skills)
@@ -75,6 +78,7 @@ async def initialize_runtime(request: RuntimeInitializeRequest) -> tuple[AgentSc
 
         runtime = await _create_runtime_profile(
             requested_model_config=request.requested_model_config,
+            tenant_id=request.tenant_id,
             memory_compression=request.memory_compression,
             system_prompt=request.system_prompt,
             tools=request.tools,
@@ -129,6 +133,7 @@ async def close_all_session_runtimes() -> None:
 async def _create_runtime_profile(
     *,
     requested_model_config: ModelConfig | None,
+    tenant_id: str | None,
     memory_compression: MemoryCompressionConfig | None,
     system_prompt: str | None,
     tools: list[ToolConfig],
@@ -142,6 +147,7 @@ async def _create_runtime_profile(
         raise
 
     runtime_request = RuntimeInitializeRequest(
+        tenant_id=tenant_id,
         model_config=requested_model_config,
         memory_compression=memory_compression,
         system_prompt=system_prompt,
@@ -180,6 +186,12 @@ def _prepare_runtime_skills(
         download_summaries=sync_result.summaries,
         managed_skills=sync_result.managed_skills,
     )
+
+
+def _validate_runtime_scope(tenant_id: str | None) -> None:
+    """Validate tenant identifier before using it in trace or session keys."""
+    if tenant_id is not None and not validate_session_id(tenant_id):
+        raise SessionRuntimeValidationError("Invalid tenant_id format.")
 
 
 def _raise_for_failed_skill_downloads(summaries: list[SkillDownloadSummary]) -> None:

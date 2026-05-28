@@ -110,6 +110,27 @@ def test_chat_passes_runtime_parameters(client, valid_payload):
     assert call["messages"][0].role == "user"
 
 
+def test_chat_rejects_mismatched_tenant_id(client, valid_payload):
+    mock_stream = _make_mock_runtime_stream(["Hello"])
+    response = client.post(
+        "/runtimes/init",
+        json={"tenant_id": "tenant-a"},
+    )
+    assert response.status_code == 200
+
+    payload = {
+        **valid_payload,
+        "session_id": "compare-session",
+        "tenant_id": "tenant-b",
+    }
+    with patch("agentops.application.chat_service._runtime_adapter.stream_chat", mock_stream):
+        chat_response = client.post("/chat", json=payload)
+
+    assert chat_response.status_code == 200
+    events = _parse_sse_events(chat_response.text)
+    assert any("tenant_id does not match" in str(event.get("error")) for event in events)
+
+
 def test_chat_accepts_string_content(client):
     mock_stream = _make_mock_runtime_stream(["Hello"])
     _bootstrap_runtime(client)

@@ -227,10 +227,11 @@ The session backend is selected by `settings.session_backend`:
 - `json`: uses `JSONSession` with `settings.session_dir`.
 - `redis`: uses `RedisSession` with `settings.redis_*` fields.
 
-`chat_service` serializes concurrent streams sharing the same `session_id` with an in-process `asyncio.Lock`. `session_memory.py` then handles persistence:
+`chat_service` validates optional `tenant_id` values on chat requests against the active runtime profile. It serializes concurrent streams sharing the same `session_id` with an in-process `asyncio.Lock`. `session_memory.py` then handles persistence:
 
 - `load_session_memory(session_id)` always creates an `InMemoryMemory`; when `session_id` exists, it loads persisted state into that memory.
 - `save_session_memory(session_id, agent)` persists `agent.memory` only when `session_id` is present, and logs save failures without failing the completed stream.
+- The persisted session key is the original `session_id`; tenant isolation is handled in Studio trace project grouping.
 
 ## Tracing
 
@@ -238,11 +239,19 @@ The session backend is selected by `settings.session_backend`:
 
 - `suppress_agentscope_thinking_warnings()` installs a filter for noisy AgentScope thinking-block warnings.
 - `log_tracing_state(context)` logs OpenTelemetry provider and span processor details for diagnostics.
-- `bind_agentscope_session_context(session_id)` binds AgentScope run context for a single chat execution.
+- `bind_agentscope_session_context(session_id, project, name)` binds AgentScope run context for a single chat execution.
+- `install_studio_message_forwarding(studio_url)` forwards AgentScope printed messages to Studio using the active session run id.
 - `query_tracing_enabled()` reads `settings.studio_enabled`.
 - `flush_tracing(trace_label)` calls provider `force_flush()` when available and logs final tracing state.
 
-When `settings.studio_enabled` and `settings.studio_url` are set, `AgentScopeRuntime.initialize()` calls `agentscope.init()` with `studio_url`, `tracing_url`, and a fixed service-level `run_id`.
+When `settings.studio_enabled` and `settings.studio_url` are set, `AgentScopeRuntime.initialize()` calls `agentscope.init()` with `tracing_url`, a tenant-scoped project, and a fallback `run_id`. It does not pass `studio_url` to `agentscope.init()`, so initialization does not register a runtime-level Studio run. Chat requests register a session-level Studio run after `session_id` is known, then the Studio message hook writes printed AgentScope messages into that same run.
+
+Trace naming:
+
+- No tenant: project `agentops`, run id `agentops-runtime`.
+- `tenant_id="1"`: project `agentops-1`.
+- Chat with `session_id="test-trace"`: project `agentops-1`, run id `test-trace`, name `test-trace`.
+- The chat flow registers the same session run id in Studio before executing the agent, so Data View can fetch spans by `conversationId = run.id`.
 
 ## Lifecycle Summary
 

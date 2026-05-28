@@ -64,6 +64,7 @@ class RuntimeInitializeRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
+    tenant_id: str | None = None
     requested_model_config: ModelConfig | None = Field(default=None, alias="model_config")
     memory_compression: MemoryCompressionConfig | None = None
     system_prompt: str | None = None

@@ -67,7 +67,7 @@ def generate_session_id() -> str:
 
 
 def validate_session_id(session_id: str) -> bool:
-    """Validate session_id format to prevent path traversal (T-6-01).
+    """Validate a session or tenant identifier.
 
     Accepts only standard UUID format: 8-4-4-4-12 hexadecimal characters
     with hyphens, or plain alphanumeric strings. Rejects any path

@@ -13,6 +13,7 @@ Recreate the pod runtime profile with optional tools, local skills, remote skill
 `application/json`
 
 Main fields:
+- `tenant_id` — optional tenant identifier used for trace project grouping. Use a trusted server-side value in production.
 - `model_config` — optional runtime-level model settings
   - `model_name`
   - `api_key`
@@ -48,6 +49,7 @@ Main fields:
 
 ```json
 {
+  "tenant_id": "1",
   "system_prompt": "You are a concise assistant. Prefer direct answers and actionable steps.",
   "skills_download_url": "https://skills.example.com",
   "skill_downloads": [
@@ -101,6 +103,12 @@ Remote skill behavior:
 - Any remote skill download or extraction failure fails the whole initialization.
 - Managed remote skills are stored under `skills/.managed/`; downloaded ZIP files are stored under `skills/.downloads/`.
 
+Tenant trace behavior:
+- When Studio tracing is enabled, `tenant_id` is mapped into the AgentScope Studio project name.
+- With `tenant_id="1"`, initialization configures tracing for project `agentops-1`.
+- Runtime initialization does not register a runtime-level Studio run; chat registers a session-level run after `session_id` is known.
+- If `tenant_id` is omitted, the project falls back to `agentops`.
+
 ## POST `/chat`
 
 **Purpose**  
@@ -114,6 +122,7 @@ Main fields:
 - `input` — required list of chat messages
   - `role`
   - `content` — usually a list like `[{"type": "text", "text": "Hello"}]`
+- `tenant_id` — optional. When present, must match the active runtime's `tenant_id`.
 - `session_id` — optional conversation identifier used for memory persistence
 - `model_config` — rejected for initialized runtime chats; reinitialize the runtime to change model settings.
   - `model_name`
@@ -133,6 +142,115 @@ Main fields:
 - `200 application/json`
   - Documented schema equivalent for tooling compatibility
 
+Tenant/session behavior:
+- Same-`session_id` chat streams are serialized with an in-process lock.
+- Session memory is persisted directly under the provided `session_id`.
+- With `tenant_id="1"` and `session_id="test-trace"`, the persisted session key is `test-trace`.
+- With the same values, chat trace context is:
+  - project: `agentops-1`
+  - run id: `test-trace`
+  - name: `test-trace`
+- Chat registers a Studio run with id/name `test-trace`, so AgentScope Studio Data View can join chat spans back to the selected session run.
+
+**Bruno test example**
+
+1. Initialize the runtime:
+
+```http
+POST http://127.0.0.1:8000/runtimes/init
+Content-Type: application/json
+```
+
+```json
+{
+  "tenant_id": "1",
+  "skills": [],
+  "mcp_servers": []
+}
+```
+
+Expected response:
+
+```json
+{
+  "status": "ready"
+}
+```
+
+The response can include non-empty `tools`, `skills`, `skill_downloads`, or `mcp_servers` depending on the runtime config.
+
+2. Send a chat request:
+
+```http
+POST http://127.0.0.1:8000/chat
+Content-Type: application/json
+Accept: text/event-stream
+```
+
+```json
+{
+  "tenant_id": "1",
+  "session_id": "test-trace",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Reply with one short sentence for trace validation."
+        }
+      ]
+    }
+  ]
+}
+```
+
+Expected stream:
+- At least one lifecycle event with `status` such as `created` or `in_progress`.
+- A final event with `status` = `completed` for a successful model call, or `failed` with `error.message` if the model/backend call fails.
+- Events should include `session_id` = `test-trace`.
+
+3. Check AgentScope Studio:
+- Open `http://127.0.0.1:3000`.
+- Look for project `agentops-1`.
+- The run list should contain a run named `test-trace`.
+- The center message panel should show AgentScope printed assistant messages for the selected run.
+- The Data View trace panel for run `test-trace` should show the chat spans.
+- If only the initialization trace is visible, verify that `STUDIO_ENABLED=true` and `STUDIO_URL=http://127.0.0.1:3000` were present when the agent process started.
+
+Equivalent curl commands:
+
+```bash
+curl -X POST 'http://127.0.0.1:8000/runtimes/init' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tenant_id": "1",
+    "skills": [],
+    "mcp_servers": []
+  }'
+```
+
+```bash
+curl -N -X POST 'http://127.0.0.1:8000/chat' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: text/event-stream' \
+  -d '{
+    "tenant_id": "1",
+    "session_id": "test-trace",
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Reply with one short sentence for trace validation."
+          }
+        ]
+      }
+    ]
+  }'
+```
+
 ## POST `/process`
 
 **Purpose**  
@@ -145,6 +263,7 @@ Main fields:
 - `input` — required list of chat messages
   - `role`
   - `content` — usually a list like `[{"type": "text", "text": "Hello"}]`
+- `tenant_id` — optional. When present, must match the active runtime's `tenant_id`.
 - `session_id` — optional conversation identifier used for memory persistence. When omitted, the runtime framework may assign a generated session identifier.
 - `model_config` — rejected for initialized runtime chats
   - `model_name`

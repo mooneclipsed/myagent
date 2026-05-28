@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import agentscope
 import pytest
@@ -544,7 +544,7 @@ def test_chat_passes_runtime_memory_compression_to_agent(client, valid_payload):
     assert build_kwargs["memory_compression"].keep_recent == 7
 
 
-def test_chat_binds_agentscope_request_context_for_bootstrapped_session(client, valid_payload):
+def test_chat_binds_default_runtime_trace_context_for_bootstrapped_session(client, valid_payload):
     session_id = "bootstrap-chat-trace-bind"
     response = client.post("/runtimes/init", json={"skills": [], "mcp_servers": []})
     assert response.status_code == 200
@@ -573,6 +573,49 @@ def test_chat_binds_agentscope_request_context_for_bootstrapped_session(client, 
 
     assert chat_response.status_code == 200
     assert captured["run_id"] == session_id
+
+
+def test_chat_binds_tenant_trace_context(client, valid_payload):
+    session_id = "bootstrap-chat-trace-bind"
+    response = client.post(
+        "/runtimes/init",
+        json={
+            "tenant_id": "tenant-a",
+            "skills": [],
+            "mcp_servers": [],
+        },
+    )
+    assert response.status_code == 200
+
+    captured = {}
+
+    async def _mock_stream_runtime(*args, **kwargs):
+        captured["project"] = agentscope._config.project
+        captured["run_id"] = agentscope._config.run_id
+        captured["name"] = agentscope._config.name
+        coroutine_task = kwargs["coroutine_task"]
+        coroutine_task.close()
+        msg = Msg(
+            name="agentops",
+            content=[{"type": "text", "text": "ok"}],
+            role="assistant",
+        )
+        yield msg, True
+
+    with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
+        chat_response = client.post(
+            "/chat",
+            json={
+                **valid_payload,
+                "tenant_id": "tenant-a",
+                "session_id": session_id,
+            },
+        )
+
+    assert chat_response.status_code == 200
+    assert captured["project"] == "agentops-tenant-a"
+    assert captured["run_id"] == session_id
+    assert captured["name"] == session_id
 
 
 def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, valid_payload):
@@ -621,7 +664,116 @@ def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, val
 
     assert chat_response.status_code == 200
     spans = exporter.get_finished_spans()
-    assert any(json.loads(span.attributes["gen_ai.conversation.id"]) == session_id for span in spans)
+    assert any(
+        json.loads(span.attributes["gen_ai.conversation.id"]) == session_id
+        for span in spans
+    )
+
+
+def test_chat_registers_studio_session_run(client, monkeypatch, valid_payload):
+    monkeypatch.setenv("STUDIO_ENABLED", "true")
+    monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
+
+    from agentops.adapters.agentscope import tracing
+    from agentops.config.settings import get_settings
+
+    tracing._registered_studio_runs.clear()
+    get_settings.cache_clear()
+
+    session_id = "bootstrap-chat-studio-run"
+    response_mock = Mock()
+    response_mock.raise_for_status = Mock()
+
+    async def _mock_stream_runtime(*args, **kwargs):
+        coroutine_task = kwargs["coroutine_task"]
+        coroutine_task.close()
+        msg = Msg(
+            name="agentops",
+            content=[{"type": "text", "text": "ok"}],
+            role="assistant",
+        )
+        yield msg, True
+
+    with (
+        patch("agentops.adapters.agentscope.runtime.agentscope.init"),
+        patch("agentops.adapters.agentscope.tracing.requests.post", return_value=response_mock) as mock_post,
+        patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime),
+    ):
+        response = client.post(
+            "/runtimes/init",
+            json={
+                "tenant_id": "tenant-a",
+                "skills": [],
+                "mcp_servers": [],
+            },
+        )
+        assert response.status_code == 200, response.text
+
+        chat_response = client.post(
+            "/chat",
+            json={
+                **valid_payload,
+                "tenant_id": "tenant-a",
+                "session_id": session_id,
+            },
+        )
+
+    assert chat_response.status_code == 200
+    mock_post.assert_called_once()
+    call = mock_post.call_args.kwargs
+    assert call["url"] == "http://127.0.0.1:3000/trpc/registerRun"
+    assert call["json"]["id"] == session_id
+    assert call["json"]["project"] == "agentops-tenant-a"
+    assert call["json"]["name"] == session_id
+
+
+def test_studio_message_forwarding_uses_session_run_context():
+    from agentops.adapters.agentscope.tracing import (
+        bind_agentscope_session_context,
+        install_studio_message_forwarding,
+    )
+    from agentscope.agent import AgentBase
+
+    hook_name = "as_studio_forward_message_pre_print_hook"
+    hooks = AgentBase._class_pre_print_hooks
+    previous_hook = hooks.get(hook_name)
+    response_mock = Mock()
+    response_mock.raise_for_status = Mock()
+    agent = AgentBase()
+    agent.name = "agentops"
+    agent._reply_id = "reply-1"
+    msg = Msg(
+        name="agentops",
+        content=[{"type": "text", "text": "ok"}],
+        role="assistant",
+    )
+
+    try:
+        install_studio_message_forwarding("http://127.0.0.1:3000/")
+        hook = hooks[hook_name]
+        with (
+            patch("agentops.adapters.agentscope.tracing.requests.post", return_value=response_mock) as mock_post,
+            bind_agentscope_session_context(
+                "test-trace",
+                project="agentops-1",
+                name="test-trace",
+            ),
+        ):
+            hook(agent, {"msg": msg})
+    finally:
+        if previous_hook is None:
+            hooks.pop(hook_name, None)
+        else:
+            hooks[hook_name] = previous_hook
+
+    mock_post.assert_called_once()
+    call = mock_post.call_args.kwargs
+    assert call["url"] == "http://127.0.0.1:3000/trpc/pushMessage"
+    assert call["json"]["runId"] == "test-trace"
+    assert call["json"]["replyId"] == "reply-1"
+    assert call["json"]["replyName"] == "agentops"
+    assert call["json"]["replyRole"] == "assistant"
+    assert call["json"]["msg"]["content"] == [{"type": "text", "text": "ok"}]
 
 
 def test_bootstrap_with_skills_also_registers_local_runtime_tools(client):
@@ -895,7 +1047,10 @@ def test_bootstrap_initializes_agentscope_studio_when_configured(client, monkeyp
 
     get_settings.cache_clear()
 
-    with patch("agentops.adapters.agentscope.runtime.agentscope.init") as mock_init:
+    with (
+        patch("agentops.adapters.agentscope.runtime.agentscope.init") as mock_init,
+        patch("agentops.adapters.agentscope.runtime.install_studio_message_forwarding") as mock_forwarding,
+    ):
         response = client.post(
             "/runtimes/init",
             json={"skills": [], "mcp_servers": []},
@@ -904,10 +1059,42 @@ def test_bootstrap_initializes_agentscope_studio_when_configured(client, monkeyp
     assert response.status_code == 200, response.text
     mock_init.assert_called_once_with(
         project="agentops",
-        studio_url="http://127.0.0.1:3000",
         tracing_url="http://127.0.0.1:3000/v1/traces",
         run_id="agentops-runtime",
+        name="agentops-runtime",
     )
+    mock_forwarding.assert_called_once_with("http://127.0.0.1:3000")
+
+
+def test_bootstrap_initializes_studio_with_tenant_project(client, monkeypatch):
+    monkeypatch.setenv("STUDIO_ENABLED", "true")
+    monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
+
+    from agentops.config.settings import get_settings
+
+    get_settings.cache_clear()
+
+    with (
+        patch("agentops.adapters.agentscope.runtime.agentscope.init") as mock_init,
+        patch("agentops.adapters.agentscope.runtime.install_studio_message_forwarding") as mock_forwarding,
+    ):
+        response = client.post(
+            "/runtimes/init",
+            json={
+                "tenant_id": "tenant-a",
+                "skills": [],
+                "mcp_servers": [],
+            },
+        )
+
+    assert response.status_code == 200, response.text
+    mock_init.assert_called_once_with(
+        project="agentops-tenant-a",
+        tracing_url="http://127.0.0.1:3000/v1/traces",
+        run_id="agentops-runtime",
+        name="agentops-runtime",
+    )
+    mock_forwarding.assert_called_once_with("http://127.0.0.1:3000")
 
 
 def test_bootstrap_skips_agentscope_studio_when_disabled(client, monkeypatch):

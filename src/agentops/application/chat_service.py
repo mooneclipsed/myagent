@@ -16,12 +16,12 @@ _session_locks_guard = asyncio.Lock()
 _runtime_adapter = AgentScopeRuntime()
 
 
-async def _get_session_lock(session_id: str) -> asyncio.Lock:
+async def _get_session_lock(lock_key: str) -> asyncio.Lock:
     async with _session_locks_guard:
-        lock = _session_locks.get(session_id)
+        lock = _session_locks.get(lock_key)
         if lock is None:
             lock = asyncio.Lock()
-            _session_locks[session_id] = lock
+            _session_locks[lock_key] = lock
         return lock
 
 
@@ -38,24 +38,38 @@ def _resolve_chat_context(request: Any) -> tuple[str | None, AgentScopeRuntimePr
     runtime = get_active_runtime_profile()
     if runtime is None:
         raise ValueError("Runtime has not been initialized. Call /runtimes/init first.")
+    _validate_requested_tenant_scope(request, runtime)
     model_config = _get_request_model_config(request)
     return session_id, runtime, model_config
 
 
+def _validate_requested_tenant_scope(request: Any, runtime: AgentScopeRuntimeProfile) -> None:
+    requested_tenant_id = _get_request_field(request, "tenant_id")
+
+    if requested_tenant_id and not validate_session_id(requested_tenant_id):
+        raise ValueError("Invalid tenant_id format.")
+    if requested_tenant_id and requested_tenant_id != runtime.tenant_id:
+        raise ValueError("tenant_id does not match the active runtime.")
+
+
 def _get_request_model_config(request: Any) -> Any:
+    return _get_request_field(request, "model_config")
+
+
+def _get_request_field(request: Any, field_name: str) -> Any:
     if request is None:
         return None
     extra_fields = getattr(request, "__pydantic_extra__", None)
-    if isinstance(extra_fields, dict) and "model_config" in extra_fields:
-        return extra_fields["model_config"]
+    if isinstance(extra_fields, dict) and field_name in extra_fields:
+        return extra_fields[field_name]
     if isinstance(request, dict):
-        return request.get("model_config")
+        return request.get(field_name)
     try:
         instance_fields = vars(request)
     except TypeError:
         return None
-    if "model_config" in instance_fields:
-        return instance_fields["model_config"]
+    if field_name in instance_fields:
+        return instance_fields[field_name]
     return None
 
 

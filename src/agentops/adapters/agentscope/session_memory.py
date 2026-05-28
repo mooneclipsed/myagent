@@ -11,7 +11,9 @@ from ...sessions.backend import get_session_backend
 logger = logging.getLogger(__name__)
 
 
-async def load_session_memory(session_id: str | None) -> InMemoryMemory:
+async def load_session_memory(
+    session_id: str | None,
+) -> InMemoryMemory:
     """Create memory and load persisted session state when a session id is present."""
     memory = InMemoryMemory()
     if session_id:
@@ -22,7 +24,10 @@ async def load_session_memory(session_id: str | None) -> InMemoryMemory:
     return memory
 
 
-async def save_session_memory(session_id: str | None, agent) -> None:
+async def save_session_memory(
+    session_id: str | None,
+    agent,
+) -> None:
     """Persist agent memory when a session id is present."""
     if not session_id:
         return

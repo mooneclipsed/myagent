@@ -41,8 +41,10 @@ from .session_memory import load_session_memory, save_session_memory
 from .tracing import (
     bind_agentscope_session_context,
     flush_tracing,
+    install_studio_message_forwarding,
     log_tracing_state,
     query_tracing_enabled,
+    register_studio_run,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,6 +55,7 @@ class AgentScopeRuntimeProfile:
     """In-memory profile for one AgentScope runtime."""
 
     toolkit: Toolkit
+    tenant_id: str | None = None
     system_prompt: str | None = None
     memory_compression: MemoryCompressionConfig | None = None
     skill_registry: SkillRuntimeRegistry = field(default_factory=SkillRuntimeRegistry)
@@ -72,19 +75,25 @@ class AgentScopeRuntimeProfile:
 class AgentScopeRuntime:
     """AgentScope runtime adapter for initialization and chat streaming."""
 
+    default_project = "agentops"
+    default_run_id = "agentops-runtime"
+
     async def initialize(self, request: RuntimeInitializeRequest) -> AgentScopeRuntimeProfile:
         resolved_config = resolve_agent_model_config(request.requested_model_config)
+        project = build_trace_project(request.tenant_id)
+        run_id = build_trace_run_id()
         settings = get_settings()
         studio_url = settings.studio_url
         if settings.studio_enabled and studio_url:
             tracing_url = studio_url.rstrip("/") + "/v1/traces"
             agentscope.init(
-                project="agentops",
-                studio_url=studio_url,
+                project=project,
                 tracing_url=tracing_url,
-                run_id="agentops-runtime",
+                run_id=run_id,
+                name=run_id,
             )
-            logger.info("AgentScope Studio connected: %s", studio_url)
+            install_studio_message_forwarding(studio_url)
+            logger.info("AgentScope Studio tracing connected: %s", studio_url)
             log_tracing_state("initialize")
 
         session_toolkit = Toolkit()
@@ -108,6 +117,7 @@ class AgentScopeRuntime:
 
         profile = AgentScopeRuntimeProfile(
             toolkit=session_toolkit,
+            tenant_id=request.tenant_id,
             system_prompt=request.system_prompt,
             memory_compression=request.memory_compression,
             skill_registry=skill_registry,
@@ -166,13 +176,22 @@ class AgentScopeRuntime:
             system_prompt=profile.system_prompt,
             memory_compression=profile.memory_compression,
         )
-        trace_label = session_id or "no-session"
+        trace_project = build_trace_project(profile.tenant_id)
+        trace_run_id = session_id or build_trace_run_id()
+        trace_label = trace_run_id
         if query_tracing_enabled():
             log_tracing_state(f"query-start:{trace_label}")
         try:
             if session_id:
+                register_studio_run(
+                    project=trace_project,
+                    run_id=trace_run_id,
+                    name=session_id,
+                )
                 with bind_agentscope_session_context(
-                    session_id,
+                    trace_run_id,
+                    project=trace_project,
+                    name=session_id,
                     trace_enabled=profile.resolved_config is not None,
                 ):
                     async for msg, last in _run_agent_stream(agent, messages):
@@ -211,3 +230,15 @@ async def _run_agent_stream(agent, messages: list[Msg]):
         coroutine_task=coroutine_task,
     ):
         yield msg, last
+
+
+def build_trace_project(tenant_id: str | None) -> str:
+    """Build the AgentScope Studio project name for a tenant scope."""
+    if tenant_id:
+        return f"agentops-{tenant_id}"
+    return AgentScopeRuntime.default_project
+
+
+def build_trace_run_id() -> str:
+    """Build the fallback AgentScope Studio run id before a chat session exists."""
+    return AgentScopeRuntime.default_run_id

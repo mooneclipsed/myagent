@@ -250,7 +250,7 @@ Trace naming:
 
 - No tenant: project `agentops`, run id `agentops-runtime`.
 - `tenant_id="1"`: project `agentops-1`.
-- Chat with `session_id="test-trace"`: project `agentops-1`, run id `test-trace`, name `test-trace`.
+- Chat with `tenant_id="1"` and `session_id="test-trace"`: project `agentops-1`, run id `1:test-trace`, name `test-trace`.
 - The chat flow registers the same session run id in Studio before executing the agent, so Data View can fetch spans by `conversationId = run.id`.
 
 ## Lifecycle Summary

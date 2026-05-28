@@ -177,7 +177,10 @@ class AgentScopeRuntime:
             memory_compression=profile.memory_compression,
         )
         trace_project = build_trace_project(profile.tenant_id)
-        trace_run_id = session_id or build_trace_run_id()
+        trace_run_id = build_trace_session_run_id(
+            session_id,
+            profile.tenant_id,
+        )
         trace_label = trace_run_id
         if query_tracing_enabled():
             log_tracing_state(f"query-start:{trace_label}")
@@ -242,3 +245,15 @@ def build_trace_project(tenant_id: str | None) -> str:
 def build_trace_run_id() -> str:
     """Build the fallback AgentScope Studio run id before a chat session exists."""
     return AgentScopeRuntime.default_run_id
+
+
+def build_trace_session_run_id(
+    session_id: str | None,
+    tenant_id: str | None,
+) -> str:
+    """Build a Studio-global run id for one chat session."""
+    if not session_id:
+        return build_trace_run_id()
+    if tenant_id:
+        return f"{tenant_id}:{session_id}"
+    return session_id

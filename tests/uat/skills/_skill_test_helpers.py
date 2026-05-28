@@ -28,6 +28,7 @@ def run_skill_test(
     prompt: str,
     expected_substrings: list[str],
     skill_dir_name: str | None = None,
+    tenant_id: str | None = None,
 ) -> None:
     target_skill_dir = resolve_skill_dir(skill_dir_name or skill_name)
 
@@ -36,23 +37,29 @@ def run_skill_test(
     print("=" * 60)
     print(f"  Skill dir: {target_skill_dir}")
     print(f"  Session ID: {session_id}")
+    if tenant_id:
+        print(f"  Tenant ID: {tenant_id}")
     check_service_running()
+
+    runtime_payload = {
+        "skills": [
+            {
+                "skill_dir": target_skill_dir,
+            }
+        ],
+        "mcp_servers": [],
+    }
+    if tenant_id:
+        runtime_payload["tenant_id"] = tenant_id
 
     body = bootstrap(
         session_id,
-        {
-            "skills": [
-                {
-                    "skill_dir": target_skill_dir,
-                }
-            ],
-            "mcp_servers": [],
-        },
+        runtime_payload,
     )
     skill_names = [item["name"] for item in body.get("skills", [])]
     check(skill_name in skill_names, f"bootstrap registered {skill_name}", str(skill_names))
 
-    result = chat(session_id, prompt)
+    result = chat(session_id, prompt, tenant_id=tenant_id)
     for snippet in expected_substrings:
         check(snippet in result.text, f"response contains {snippet}", result.text)
 

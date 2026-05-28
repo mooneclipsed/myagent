@@ -614,7 +614,7 @@ def test_chat_binds_tenant_trace_context(client, valid_payload):
 
     assert chat_response.status_code == 200
     assert captured["project"] == "agentops-tenant-a"
-    assert captured["run_id"] == session_id
+    assert captured["run_id"] == f"tenant-a:{session_id}"
     assert captured["name"] == session_id
 
 
@@ -666,6 +666,65 @@ def test_chat_exports_span_with_session_conversation_id(client, monkeypatch, val
     spans = exporter.get_finished_spans()
     assert any(
         json.loads(span.attributes["gen_ai.conversation.id"]) == session_id
+        for span in spans
+    )
+
+
+def test_chat_exports_tenant_scoped_span_conversation_id(client, monkeypatch, valid_payload):
+    tenant_id = "tenant-a"
+    session_id = "bootstrap-chat-trace-span"
+    trace_run_id = f"{tenant_id}:{session_id}"
+    monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
+
+    from agentops.config.settings import get_settings
+
+    get_settings.cache_clear()
+
+    with patch("agentops.adapters.agentscope.runtime.agentscope.init"):
+        response = client.post(
+            "/runtimes/init",
+            json={
+                "tenant_id": tenant_id,
+                "skills": [],
+                "mcp_servers": [],
+            },
+        )
+
+    assert response.status_code == 200, response.text
+
+    exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+    async def _mock_stream_runtime(*args, **kwargs):
+        with tracer_provider.get_tracer("tests.trace").start_as_current_span(
+            "test-span-bound",
+            attributes=_get_common_attributes(),
+        ):
+            coroutine_task = kwargs["coroutine_task"]
+            coroutine_task.close()
+            msg = Msg(
+                name="agentops",
+                content=[{"type": "text", "text": "ok"}],
+                role="assistant",
+            )
+            yield msg, True
+
+    with patch("agentops.adapters.agentscope.tracing.ot_trace.get_tracer_provider", return_value=tracer_provider):
+        with patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime):
+            chat_response = client.post(
+                "/chat",
+                json={
+                    **valid_payload,
+                    "tenant_id": tenant_id,
+                    "session_id": session_id,
+                },
+            )
+
+    assert chat_response.status_code == 200
+    spans = exporter.get_finished_spans()
+    assert any(
+        json.loads(span.attributes["gen_ai.conversation.id"]) == trace_run_id
         for span in spans
     )
 
@@ -722,9 +781,86 @@ def test_chat_registers_studio_session_run(client, monkeypatch, valid_payload):
     mock_post.assert_called_once()
     call = mock_post.call_args.kwargs
     assert call["url"] == "http://127.0.0.1:3000/trpc/registerRun"
-    assert call["json"]["id"] == session_id
+    assert call["json"]["id"] == f"tenant-a:{session_id}"
     assert call["json"]["project"] == "agentops-tenant-a"
     assert call["json"]["name"] == session_id
+
+
+def test_chat_keeps_same_session_separate_across_tenant_projects(client, monkeypatch, valid_payload):
+    monkeypatch.setenv("STUDIO_ENABLED", "true")
+    monkeypatch.setenv("STUDIO_URL", "http://127.0.0.1:3000")
+
+    from agentops.adapters.agentscope import tracing
+    from agentops.config.settings import get_settings
+
+    tracing._registered_studio_runs.clear()
+    get_settings.cache_clear()
+
+    session_id = "same-session"
+    response_mock = Mock()
+    response_mock.raise_for_status = Mock()
+
+    async def _mock_stream_runtime(*args, **kwargs):
+        coroutine_task = kwargs["coroutine_task"]
+        coroutine_task.close()
+        msg = Msg(
+            name="agentops",
+            content=[{"type": "text", "text": "ok"}],
+            role="assistant",
+        )
+        yield msg, True
+
+    with (
+        patch("agentops.adapters.agentscope.runtime.agentscope.init"),
+        patch("agentops.adapters.agentscope.tracing.requests.post", return_value=response_mock) as mock_post,
+        patch("agentops.adapters.agentscope.runtime.stream_printing_messages", _mock_stream_runtime),
+    ):
+        for tenant_id in ("3", "4"):
+            init_response = client.post(
+                "/runtimes/init",
+                json={
+                    "tenant_id": tenant_id,
+                    "skills": [],
+                    "mcp_servers": [],
+                },
+            )
+            assert init_response.status_code == 200, init_response.text
+
+            chat_response = client.post(
+                "/chat",
+                json={
+                    **valid_payload,
+                    "tenant_id": tenant_id,
+                    "session_id": session_id,
+                },
+            )
+            assert chat_response.status_code == 200
+
+    run_calls = [
+        call.kwargs["json"]
+        for call in mock_post.call_args_list
+        if call.kwargs["url"] == "http://127.0.0.1:3000/trpc/registerRun"
+    ]
+    assert run_calls == [
+        {
+            "id": "3:same-session",
+            "project": "agentops-3",
+            "name": "same-session",
+            "timestamp": run_calls[0]["timestamp"],
+            "pid": run_calls[0]["pid"],
+            "status": "running",
+            "run_dir": "",
+        },
+        {
+            "id": "4:same-session",
+            "project": "agentops-4",
+            "name": "same-session",
+            "timestamp": run_calls[1]["timestamp"],
+            "pid": run_calls[1]["pid"],
+            "status": "running",
+            "run_dir": "",
+        },
+    ]
 
 
 def test_studio_message_forwarding_uses_session_run_context():

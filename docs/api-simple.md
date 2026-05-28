@@ -148,9 +148,9 @@ Tenant/session behavior:
 - With `tenant_id="1"` and `session_id="test-trace"`, the persisted session key is `test-trace`.
 - With the same values, chat trace context is:
   - project: `agentops-1`
-  - run id: `test-trace`
+  - run id: `1:test-trace`
   - name: `test-trace`
-- Chat registers a Studio run with id/name `test-trace`, so AgentScope Studio Data View can join chat spans back to the selected session run.
+- Chat registers a Studio run with id `1:test-trace` and name `test-trace`, so AgentScope Studio Data View can join chat spans back to the selected session run without colliding with other tenants that reuse the same session id.
 
 **Bruno test example**
 
@@ -215,7 +215,7 @@ Expected stream:
 - Look for project `agentops-1`.
 - The run list should contain a run named `test-trace`.
 - The center message panel should show AgentScope printed assistant messages for the selected run.
-- The Data View trace panel for run `test-trace` should show the chat spans.
+- The Data View trace panel for run named `test-trace` should show the chat spans.
 - If only the initialization trace is visible, verify that `STUDIO_ENABLED=true` and `STUDIO_URL=http://127.0.0.1:3000` were present when the agent process started.
 
 Equivalent curl commands:

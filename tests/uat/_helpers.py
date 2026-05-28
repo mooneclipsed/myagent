@@ -160,12 +160,19 @@ def initialize_runtime(session_id: str, payload: dict) -> dict:
 bootstrap = initialize_runtime
 
 
-def chat(session_id: str, text: str, path: str | None = None) -> ChatResult:
+def chat(
+    session_id: str,
+    text: str,
+    path: str | None = None,
+    tenant_id: str | None = None,
+) -> ChatResult:
     """Send a natural language message and return structured ChatResult."""
     payload = {
         "session_id": session_id,
         "input": [{"role": "user", "content": [{"type": "text", "text": text}]}],
     }
+    if tenant_id:
+        payload["tenant_id"] = tenant_id
     target_path = path or CHAT_PATH
     resp = httpx.post(f"{SERVICE_URL}{target_path}", json=payload, timeout=DEFAULT_TIMEOUT)
     if resp.status_code != 200:

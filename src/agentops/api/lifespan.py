@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from ..branding import build_startup_banner
 from ..config.settings import get_settings
 from ..application.runtime_service import close_all_session_runtimes
 
@@ -14,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def app_lifespan(_: FastAPI):
+    print(build_startup_banner())
+
     settings = get_settings()
 
     if settings.session_backend == "json":

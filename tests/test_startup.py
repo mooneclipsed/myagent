@@ -70,6 +70,19 @@ def test_startup_succeeds_with_required_keys_and_cached_settings(configured_env,
     assert settings_first is settings_second
 
 
+def test_startup_prints_logo_and_version(configured_env, clear_settings_cache, capsys):
+    from fastapi.testclient import TestClient
+    from agentops.branding import get_app_version
+    from agentops.main import app
+
+    with TestClient(app):
+        pass
+
+    output = capsys.readouterr().out
+    assert "AgentOps" in output
+    assert f"myagent v{get_app_version()}" in output
+
+
 def test_startup_path_does_not_depend_on_env_example_file(configured_env, clear_settings_cache, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 

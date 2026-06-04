@@ -21,3 +21,6 @@ Important implementation notes:
 - `Toolkit` requires stateful MCP clients to be connected before registration.
 - MCP client construction and toolkit construction are intentionally separate.
 - Skills are passed as local paths. Remote skills must be downloaded into the runtime workspace before adapter construction.
+- Runtime-level resources are built by `AgentScopeRuntimeBuilder`.
+- `AgentScopeRuntimeBuilder.close` closes connected MCP clients in reverse order.
+- Agent construction for chat is still separate from runtime-level resource construction so one mutable agent state is not shared across sessions.

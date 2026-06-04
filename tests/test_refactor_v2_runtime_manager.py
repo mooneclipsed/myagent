@@ -27,13 +27,14 @@ class RecordingBuilder:
         self.built_paths: list[Path] = []
         self.closed_runtime_ids: list[str] = []
 
-    async def build(self, request: RuntimeInitRequest, workspace_path: Path) -> None:
+    async def build(self, request: RuntimeInitRequest, workspace_path: Path) -> dict[str, str]:
         """Record a build call and optionally fail."""
         self.built_paths.append(workspace_path)
         marker = workspace_path / "marker.txt"
         marker.write_text(request.runtime_id, encoding="utf-8")
         if self.fail:
             raise RuntimeError("builder failed")
+        return {"builder": "recording"}
 
     async def close(self, profile: RuntimeProfile) -> None:
         """Record a close call."""

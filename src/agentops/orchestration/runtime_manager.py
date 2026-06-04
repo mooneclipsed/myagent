@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from agentops.api.schemas import RuntimeInitRequest
 from agentops.frameworks.registry import resolve_framework
@@ -35,7 +35,7 @@ class RuntimeManagerError(RuntimeError):
 class RuntimeBuilder(Protocol):
     """Build framework resources for a runtime init request."""
 
-    async def build(self, request: RuntimeInitRequest, workspace_path: Path) -> None:
+    async def build(self, request: RuntimeInitRequest, workspace_path: Path) -> dict[str, Any]:
         """Build framework resources for a runtime."""
 
     async def close(self, profile: RuntimeProfile) -> None:
@@ -45,9 +45,9 @@ class RuntimeBuilder(Protocol):
 class NoopRuntimeBuilder:
     """Runtime builder used before concrete framework adapters are implemented."""
 
-    async def build(self, request: RuntimeInitRequest, workspace_path: Path) -> None:
+    async def build(self, request: RuntimeInitRequest, workspace_path: Path) -> dict[str, Any]:
         """Validate the build hook without creating framework resources."""
-        return None
+        return {}
 
     async def close(self, profile: RuntimeProfile) -> None:
         """Close no-op framework resources."""
@@ -81,7 +81,7 @@ class RuntimeManager:
         async with self._lock:
             staging_path = create_runtime_workspace(staging_runtime_id, root=self._workspace_root)
             try:
-                await self._builder.build(request, staging_path)
+                framework_metadata = await self._builder.build(request, staging_path)
                 workspace_path = promote_runtime_workspace(
                     staging_runtime_id,
                     request.runtime_id,
@@ -91,7 +91,7 @@ class RuntimeManager:
                 remove_runtime_workspace(staging_runtime_id, root=self._workspace_root)
                 raise RuntimeManagerError(str(exc)) from exc
 
-            profile = self._build_profile(request, descriptor.name, workspace_path)
+            profile = self._build_profile(request, descriptor.name, workspace_path, framework_metadata)
             previous_profile = self._active_profile
             self._active_profile = profile
 
@@ -121,6 +121,7 @@ class RuntimeManager:
         request: RuntimeInitRequest,
         framework: str,
         workspace_path: Path,
+        framework_metadata: dict[str, Any],
     ) -> RuntimeProfile:
         """Build a public-safe runtime profile from an init request."""
         system_prompt = request.system_prompt or DEFAULT_SYSTEM_PROMPT
@@ -129,6 +130,7 @@ class RuntimeManager:
             model_config=model_config,
             system_prompt=system_prompt,
             prompt_hash=hash_system_prompt(system_prompt),
+            metadata=framework_metadata,
         )
         return RuntimeProfile(
             runtime_id=request.runtime_id,

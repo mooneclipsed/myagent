@@ -9,7 +9,13 @@ from agentops.frameworks.registry import UnknownFrameworkError, list_frameworks,
 from agentops.orchestration.messages import StandardMessage
 from agentops.orchestration.models import AgentSpec, RuntimeInitResult, StorageRef, TraceRef, WorkspaceRef
 from agentops.orchestration.observability import hash_system_prompt
-from agentops.orchestration.workspace import build_runtime_workspace_path
+from agentops.orchestration.workspace import (
+    WORKSPACE_MARKER,
+    build_runtime_workspace_path,
+    create_runtime_workspace,
+    get_workspace_root,
+    remove_runtime_workspace,
+)
 
 
 def test_standard_message_validates_payload_by_type():
@@ -119,3 +125,31 @@ def test_runtime_workspace_path_rejects_path_traversal():
 
     with pytest.raises(ValueError):
         build_runtime_workspace_path("../bad", root="/tmp/workspaces")
+
+
+def test_workspace_root_defaults_to_agentops_directory(monkeypatch):
+    monkeypatch.delenv("AGENTOPS_WORKSPACE_ROOT", raising=False)
+
+    assert str(get_workspace_root()) == ".agentops/workspaces"
+
+
+def test_runtime_workspace_delete_requires_marker(tmp_path):
+    unmanaged_workspace = tmp_path / "runtime-1"
+    unmanaged_workspace.mkdir()
+    (unmanaged_workspace / "user-file.txt").write_text("keep", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="not managed by AgentOps"):
+        remove_runtime_workspace("runtime-1", root=tmp_path)
+
+    assert unmanaged_workspace.exists()
+    assert (unmanaged_workspace / "user-file.txt").exists()
+
+
+def test_runtime_workspace_writes_marker_and_allows_delete(tmp_path):
+    workspace_path = create_runtime_workspace("runtime-1", root=tmp_path)
+
+    assert (workspace_path / WORKSPACE_MARKER).exists()
+
+    remove_runtime_workspace("runtime-1", root=tmp_path)
+
+    assert not workspace_path.exists()

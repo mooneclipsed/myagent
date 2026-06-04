@@ -33,16 +33,24 @@ Validation:
 
 ## Phase 3: Runtime And Workspace Lifecycle
 
-Status: next.
+Status: completed.
 
-- Implement Pod-local active runtime replacement around `runtime_id`.
-- Implement runtime-scoped workspace creation and cleanup.
-- Keep capability init all-or-nothing.
+- Added framework-neutral `RuntimeManager`.
+- Added runtime-scoped workspace staging, promotion, replacement, and cleanup.
+- Treat workspace as an AgentOps-managed temporary artifact directory, not as the security boundary for agent permissions.
+- Default local workspace root is `.agentops/workspaces`; Pod deployments can override it with `AGENTOPS_WORKSPACE_ROOT=/app/workspace`.
+- Workspace deletion requires an AgentOps marker file so unmanaged directories are never removed with bare `rmtree`.
+- Kept init all-or-nothing: failed framework build removes staging workspace and does not publish a runtime.
+- Kept this phase independent from the old v1 `application.runtime_service`; API wiring moves with the AgentScope v2 adapter work.
 
 Validation:
 
 - Repeated init closes the previous runtime and replaces workspace contents.
+- Repeated init with the same `runtime_id` closes previous framework resources while keeping the new workspace.
 - Failed capability init does not publish a runtime.
+- Closing the active runtime removes its workspace.
+- Unmanaged workspace directories are preserved and cause initialization to fail.
+- `uv run pytest tests/test_refactor_v2_schemas.py tests/test_refactor_v2_runtime_manager.py -q` passes.
 
 ## Phase 4: AgentScope v2 Adapter
 

@@ -9,12 +9,19 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
 from agentops.api.schemas import ChatRequest, RuntimeInitRequest, RuntimeInitResponse
+from agentops.config.settings import Settings, get_settings
 from agentops.frameworks.agentscope_v2 import AgentScopeRuntimeBuilder, AgentScopeSessionExecutor
+from agentops.frameworks.agentscope_v2.storage import (
+    AgentScopeSessionStoreConfigError,
+    AgentScopeSessionStoreProvider,
+    create_session_store_provider_from_settings,
+)
 from agentops.frameworks.registry import UnknownFrameworkError
 from agentops.orchestration.events import PlatformEvent
 from agentops.orchestration.runtime_manager import RuntimeManager, RuntimeManagerError
 
 ExecutorFactory = Callable[..., AgentScopeSessionExecutor]
+SessionStoreProviderFactory = Callable[[Settings], AgentScopeSessionStoreProvider]
 
 
 class V2RuntimeApiService:
@@ -26,31 +33,59 @@ class V2RuntimeApiService:
         builder: AgentScopeRuntimeBuilder | None = None,
         manager: RuntimeManager | None = None,
         executor_factory: ExecutorFactory | None = None,
+        settings: Settings | None = None,
+        session_store_provider_factory: SessionStoreProviderFactory | None = None,
     ) -> None:
         """Create a v2 runtime API service."""
         self.builder = builder or AgentScopeRuntimeBuilder()
         self.manager = manager or RuntimeManager(builder=self.builder)
         self.executor_factory = executor_factory or AgentScopeSessionExecutor
+        self._settings = settings
+        self._session_store_provider_factory = (
+            session_store_provider_factory or create_session_store_provider_from_settings
+        )
+        self._session_store_provider: AgentScopeSessionStoreProvider | None = None
         self._executor: AgentScopeSessionExecutor | None = None
         self._executor_runtime_id: str | None = None
 
     async def initialize(self, request: RuntimeInitRequest) -> RuntimeInitResponse:
         """Initialize the active v2 runtime."""
+        session_store_provider = self._session_store_provider_factory(self._settings or get_settings())
+        try:
+            await session_store_provider.open()
+        except AgentScopeSessionStoreConfigError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"AgentScope session storage failed to open: {exc}") from exc
+
         try:
             result = await self.manager.initialize(request)
         except UnknownFrameworkError as exc:
+            await session_store_provider.close()
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except RuntimeManagerError as exc:
+            await session_store_provider.close()
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
         profile = self.manager.get_active_profile()
         resources = self.builder.get_resources(request.runtime_id)
         if profile is None or resources is None:
+            await session_store_provider.close()
             raise HTTPException(status_code=500, detail="Runtime initialized without framework resources.")
 
-        self._executor = self.executor_factory(profile=profile, resources=resources)
+        session_store = session_store_provider.create_store(user_id=profile.tenant_id or "default")
+        await self._close_session_store_provider()
+        self._session_store_provider = session_store_provider
+        self._executor = self.executor_factory(profile=profile, resources=resources, session_store=session_store)
         self._executor_runtime_id = profile.runtime_id
         return RuntimeInitResponse.model_validate(result.model_dump())
+
+    async def close(self) -> None:
+        """Close v2 runtime API resources."""
+        await self.manager.close_active_runtime()
+        await self._close_session_store_provider()
+        self._executor = None
+        self._executor_runtime_id = None
 
     async def stream_chat(self, request: ChatRequest) -> AsyncGenerator[str, None]:
         """Stream v2 chat response as SSE data lines."""
@@ -73,6 +108,12 @@ class V2RuntimeApiService:
     def validate_chat_request(self, request: ChatRequest) -> None:
         """Validate chat request before starting an SSE response."""
         self._get_executor(request.runtime_id)
+
+    async def _close_session_store_provider(self) -> None:
+        if self._session_store_provider is None:
+            return
+        await self._session_store_provider.close()
+        self._session_store_provider = None
 
 
 def register_v2_routes(app, service: V2RuntimeApiService | None = None) -> None:

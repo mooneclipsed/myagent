@@ -54,13 +54,14 @@ Validation:
 
 ## Phase 4: AgentScope v2 Adapter
 
-Status: in progress. AgentScope `2.0.0` dependency and construction APIs are verified; runtime wiring, session persistence, and streaming are still pending.
+Status: in progress. AgentScope `2.0.0` dependency and construction APIs are verified; runtime wiring, session persistence boundary, Redis storage configuration, and focused SSE routes are in place. Legacy API replacement and UAT refresh are still pending.
 
 - Added initial `agentscope_v2` adapter helpers for agent spec, model, toolkit, MCP client, and skill path construction.
 - Added `AgentScopeRuntimeBuilder` for runtime-level Toolkit construction, MCP connection, resource tracking, and MCP teardown.
 - Added runtime manager assembly through `create_runtime_manager(framework="agentscope")`, which binds `RuntimeManager` to `AgentScopeRuntimeBuilder`.
 - Added `AgentScopeSessionExecutor` for `session_id -> AgentState(session_id=...)` mapping and per-session `reply` / `reply_stream` execution.
 - Added `AgentScopeSessionStore` persistence boundary with in-memory and AgentScope app storage-backed implementations.
+- Added configured AgentScope v2 session store assembly. `SESSION_BACKEND=redis` creates AgentScope `RedisStorage` from `REDIS_*`; `json` and `memory` use the in-memory v2 store for now.
 - Added `PlatformEventMapper` for `ReplyStartEvent`, `TextBlockDeltaEvent`, and `ReplyEndEvent` conversion into platform events.
 - Added focused v2 HTTP routes: `POST /v2/runtimes/init` and SSE-first `POST /v2/chat`.
 - Verified v2 replacements for v1 `ReActAgent`, `Toolkit`, MCP client config, app/session/storage, and built-in tools.
@@ -70,7 +71,7 @@ Status: in progress. AgentScope `2.0.0` dependency and construction APIs are ver
 - Keep MCP client construction separate from toolkit construction because AgentScope v2 requires stateful MCP clients to be connected before toolkit registration.
 - Keep agent construction separate from runtime resource construction until session isolation is wired.
 - Replace v1 `AgentApp`, `ReActAgent`, `Toolkit`, session, MCP, and tracing integration with AgentScope v2 equivalents.
-- Use AgentScope v2 RedisStorage for framework session and memory state when storage configuration is wired.
+- Use AgentScope v2 RedisStorage for framework session and memory state when `SESSION_BACKEND=redis`.
 - Map AgentScope v2 stream objects into platform events.
 - Verify AgentScope v2 session id mapping before implementing storage behavior.
 - Verify whether AgentScope v2 native service/streaming can satisfy `/chat` SSE; otherwise implement FastAPI SSE in AgentOps.
@@ -78,7 +79,7 @@ Status: in progress. AgentScope `2.0.0` dependency and construction APIs are ver
 Validation:
 
 - `uv run python -c 'import agentscope; print(agentscope.__version__)'` returns `2.0.0`.
-- `uv run pytest tests/test_refactor_v2_schemas.py tests/test_refactor_v2_runtime_manager.py tests/test_agentscope_v2_adapter.py tests/test_agentscope_v2_runtime_builder.py tests/test_runtime_factory.py tests/test_agentscope_v2_execution.py tests/test_agentscope_v2_event_mapping.py tests/test_v2_api.py tests/test_agentscope_v2_session_store.py -q` passes.
+- `uv run pytest tests/test_refactor_v2_schemas.py tests/test_refactor_v2_runtime_manager.py tests/test_agentscope_v2_adapter.py tests/test_agentscope_v2_runtime_builder.py tests/test_runtime_factory.py tests/test_agentscope_v2_execution.py tests/test_agentscope_v2_event_mapping.py tests/test_v2_api.py tests/test_agentscope_v2_session_store.py tests/test_agentscope_v2_storage.py -q` passes.
 - Full test collection currently fails on old v1 imports such as `agentscope.memory`, `agentscope.tracing`, `StdIOStatefulClient`, `StatefulClientBase`, `ReActAgent`, and legacy tool helpers. These failures belong to this adapter migration phase.
 - Tool, MCP, skill, remote skill, and session UATs pass on AgentScope v2.
 - Effective model and prompt hash appear in streamed events.

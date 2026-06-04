@@ -31,3 +31,5 @@ Important implementation notes:
 - Text deltas use existing `after_turn` events with `payload.status = "streaming"`; no public `message_delta` event name is introduced.
 - AgentScope app storage exposes `get_session`, `upsert_session`, and `update_session_state` for `AgentState` persistence.
 - `AgentScopeSessionExecutor` persists state through the `AgentScopeSessionStore` boundary. The default local store is in-memory; `AgentScopeAppSessionStore` wraps AgentScope storage such as `RedisStorage`.
+- `create_session_store_provider_from_settings` maps `SESSION_BACKEND=redis` plus `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB`, and `REDIS_PASSWORD` to AgentScope v2 `RedisStorage`.
+- `SESSION_BACKEND=json` is intentionally mapped to the in-memory v2 store until old JSON session persistence is migrated or replaced.

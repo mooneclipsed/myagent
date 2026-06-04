@@ -25,3 +25,5 @@ Important implementation notes:
 - `AgentScopeRuntimeBuilder.close` closes connected MCP clients in reverse order.
 - Agent construction for chat is still separate from runtime-level resource construction so one mutable agent state is not shared across sessions.
 - `agentops.orchestration.runtime_factory.create_runtime_manager()` assembles `RuntimeManager` with `AgentScopeRuntimeBuilder` for `framework="agentscope"`.
+- AgentScope v2 `Agent` is not callable. Chat execution uses `Agent.reply` for completed turns and `Agent.reply_stream` for framework events.
+- Frontend `session_id` maps to `AgentState(session_id=...)` in `AgentScopeSessionExecutor`.

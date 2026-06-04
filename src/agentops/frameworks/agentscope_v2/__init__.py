@@ -9,9 +9,12 @@ from .adapter import (
     build_toolkit,
     resolve_skill_path,
 )
+from .execution import AgentFactory, AgentScopeSessionExecutor, create_agent
 from .runtime import AgentScopeRuntimeBuilder, AgentScopeRuntimeResources
 
 __all__ = [
+    "AgentFactory",
+    "AgentScopeSessionExecutor",
     "AgentScopeV2AdapterError",
     "AgentScopeRuntimeBuilder",
     "AgentScopeRuntimeResources",
@@ -20,5 +23,6 @@ __all__ = [
     "build_chat_model",
     "build_mcp_clients",
     "build_toolkit",
+    "create_agent",
     "resolve_skill_path",
 ]

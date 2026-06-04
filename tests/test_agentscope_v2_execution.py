@@ -39,6 +39,23 @@ class FakeAgent:
         yield ReplyEndEvent(session_id=self.state.session_id, reply_id="reply-1")
 
 
+class RecordingSessionStore:
+    """Recording session store for executor tests."""
+
+    def __init__(self, loaded_state: AgentState | None = None) -> None:
+        """Create a recording session store."""
+        self.loaded_state = loaded_state
+        self.saved_states: list[AgentState] = []
+
+    async def load_state(self, *, runtime_id: str, session_id: str, workspace_id: str):
+        """Return the configured loaded state."""
+        return self.loaded_state
+
+    async def save_state(self, *, runtime_id: str, session_id: str, workspace_id: str, state: AgentState) -> None:
+        """Record saved state."""
+        self.saved_states.append(state)
+
+
 def _profile() -> RuntimeProfile:
     return RuntimeProfile(
         runtime_id="runtime-1",
@@ -97,6 +114,28 @@ def test_executor_separates_states_by_session_id(tmp_path: Path) -> None:
     assert executor.get_state("session-1") is not executor.get_state("session-2")
     assert executor.get_state("session-1").context[0].get_text_content() == "one"
     assert executor.get_state("session-2").context[0].get_text_content() == "two"
+
+
+def test_executor_loads_and_saves_persisted_state(tmp_path: Path) -> None:
+    loaded_state = AgentState(session_id="session-1")
+    loaded_state.context.append(AssistantMsg(name="agent", content="prior"))
+    store = RecordingSessionStore(loaded_state=loaded_state)
+    executor = AgentScopeSessionExecutor(
+        profile=_profile(),
+        resources=_resources(tmp_path),
+        agent_factory=lambda profile, resources, state: FakeAgent(state),
+        session_store=store,
+    )
+
+    asyncio.run(executor.reply(session_id="session-1", input="hello"))
+
+    assert executor.get_state("session-1") is loaded_state
+    assert store.saved_states == [loaded_state]
+    assert [message.get_text_content() for message in loaded_state.context] == [
+        "prior",
+        "hello",
+        "echo:hello",
+    ]
 
 
 def test_executor_streams_agentscope_events(tmp_path: Path) -> None:

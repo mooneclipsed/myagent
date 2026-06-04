@@ -29,3 +29,5 @@ Important implementation notes:
 - Frontend `session_id` maps to `AgentState(session_id=...)` in `AgentScopeSessionExecutor`.
 - `PlatformEventMapper` maps AgentScope `ReplyStartEvent`, `TextBlockDeltaEvent`, and `ReplyEndEvent` into the platform event envelope.
 - Text deltas use existing `after_turn` events with `payload.status = "streaming"`; no public `message_delta` event name is introduced.
+- AgentScope app storage exposes `get_session`, `upsert_session`, and `update_session_state` for `AgentState` persistence.
+- `AgentScopeSessionExecutor` persists state through the `AgentScopeSessionStore` boundary. The default local store is in-memory; `AgentScopeAppSessionStore` wraps AgentScope storage such as `RedisStorage`.

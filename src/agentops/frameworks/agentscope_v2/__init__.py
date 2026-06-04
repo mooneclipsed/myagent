@@ -12,6 +12,7 @@ from .adapter import (
 from .event_mapping import PlatformEventMapper
 from .execution import AgentFactory, AgentScopeSessionExecutor, create_agent
 from .runtime import AgentScopeRuntimeBuilder, AgentScopeRuntimeResources
+from .session_store import AgentScopeAppSessionStore, AgentScopeSessionStore, InMemoryAgentScopeSessionStore
 
 __all__ = [
     "AgentFactory",
@@ -19,7 +20,10 @@ __all__ = [
     "AgentScopeV2AdapterError",
     "AgentScopeRuntimeBuilder",
     "AgentScopeRuntimeResources",
+    "AgentScopeAppSessionStore",
+    "AgentScopeSessionStore",
     "PlatformEventMapper",
+    "InMemoryAgentScopeSessionStore",
     "build_agent",
     "build_agent_spec",
     "build_chat_model",

@@ -117,3 +117,29 @@ def test_executor_streams_agentscope_events(tmp_path: Path) -> None:
         "ReplyEndEvent",
     ]
     assert events[0].session_id == "session-1"
+
+
+def test_executor_streams_platform_events(tmp_path: Path) -> None:
+    executor = AgentScopeSessionExecutor(
+        profile=_profile(),
+        resources=_resources(tmp_path),
+        agent_factory=lambda profile, resources, state: FakeAgent(state),
+    )
+
+    async def collect_events():
+        return [
+            event
+            async for event in executor.platform_event_stream(
+                session_id="session-1",
+                input="hello",
+                request_id="request-1",
+            )
+        ]
+
+    events = asyncio.run(collect_events())
+
+    assert [event.event for event in events] == ["before_turn", "after_turn", "after_turn"]
+    assert [event.sequence for event in events] == [1, 2, 3]
+    assert events[0].request_id == "request-1"
+    assert events[1].payload["delta"] == "hello"
+    assert events[2].payload["status"] == "completed"

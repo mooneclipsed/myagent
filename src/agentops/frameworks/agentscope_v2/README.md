@@ -27,3 +27,5 @@ Important implementation notes:
 - `agentops.orchestration.runtime_factory.create_runtime_manager()` assembles `RuntimeManager` with `AgentScopeRuntimeBuilder` for `framework="agentscope"`.
 - AgentScope v2 `Agent` is not callable. Chat execution uses `Agent.reply` for completed turns and `Agent.reply_stream` for framework events.
 - Frontend `session_id` maps to `AgentState(session_id=...)` in `AgentScopeSessionExecutor`.
+- `PlatformEventMapper` maps AgentScope `ReplyStartEvent`, `TextBlockDeltaEvent`, and `ReplyEndEvent` into the platform event envelope.
+- Text deltas use existing `after_turn` events with `payload.status = "streaming"`; no public `message_delta` event name is introduced.

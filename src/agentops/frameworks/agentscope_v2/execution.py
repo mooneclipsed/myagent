@@ -11,8 +11,10 @@ from agentscope.message import Msg, UserMsg
 from agentscope.state import AgentState
 
 from agentops.orchestration.models import RuntimeProfile
+from agentops.orchestration.events import PlatformEvent
 
 from .adapter import build_agent
+from .event_mapping import PlatformEventMapper
 from .runtime import AgentScopeRuntimeResources
 
 AgentFactory = Callable[[RuntimeProfile, AgentScopeRuntimeResources, AgentState], Agent]
@@ -50,6 +52,24 @@ class AgentScopeSessionExecutor:
         agent = self._create_agent(session_id)
         async for event in agent.reply_stream(_user_msg(input)):
             yield event
+
+    async def platform_event_stream(
+        self,
+        *,
+        session_id: str,
+        input: str,
+        request_id: str | None = None,
+    ) -> AsyncGenerator[PlatformEvent, None]:
+        """Execute one chat turn and stream platform events."""
+        mapper = PlatformEventMapper(
+            profile=self.profile,
+            session_id=session_id,
+            request_id=request_id,
+        )
+        async for event in self.reply_stream(session_id=session_id, input=input):
+            platform_event = mapper.map_event(event)
+            if platform_event is not None:
+                yield platform_event
 
     def _create_agent(self, session_id: str) -> Agent:
         state = self.get_state(session_id)

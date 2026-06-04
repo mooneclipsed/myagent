@@ -45,7 +45,9 @@ AgentOps uses a thin platform event protocol so clients, tests, and UAT do not d
 
 The first implementation treats these events as observational lifecycle events only. They do not block execution and do not modify input, tool arguments, reminders, or extra context. A future hook system can add blocking and mutation semantics.
 
-These events are not token-level text streaming. Final assistant output should be returned as `after_turn.payload.message`, using the `StandardMessage` schema. Tool call and tool result events should also use `StandardMessage` where a normalized message is needed.
+The public event names stay lifecycle-oriented. Token or text deltas from a framework should be carried inside `after_turn.payload` with `status = "streaming"` and a framework-specific payload such as `framework_event = "text_block_delta"`. Do not introduce a separate public `message_delta` event name in the first implementation.
+
+Final assistant output should be returned as `after_turn.payload.message`, using the `StandardMessage` schema when available. Tool call and tool result events should also use `StandardMessage` where a normalized message is needed.
 
 For `/chat`, the first implementation should expose these events over SSE. If AgentScope v2 provides a compatible Agent Service stream, the adapter can use it. Otherwise AgentOps should implement SSE directly and emit the platform event envelope.
 

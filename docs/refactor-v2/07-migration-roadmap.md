@@ -60,8 +60,10 @@ Status: in progress. AgentScope `2.0.0` dependency and construction APIs are ver
 - Added `AgentScopeRuntimeBuilder` for runtime-level Toolkit construction, MCP connection, resource tracking, and MCP teardown.
 - Added runtime manager assembly through `create_runtime_manager(framework="agentscope")`, which binds `RuntimeManager` to `AgentScopeRuntimeBuilder`.
 - Added `AgentScopeSessionExecutor` for `session_id -> AgentState(session_id=...)` mapping and per-session `reply` / `reply_stream` execution.
+- Added `PlatformEventMapper` for `ReplyStartEvent`, `TextBlockDeltaEvent`, and `ReplyEndEvent` conversion into platform events.
 - Verified v2 replacements for v1 `ReActAgent`, `Toolkit`, MCP client config, app/session/storage, and built-in tools.
 - Verified AgentScope v2 `Agent` is not directly callable; chat execution must use `Agent.reply` or `Agent.reply_stream`.
+- Text deltas are emitted as `after_turn` payloads with `status = "streaming"`; no public `message_delta` event is introduced.
 - Keep MCP client construction separate from toolkit construction because AgentScope v2 requires stateful MCP clients to be connected before toolkit registration.
 - Keep agent construction separate from runtime resource construction until session isolation is wired.
 - Replace v1 `AgentApp`, `ReActAgent`, `Toolkit`, session, MCP, and tracing integration with AgentScope v2 equivalents.
@@ -73,7 +75,7 @@ Status: in progress. AgentScope `2.0.0` dependency and construction APIs are ver
 Validation:
 
 - `uv run python -c 'import agentscope; print(agentscope.__version__)'` returns `2.0.0`.
-- `uv run pytest tests/test_refactor_v2_schemas.py tests/test_refactor_v2_runtime_manager.py tests/test_agentscope_v2_adapter.py tests/test_agentscope_v2_runtime_builder.py tests/test_runtime_factory.py tests/test_agentscope_v2_execution.py -q` passes.
+- `uv run pytest tests/test_refactor_v2_schemas.py tests/test_refactor_v2_runtime_manager.py tests/test_agentscope_v2_adapter.py tests/test_agentscope_v2_runtime_builder.py tests/test_runtime_factory.py tests/test_agentscope_v2_execution.py tests/test_agentscope_v2_event_mapping.py -q` passes.
 - Full test collection currently fails on old v1 imports such as `agentscope.memory`, `agentscope.tracing`, `StdIOStatefulClient`, `StatefulClientBase`, `ReActAgent`, and legacy tool helpers. These failures belong to this adapter migration phase.
 - Tool, MCP, skill, remote skill, and session UATs pass on AgentScope v2.
 - Effective model and prompt hash appear in streamed events.

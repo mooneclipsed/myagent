@@ -5,3 +5,19 @@ This package is reserved for the AgentScope v2 adapter.
 Public framework value `agentscope` resolves to this package through
 `agentops.frameworks.registry`.
 
+Verified AgentScope v2 API surface:
+
+- Agent: `agentscope.agent.Agent`
+- State: `agentscope.state.AgentState`
+- Models: `agentscope.model.OpenAIChatModel`, `agentscope.model.DashScopeChatModel`
+- Credentials: `agentscope.credential.OpenAICredential`, `agentscope.credential.DashScopeCredential`
+- Toolkit: `agentscope.tool.Toolkit`
+- Built-in tools: `Bash`, `Read`, `Write`, `Edit`, `Grep`, `Glob`
+- MCP: `agentscope.mcp.MCPClient`, `StdioMCPConfig`, `HttpMCPConfig`
+- App/session/storage: `agentscope.app.create_app`, `SessionManager`, `SessionConfig`, `RedisStorage`, `LocalWorkspaceManager`
+
+Important implementation notes:
+
+- `Toolkit` requires stateful MCP clients to be connected before registration.
+- MCP client construction and toolkit construction are intentionally separate.
+- Skills are passed as local paths. Remote skills must be downloaded into the runtime workspace before adapter construction.

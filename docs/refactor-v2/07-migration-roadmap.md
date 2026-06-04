@@ -54,8 +54,11 @@ Validation:
 
 ## Phase 4: AgentScope v2 Adapter
 
-Status: pending adapter implementation. The dependency now imports AgentScope `2.0.0`; v2 session, RedisStorage, service, and streaming APIs still need implementation-level verification.
+Status: in progress. AgentScope `2.0.0` dependency and construction APIs are verified; runtime wiring, session persistence, and streaming are still pending.
 
+- Added initial `agentscope_v2` adapter helpers for agent spec, model, toolkit, MCP client, and skill path construction.
+- Verified v2 replacements for v1 `ReActAgent`, `Toolkit`, MCP client config, app/session/storage, and built-in tools.
+- Keep MCP client construction separate from toolkit construction because AgentScope v2 requires stateful MCP clients to be connected before toolkit registration.
 - Replace v1 `AgentApp`, `ReActAgent`, `Toolkit`, session, MCP, and tracing integration with AgentScope v2 equivalents.
 - Use AgentScope v2 RedisStorage for framework session and memory state.
 - Map AgentScope v2 stream objects into platform events.
@@ -65,6 +68,7 @@ Status: pending adapter implementation. The dependency now imports AgentScope `2
 Validation:
 
 - `uv run python -c 'import agentscope; print(agentscope.__version__)'` returns `2.0.0`.
+- `uv run pytest tests/test_refactor_v2_schemas.py tests/test_refactor_v2_runtime_manager.py tests/test_agentscope_v2_adapter.py -q` passes.
 - Full test collection currently fails on old v1 imports such as `agentscope.memory`, `agentscope.tracing`, `StdIOStatefulClient`, `StatefulClientBase`, `ReActAgent`, and legacy tool helpers. These failures belong to this adapter migration phase.
 - Tool, MCP, skill, remote skill, and session UATs pass on AgentScope v2.
 - Effective model and prompt hash appear in streamed events.

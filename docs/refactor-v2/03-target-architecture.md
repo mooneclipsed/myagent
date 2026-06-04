@@ -16,8 +16,7 @@ The target architecture separates platform orchestration from framework executio
 ```text
 init(runtime_id)
   -> close active runtime if present
-  -> delete runtime workspace
-  -> create runtime workspace
+  -> create managed staging workspace
   -> resolve framework adapter from framework
   -> resolve model_config from request or environment
   -> resolve system_prompt and prompt_hash
@@ -25,6 +24,7 @@ init(runtime_id)
   -> download runtime-scoped skills
   -> connect MCP servers
   -> create framework runtime/service resources
+  -> promote staging workspace
   -> publish RuntimeProfile
 ```
 
@@ -84,13 +84,15 @@ This avoids storing the same conversation twice while leaving a clear extension 
 
 ## Workspace Boundary
 
-The workspace is runtime-scoped and keyed by `runtime_id`. It contains runtime-local skill files, generated artifacts, and tool-visible files.
+The workspace is runtime-scoped and keyed by `runtime_id`. It contains AgentOps-managed temporary artifacts such as runtime-local skill files, generated files, and tool-visible working files.
 
-In the Pod runtime, the default workspace root should be under `/app`, matching the Docker image `WORKDIR /app`. Use an environment variable such as `AGENTOPS_WORKSPACE_ROOT` to override it. A reasonable container default is `/app/workspaces`; local development can use a project-relative workspace root.
+Workspace is not the security boundary for agent permissions. Real permission isolation must come from sandbox, container, tool access policy, and process permissions. Workspace is only the default managed root those layers can use.
 
-Chat requests can reference the active workspace, but they do not own it. Reinitializing the runtime deletes and rebuilds the workspace.
+Local development defaults to `.agentops/workspaces`. Pod deployments can set `AGENTOPS_WORKSPACE_ROOT=/app/workspace`, matching the Docker image `WORKDIR /app`.
 
-Workspace cleanup is fail-fast. If init cannot delete or recreate the runtime workspace, init should fail and the process may exit rather than continue with stale files.
+Chat requests can reference the active workspace, but they do not own it. Reinitializing the runtime creates a managed staging workspace and only promotes it after framework setup succeeds.
+
+Workspace cleanup is marker-protected. AgentOps only removes directories that contain its workspace marker and matching `runtime_id`. If an existing directory is not managed by AgentOps, init must fail instead of deleting it.
 
 ## Observability Boundary
 

@@ -51,6 +51,8 @@ Final assistant output should be returned as `after_turn.payload.message`, using
 
 For `/chat`, the first implementation should expose these events over SSE. If AgentScope v2 provides a compatible Agent Service stream, the adapter can use it. Otherwise AgentOps should implement SSE directly and emit the platform event envelope.
 
+The refactor-v2 focused route `/v2/chat` currently implements SSE directly and emits `data: <PlatformEvent JSON>` lines.
+
 MCP tool calls use the same tool events with `payload.provider = "mcp"` and `payload.capability_name`.
 
 Example `before_tool_call` payload:

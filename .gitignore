@@ -5,6 +5,7 @@ __pycache__/
 # Test and tool caches
 .pytest_cache/
 .uv-cache/
+.agentops/
 
 # Local virtual environment
 .venv/

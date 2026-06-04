@@ -4,6 +4,8 @@ This roadmap keeps the refactor staged so each phase has a concrete validation p
 
 ## Phase 1: Documentation And Contracts
 
+Status: completed.
+
 - Finalize data model docs.
 - Finalize event protocol docs.
 - Finalize framework port docs.
@@ -16,9 +18,11 @@ Validation:
 
 ## Phase 2: Platform Schemas
 
-- Add Pydantic models for `RuntimeProfile`, `AgentSpec`, `ExecutionConfig`, `StandardMessage`, capability envelope, workspace refs, and platform events.
-- Keep schemas framework-neutral.
-- Add unit tests for validation rules.
+Status: completed.
+
+- Added Pydantic models for `RuntimeProfile`, `AgentSpec`, `ExecutionConfig`, `StandardMessage`, capability envelope, workspace refs, and platform events.
+- Kept schemas framework-neutral.
+- Added unit tests for validation rules.
 
 Validation:
 
@@ -28,6 +32,8 @@ Validation:
 - Chat request uses `input` for the current user input and does not require full history.
 
 ## Phase 3: Runtime And Workspace Lifecycle
+
+Status: next.
 
 - Implement Pod-local active runtime replacement around `runtime_id`.
 - Implement runtime-scoped workspace creation and cleanup.
@@ -40,6 +46,8 @@ Validation:
 
 ## Phase 4: AgentScope v2 Adapter
 
+Status: pending adapter implementation. The dependency now imports AgentScope `2.0.0`; v2 session, RedisStorage, service, and streaming APIs still need implementation-level verification.
+
 - Replace v1 `AgentApp`, `ReActAgent`, `Toolkit`, session, MCP, and tracing integration with AgentScope v2 equivalents.
 - Use AgentScope v2 RedisStorage for framework session and memory state.
 - Map AgentScope v2 stream objects into platform events.
@@ -48,6 +56,8 @@ Validation:
 
 Validation:
 
+- `uv run python -c 'import agentscope; print(agentscope.__version__)'` returns `2.0.0`.
+- Full test collection currently fails on old v1 imports such as `agentscope.memory`, `agentscope.tracing`, `StdIOStatefulClient`, `StatefulClientBase`, `ReActAgent`, and legacy tool helpers. These failures belong to this adapter migration phase.
 - Tool, MCP, skill, remote skill, and session UATs pass on AgentScope v2.
 - Effective model and prompt hash appear in streamed events.
 - Trace metadata behavior is verified against Studio or Phoenix.

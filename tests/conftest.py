@@ -4,12 +4,16 @@ import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
-from agentops.application.runtime_service import close_all_session_runtimes
-
 
 @pytest.fixture(autouse=True)
-def _clear_session_runtimes():
+def _clear_session_runtimes(request):
     """Clear active runtime profile before and after each test."""
+    if "client" not in request.fixturenames:
+        yield
+        return
+
+    from agentops.application.runtime_service import close_all_session_runtimes
+
     asyncio.run(close_all_session_runtimes())
     yield
     asyncio.run(close_all_session_runtimes())

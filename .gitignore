@@ -17,6 +17,7 @@ __pycache__/
 .DS_Store
 
 /sessions/
+/.skills/
 /scripts/manual-tests/files/
 
 AGENTS.md

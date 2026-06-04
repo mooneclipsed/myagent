@@ -9,7 +9,7 @@ The target architecture separates platform orchestration from framework executio
 - Runtime init prepares agent configuration, capabilities, workspace, storage, and framework services.
 - Chat execution creates or acquires a session-isolated agent execution object from the immutable runtime profile.
 - Frontend-owned session IDs are usable across runtime replacements within the same tenant.
-- Cross-framework replay can use `standard_messages` in a future optional transcript store, but the first implementation should rely on framework-private session state.
+- Cross-framework replay is deferred. The first implementation relies on framework-private session state.
 
 ## Runtime Lifecycle
 
@@ -18,6 +18,7 @@ init(runtime_id)
   -> close active runtime if present
   -> delete runtime workspace
   -> create runtime workspace
+  -> resolve framework adapter from framework
   -> resolve model_config from request or environment
   -> resolve system_prompt and prompt_hash
   -> validate capabilities
@@ -49,19 +50,19 @@ It must not include one shared mutable agent memory object used by all sessions.
 ## Chat Lifecycle
 
 ```text
-chat(runtime_id, session_id, execution_config, messages)
+chat(runtime_id, session_id, execution_config, input)
   -> validate active runtime_id
   -> read AgentSpec from active RuntimeProfile
   -> load or create framework session state
-  -> optionally replay standard_messages if a future transcript store is enabled
   -> create or acquire session-isolated framework agent execution
   -> run framework agent/service
   -> stream platform events
-  -> optionally record standard_messages if a future transcript store is enabled
   -> let framework storage persist private memory/state
 ```
 
-Chat requires `session_id`. Optional `request_id` is returned in every streamed event when provided. If no tenant is provided, the session belongs to the default tenant namespace.
+Chat requires `session_id` and the current user input. It does not require the frontend to send full message history. Optional `request_id` is returned in every streamed event when provided. If no tenant is provided, the session belongs to the default tenant namespace.
+
+`/chat` is SSE-first in the first implementation, matching the v1 API behavior. During implementation, first verify whether AgentScope v2 Agent Service or `reply_stream` can provide the needed SSE shape. If it cannot, AgentOps should own the FastAPI SSE response and map AgentScope v2 stream/events into the platform event protocol.
 
 ## Storage Boundary
 
@@ -69,11 +70,15 @@ Framework-private storage is the primary storage boundary for the first implemen
 
 Framework-private storage owns the data needed by one framework to resume its own agent execution. For AgentScope v2, RedisStorage is the preferred storage for AgentScope memory, session state, and any framework-private agent state. These records should be treated as opaque by the platform and accessed through the framework adapter.
 
-`standard_messages` are not persisted by default because that would duplicate framework memory. A future optional transcript store can persist `standard_messages` for cross-framework replay if that requirement becomes concrete.
+AgentScope v2 session key mapping must be verified before implementation. The desired behavior is that frontend-supplied `session_id` is the stable conversation key. If AgentScope v2 requires additional keys such as user id, agent id, or service id, the AgentScope adapter owns that mapping and must keep it internal.
+
+`standard_messages` are not persisted by default because that would duplicate framework memory.
 
 The normal same-framework path should load conversation history from framework-private session state. `standard_messages` must not be injected again when framework memory already contains the relevant history.
 
-When a runtime changes, the adapter should check whether framework-private state is compatible with the active runtime profile. Compatibility can start with `framework`, `prompt_hash`, and relevant capability or agent spec fingerprints. If compatible, use framework-private state. If missing or incompatible, the first implementation should fail clearly or start from empty history unless optional transcript replay has been implemented.
+Runtime/session compatibility means deciding whether stored framework-private memory for a `session_id` can be reused by the newly initialized runtime. This matters when the same frontend session is used after runtime init replaces the active profile.
+
+The first implementation should keep the rule simple: reuse session state only when the stored state was created by the same `framework`. If the state is missing or was created by a different framework, create a fresh framework session state for that `session_id`. Do not replay `standard_messages` in the first implementation.
 
 This avoids storing the same conversation twice while leaving a clear extension point for future cross-framework replay.
 
@@ -81,7 +86,11 @@ This avoids storing the same conversation twice while leaving a clear extension 
 
 The workspace is runtime-scoped and keyed by `runtime_id`. It contains runtime-local skill files, generated artifacts, and tool-visible files.
 
+In the Pod runtime, the default workspace root should be under `/app`, matching the Docker image `WORKDIR /app`. Use an environment variable such as `AGENTOPS_WORKSPACE_ROOT` to override it. A reasonable container default is `/app/workspaces`; local development can use a project-relative workspace root.
+
 Chat requests can reference the active workspace, but they do not own it. Reinitializing the runtime deletes and rebuilds the workspace.
+
+Workspace cleanup is fail-fast. If init cannot delete or recreate the runtime workspace, init should fail and the process may exit rather than continue with stale files.
 
 ## Observability Boundary
 

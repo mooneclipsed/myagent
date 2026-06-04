@@ -28,7 +28,8 @@ This document set defines the planned v2 refactor for AgentOps. The goal is to m
 - Public API does not require a `run_id`; optional `request_id` is used for client correlation.
 - Runtime init owns `model_config` and `system_prompt` through an immutable `AgentSpec`.
 - AgentScope v2 RedisStorage is the preferred framework storage for AgentScope sessions and memory.
-- The platform uses frontend-supplied `session_id` as the session reference. `standard_messages` are the platform message format, but they are not persisted by default in the first implementation.
+- The platform uses frontend-supplied `session_id` as the session reference. `StandardMessage` is the platform message format, but `standard_messages` are not persisted by default in the first implementation.
+- `/chat` remains SSE-first in the first implementation. Use AgentScope v2 native streaming/service support if it fits the API contract; otherwise implement FastAPI SSE in AgentOps.
 
 ## Reference Material
 

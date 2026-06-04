@@ -1,6 +1,10 @@
 # Framework Ports
 
-Framework ports define the minimal interface between AgentOps platform code and a concrete agent framework.
+Framework ports define the minimal interface between AgentOps orchestration code and a concrete agent framework.
+
+Framework selection is explicit. Init requests provide a framework value such as `agentscope`; in this design, `agentscope` means AgentScope v2. `frameworks/registry.py` resolves that value to the concrete AgentScope v2 adapter. The first implementation should not use dynamic plugin discovery.
+
+Unknown framework values must fail validation with a clear message such as `Framework '<name>' does not exist.`
 
 ## FrameworkRuntimePort
 
@@ -44,7 +48,7 @@ Responsibilities:
 
 - Register local tools.
 - Connect and register MCP servers.
-- Load local and remote skills.
+- Load skills. Remote skills are downloaded during init and passed to the adapter as local runtime workspace paths.
 - Return normalized capability summaries.
 
 Expected operations:
@@ -60,13 +64,13 @@ Responsibilities:
 
 - Load framework-private session state.
 - Save framework-private session state.
-- Replay `standard_messages` only if a future optional transcript store is enabled.
+- Create fresh framework session state when saved state is missing or incompatible.
 
 Expected operations:
 
 - `load_session`
 - `save_session`
-- `replay_standard_messages` when optional transcript replay exists.
+- `create_session`
 
 ## ObservabilityPort
 
@@ -89,7 +93,9 @@ The AgentScope v2 adapter is responsible for mapping platform runtime, workspace
 Implementation must verify:
 
 - RedisStorage support for session and memory persistence.
+- Mapping of frontend `session_id` into AgentScope v2 session, user, agent, or service identifiers.
 - Agent Service event stream shape.
+- Whether AgentScope v2 native service/stream support can satisfy AgentOps `/chat` SSE; otherwise AgentOps owns FastAPI SSE conversion.
 - Workspace binding behavior.
 - Tool, MCP, and skill registration APIs.
 - Trace metadata behavior in AgentScope Studio and Phoenix.

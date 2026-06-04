@@ -16,15 +16,16 @@ Validation:
 
 ## Phase 2: Platform Schemas
 
-- Add Pydantic models for `RuntimeProfile`, `AgentSpec`, `ExecutionConfig`, `standard_messages`, capability envelope, workspace refs, and platform events.
+- Add Pydantic models for `RuntimeProfile`, `AgentSpec`, `ExecutionConfig`, `StandardMessage`, capability envelope, workspace refs, and platform events.
 - Keep schemas framework-neutral.
 - Add unit tests for validation rules.
 
 Validation:
 
 - Unknown capability types fail validation.
-- Secrets are excluded from events and `standard_messages`.
+- Secrets are excluded from events and `StandardMessage`.
 - `session_id` is required for chat schemas.
+- Chat request uses `input` for the current user input and does not require full history.
 
 ## Phase 3: Runtime And Workspace Lifecycle
 
@@ -42,6 +43,8 @@ Validation:
 - Replace v1 `AgentApp`, `ReActAgent`, `Toolkit`, session, MCP, and tracing integration with AgentScope v2 equivalents.
 - Use AgentScope v2 RedisStorage for framework session and memory state.
 - Map AgentScope v2 stream objects into platform events.
+- Verify AgentScope v2 session id mapping before implementing storage behavior.
+- Verify whether AgentScope v2 native service/streaming can satisfy `/chat` SSE; otherwise implement FastAPI SSE in AgentOps.
 
 Validation:
 
@@ -51,15 +54,15 @@ Validation:
 
 ## Phase 5: Optional Transcript Replay
 
-- Keep `standard_messages` as the platform message format.
+- Keep `StandardMessage` as the platform message format.
 - Add persistence only if cross-framework replay becomes a concrete requirement.
-- Replay `standard_messages` only when the optional transcript store exists and framework-private session state is missing or incompatible.
+- Do not replay `standard_messages` in the first implementation.
 - Keep framework-private state as the preferred same-framework recovery path.
 
 Validation:
 
 - Same tenant/session can continue after runtime replacement.
-- Same-framework replay works from framework-private session state. Optional cross-framework replay is explicitly deferred.
+- Same-framework replay works from framework-private session state. Missing or incompatible state creates a fresh framework session. Optional cross-framework replay is explicitly deferred.
 
 ## Phase 6: API And UAT Refresh
 

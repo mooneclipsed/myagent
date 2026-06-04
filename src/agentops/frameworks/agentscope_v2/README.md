@@ -24,3 +24,4 @@ Important implementation notes:
 - Runtime-level resources are built by `AgentScopeRuntimeBuilder`.
 - `AgentScopeRuntimeBuilder.close` closes connected MCP clients in reverse order.
 - Agent construction for chat is still separate from runtime-level resource construction so one mutable agent state is not shared across sessions.
+- `agentops.orchestration.runtime_factory.create_runtime_manager()` assembles `RuntimeManager` with `AgentScopeRuntimeBuilder` for `framework="agentscope"`.

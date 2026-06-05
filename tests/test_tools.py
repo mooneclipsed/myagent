@@ -17,6 +17,10 @@ from agentops.tools.registry import (
 )
 
 
+def _text(response: ToolResponse) -> str:
+    return response.content[0].text
+
+
 class TestToolRegistration:
     """Tests for toolkit registration per D-01 (framework-native) and D-02 (startup-time)."""
 
@@ -55,9 +59,8 @@ class TestToolResponseFormat:
         result = get_weather(city="London")
         assert isinstance(result, ToolResponse)
         assert len(result.content) > 0
-        assert isinstance(result.content[0], dict)
-        assert result.content[0]["type"] == "text"
-        assert "London" in result.content[0]["text"]
+        assert result.content[0].type == "text"
+        assert "London" in _text(result)
 
     def test_get_weather_is_deterministic(self):
         """Same input produces same output (no external API calls)."""
@@ -65,7 +68,7 @@ class TestToolResponseFormat:
 
         r1 = get_weather(city="Tokyo")
         r2 = get_weather(city="Tokyo")
-        assert r1.content[0]["text"] == r2.content[0]["text"]
+        assert _text(r1) == _text(r2)
 
     def test_calculate_add(self):
         """calculate performs addition correctly."""
@@ -73,7 +76,7 @@ class TestToolResponseFormat:
 
         result = calculate(operation="add", a=2, b=3)
         assert isinstance(result, ToolResponse)
-        assert "5" in result.content[0]["text"]
+        assert "5" in _text(result)
 
     def test_calculate_divide_by_zero(self):
         """calculate handles division by zero gracefully."""
@@ -81,7 +84,7 @@ class TestToolResponseFormat:
 
         result = calculate(operation="divide", a=10, b=0)
         assert isinstance(result, ToolResponse)
-        assert "Error" in result.content[0]["text"] or "division by zero" in result.content[0]["text"]
+        assert "Error" in _text(result) or "division by zero" in _text(result)
 
     def test_calculate_unknown_operation(self):
         """calculate handles unknown operations gracefully."""
@@ -89,7 +92,7 @@ class TestToolResponseFormat:
 
         result = calculate(operation="modulo", a=10, b=3)
         assert isinstance(result, ToolResponse)
-        assert "Error" in result.content[0]["text"] or "unknown" in result.content[0]["text"]
+        assert "Error" in _text(result) or "unknown" in _text(result)
 
     def test_run_platform_report_returns_script_output(self):
         """run_platform_report executes the bundled script and returns raw stdout."""
@@ -97,7 +100,7 @@ class TestToolResponseFormat:
 
         result = run_platform_report()
         assert isinstance(result, ToolResponse)
-        text = result.content[0]["text"]
+        text = _text(result)
         assert "EXAMPLE_SKILL_SCRIPT_OK" in text
         assert "platform=AgentScope Validation Platform" in text
         assert "backends=json,redis" in text

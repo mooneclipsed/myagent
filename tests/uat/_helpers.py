@@ -262,6 +262,10 @@ def _v2_tool_name(name: str) -> str:
         "run_local_shell": "bash",
         "read_file": "read",
         "edit_file": "write",
+        "get_weather": "local:get_weather",
+        "calculate": "local:calculate",
+        "run_platform_report": "local:run_platform_report",
+        "summarize_platform_callable": "local:summarize_platform_callable",
     }
     return aliases.get(name, name)
 

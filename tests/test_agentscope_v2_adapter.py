@@ -1,9 +1,11 @@
 """Tests for AgentScope v2 adapter construction helpers."""
 
 from pathlib import Path
+import asyncio
 
 import pytest
 from agentscope.mcp import MCPClient
+from agentscope.permission import PermissionBehavior
 from agentscope.model import OpenAIChatModel
 from agentscope.tool import Toolkit
 
@@ -72,6 +74,23 @@ def test_build_toolkit_maps_tools_skills_and_mcp(tmp_path: Path) -> None:
     assert isinstance(toolkit, Toolkit)
     assert any(isinstance(mcp, MCPClient) for mcp in build_mcp_clients(request))
     assert resolve_skill_path(".skills/", tmp_path) == str(tmp_path / ".skills")
+
+
+def test_build_toolkit_maps_project_local_function_tools(tmp_path: Path) -> None:
+    request = RuntimeInitRequest(
+        runtime_id="runtime-1",
+        capabilities=[
+            {"type": "tool", "name": "get_weather", "config": {"tool_name": "local:get_weather"}},
+        ],
+    )
+
+    toolkit = build_toolkit(request, tmp_path)
+    tool = toolkit.tool_groups[0].tools[0]
+
+    assert tool.name == "get_weather"
+    assert tool.is_read_only is True
+    decision = asyncio.run(tool.check_permissions({}, None))
+    assert decision.behavior == PermissionBehavior.ALLOW
 
 
 def test_build_toolkit_rejects_unknown_tool(tmp_path: Path) -> None:

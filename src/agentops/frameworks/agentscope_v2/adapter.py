@@ -15,6 +15,8 @@ from agentops.capabilities.v2_models import MCPCapabilityConfig
 from agentops.orchestration.models import AgentSpec, ModelConfig, RuntimeProfile
 from agentops.orchestration.observability import hash_system_prompt
 
+from .local_tools import build_local_function_tool
+
 
 class AgentScopeV2AdapterError(RuntimeError):
     """Raised when AgentScope v2 adapter construction fails."""
@@ -90,6 +92,11 @@ def resolve_skill_path(path: str, workspace_path: Path) -> str:
 
 
 def _build_builtin_tool(tool_name: str):
+    if tool_name.startswith("local:"):
+        try:
+            return build_local_function_tool(tool_name.removeprefix("local:"))
+        except KeyError as exc:
+            raise AgentScopeV2AdapterError(str(exc)) from exc
     if tool_name == "bash":
         return Bash()
     if tool_name == "read":

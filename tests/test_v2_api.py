@@ -178,6 +178,43 @@ def test_v2_chat_streams_platform_events() -> None:
     assert events[1]["payload"]["status"] == "completed"
 
 
+def test_v2_chat_stream_events_include_model_and_prompt_metadata() -> None:
+    client = _client()
+    init_response = client.post(
+        "/v2/runtimes/init",
+        json={
+            "runtime_id": "runtime-1",
+            "model_config": {
+                "model_name": "gpt-4o-mini",
+                "api_key": "secret",
+                "base_url": "http://localhost:9999/v1",
+            },
+            "system_prompt": "You are concise.",
+        },
+    )
+    assert init_response.status_code == 200, init_response.text
+
+    response = client.post(
+        "/v2/chat",
+        json={
+            "runtime_id": "runtime-1",
+            "session_id": "session-1",
+            "input": "hello",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    events = _parse_sse_events(response.text)
+    assert events
+    for event in events:
+        assert event["effective_model"] == {
+            "model_name": "gpt-4o-mini",
+            "base_url_host": "localhost:9999",
+        }
+        assert event["prompt_hash"].startswith("sha256:")
+        assert "secret" not in json.dumps(event)
+
+
 def test_v2_chat_requires_initialized_runtime() -> None:
     client = _client()
 

@@ -95,6 +95,19 @@ def test_startup_path_does_not_depend_on_env_example_file(configured_env, clear_
     assert not (tmp_path / ".env.example").exists()
 
 
+def test_main_registers_v2_routes_only(configured_env, clear_settings_cache):
+    from fastapi.testclient import TestClient
+    from agentops.main import app
+
+    with TestClient(app) as client:
+        v2_response = client.post("/v2/chat", json={"runtime_id": "runtime-1", "session_id": "session-1", "input": "hi"})
+        legacy_response = client.post("/chat", json={})
+
+    assert v2_response.status_code == 400
+    assert v2_response.json()["detail"] == "Runtime has not been initialized."
+    assert legacy_response.status_code == 404
+
+
 def test_main_uses_port_from_settings(configured_env, clear_settings_cache, monkeypatch):
     monkeypatch.setenv("PORT", "8211")
 

@@ -7,12 +7,17 @@
 需要 .env 中配置了有效的 MODEL_NAME, MODEL_API_KEY, MODEL_BASE_URL。
 """
 
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 ReActAgent session state structure test.",
+    allow_module_level=True,
+)
+
 import asyncio
 import json
 import os
 import tempfile
-
-import pytest
 
 from agentscope.agent import ReActAgent
 from agentscope.formatter import OpenAIChatFormatter

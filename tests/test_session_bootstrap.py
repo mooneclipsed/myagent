@@ -1,11 +1,17 @@
 """Tests for session bootstrap MCP runtime lifecycle and routing."""
 
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 bootstrap/tracing contract; covered by agentscope_v2 API, execution, storage, and event mapping tests.",
+    allow_module_level=True,
+)
+
 import asyncio
 import json
 from unittest.mock import AsyncMock, Mock, patch
 
 import agentscope
-import pytest
 from agentscope.model import ChatResponse
 from agentscope.message import Msg
 from agentscope.tracing._extractor import _get_common_attributes

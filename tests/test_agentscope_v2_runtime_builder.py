@@ -93,3 +93,28 @@ def test_runtime_builder_closes_connected_clients_on_failure(tmp_path: Path) -> 
     connected.close.assert_awaited_once_with(ignore_errors=True)
     failing.close.assert_not_awaited()
     assert builder.get_resources("runtime-1") is None
+
+
+def test_runtime_builder_closes_mcp_clients_in_lifo_order(tmp_path: Path) -> None:
+    builder = AgentScopeRuntimeBuilder()
+    request = RuntimeInitRequest(runtime_id="runtime-1")
+    close_order: list[str] = []
+
+    first = FakeMCPClient("first")
+    second = FakeMCPClient("second")
+
+    async def close_first(*, ignore_errors: bool = True) -> None:
+        close_order.append("first")
+
+    async def close_second(*, ignore_errors: bool = True) -> None:
+        close_order.append("second")
+
+    first.close = AsyncMock(side_effect=close_first)
+    second.close = AsyncMock(side_effect=close_second)
+
+    with patch("agentops.frameworks.agentscope_v2.runtime.build_mcp_clients", return_value=[first, second]):
+        asyncio.run(builder.build(request, tmp_path))
+
+    asyncio.run(builder.close(_profile("runtime-1")))
+
+    assert close_order == ["second", "first"]

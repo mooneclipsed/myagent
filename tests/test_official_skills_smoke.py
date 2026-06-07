@@ -1,8 +1,11 @@
 """Smoke tests for bundled official example skills."""
 
+import asyncio
 from pathlib import Path
 
-from agentops.application.runtime_service import get_active_runtime_profile
+from agentops.api.schemas import RuntimeInitRequest
+from agentops.api.v2 import V2RuntimeApiService
+from agentops.config.settings import Settings
 
 SELECTED_SKILLS = [
     "doc-coauthoring",
@@ -15,28 +18,30 @@ SELECTED_SKILLS = [
 ]
 
 
-def test_bootstrap_selected_official_skills(client):
+def test_bootstrap_selected_official_skills() -> None:
     base = Path(__file__).resolve().parents[1] / "skills"
-    payload = {
-        "skills": [
+    service = V2RuntimeApiService(settings=Settings(
+        model_name="test-model",
+        model_api_key="test-key",
+        model_base_url="http://localhost:9999/v1",
+    ))
+    request = RuntimeInitRequest(
+        runtime_id="official-skills",
+        capabilities=[
             {
-                "skill_dir": str((base / name).resolve()),
+                "type": "skill",
+                "name": name,
+                "config": {"path": str((base / name).resolve())},
             }
             for name in SELECTED_SKILLS
         ],
-        "mcp_servers": [],
-    }
+    )
 
-    response = client.post("/runtimes/init", json=payload)
+    response = asyncio.run(service.initialize(request))
 
-    assert response.status_code == 200, response.text
-    body = response.json()
-    assert [item["name"] for item in body["skills"]] == SELECTED_SKILLS
-    assert all(item["structured_tools"] == [] for item in body["skills"])
-
-    runtime = get_active_runtime_profile()
-    assert runtime is not None
-    assert set(runtime.skill_registry.skills) == set(SELECTED_SKILLS)
-    assert "read_file" in runtime.toolkit.tools
-    assert "edit_file" in runtime.toolkit.tools
-    assert "run_local_shell" in runtime.toolkit.tools
+    assert [item.name for item in response.capabilities] == SELECTED_SKILLS
+    resources = service.builder.get_resources("official-skills")
+    assert resources is not None
+    loaders = resources.toolkit.tool_groups[0].skills_or_loaders
+    assert {Path(loader.directory).name for loader in loaders} == set(SELECTED_SKILLS)
+    asyncio.run(service.close())

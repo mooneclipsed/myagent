@@ -1,5 +1,12 @@
 """Integration-style tests for skill bootstrap and process flow."""
 
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 skill process flow; official skill v2 bootstrap coverage lives in test_official_skills_smoke.",
+    allow_module_level=True,
+)
+
 from unittest.mock import patch
 
 from agentscope.message import Msg

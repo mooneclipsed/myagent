@@ -13,17 +13,12 @@ from agentops.tools.native_tools import (
 )
 
 
-def _text(response: ToolResponse) -> str:
-    return response.content[0].text
-
-
 def test_read_file_reads_repo_file():
     reader = make_repo_file_reader()
     response = asyncio.run(reader("src/agentops/tools/examples.py", [1, 5]))
 
     assert isinstance(response, ToolResponse)
-    assert "The content of" in _text(response)
-    assert "Example tool functions" in _text(response)
+    assert "Example tool functions" in response.content[0].text
 
 
 def test_edit_file_writes_repo_file(tmp_path):
@@ -40,8 +35,7 @@ def test_run_local_shell_returns_stdout_from_selected_shell():
     response = asyncio.run(shell_runner("printf skill-shell-ok", shell="bash"))
 
     assert isinstance(response, ToolResponse)
-    text = _text(response)
-    assert "<returncode>0</returncode>" in text
+    text = response.content[0].text
     assert "skill-shell-ok" in text
 
 

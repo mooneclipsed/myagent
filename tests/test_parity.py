@@ -3,6 +3,14 @@
 Validates that the same session data produces identical conversation
 content when resumed from JSON and Redis backends.
 """
+
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 session contract; covered by agentscope_v2 session storage tests.",
+    allow_module_level=True,
+)
+
 import asyncio
 
 import fakeredis.aioredis

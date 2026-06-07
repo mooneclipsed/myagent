@@ -6,11 +6,11 @@ import json
 import os
 import shutil
 
-from agentscope.message import TextBlock
 from agentscope.tool import (
     Bash,
     FunctionTool,
     Read,
+    ToolChunk,
     ToolResponse,
     Toolkit,
     Write,
@@ -25,10 +25,10 @@ def make_repo_file_reader() -> callable:
     """Create a repo-bounded file-reading tool wrapper."""
 
     async def read_file(file_path: str, ranges: list[int] | None = None) -> ToolResponse:
-        path = _absolute_path(file_path)
-        offset, limit = _line_window(ranges)
-        chunk = await Read()(file_path=path, offset=offset, limit=limit)
-        return _response_from_content(f"The content of {file_path}:\n{_chunk_text(chunk)}")
+        path = _resolve_tool_path(file_path)
+        offset = ranges[0] if ranges else 1
+        limit = ranges[1] - ranges[0] + 1 if ranges and len(ranges) > 1 else 2000
+        return _to_tool_response(await Read()(file_path=path, offset=offset, limit=limit))
 
     read_file.__name__ = "read_file"
     read_file.__doc__ = "Read a local text file from the repository."
@@ -43,9 +43,9 @@ def make_repo_file_editor() -> callable:
         content: str,
         ranges: list[int] | None = None,
     ) -> ToolResponse:
-        del ranges
-        chunk = await Write()(file_path=_absolute_path(file_path), content=content)
-        return _response_from_content(_chunk_text(chunk))
+        if ranges is not None:
+            raise ValueError("Partial file edits are not supported by the AgentScope v2 Write tool.")
+        return _to_tool_response(await Write()(file_path=_resolve_tool_path(file_path), content=content))
 
     edit_file.__name__ = "edit_file"
     edit_file.__doc__ = "Write or update a local text file in the repository."
@@ -66,8 +66,9 @@ def make_shell_runner() -> callable:
         chunks = []
         async for chunk in Bash()(command=wrapped, timeout=timeout * 1000):
             chunks.append(chunk)
-        text = "\n".join(_chunk_text(chunk) for chunk in chunks)
-        return _response_from_content(f"<returncode>0</returncode>\n{text}")
+        if not chunks:
+            return ToolResponse()
+        return _to_tool_response(chunks[-1])
 
     run_local_shell.__name__ = "run_local_shell"
     run_local_shell.__doc__ = (
@@ -109,33 +110,27 @@ def _quote_powershell_string(value: str) -> str:
 
 def register_native_tools(toolkit: Toolkit) -> None:
     """Register native file and shell capability tools for a runtime-owned toolkit."""
-    toolkit.tool_groups[0].tools.extend(
-        [
-            FunctionTool(make_repo_file_reader(), name="read_file"),
-            FunctionTool(make_repo_file_editor(), name="edit_file"),
-            FunctionTool(make_shell_runner(), name="run_local_shell"),
-        ]
+    tools = [
+        FunctionTool(make_repo_file_reader()),
+        FunctionTool(make_repo_file_editor()),
+        FunctionTool(make_shell_runner()),
+    ]
+    if not toolkit.tool_groups:
+        toolkit.tool_groups.append(Toolkit(tools=tools).tool_groups[0])
+        return
+    toolkit.tool_groups[0].tools.extend(tools)
+
+
+def _resolve_tool_path(file_path: str) -> str:
+    path = os.path.abspath(file_path)
+    return path
+
+
+def _to_tool_response(result: ToolChunk | ToolResponse) -> ToolResponse:
+    if isinstance(result, ToolResponse):
+        return result
+    return ToolResponse(
+        content=result.content,
+        metadata=result.metadata,
+        id=result.id,
     )
-
-
-def _absolute_path(file_path: str) -> str:
-    if os.path.isabs(file_path):
-        return file_path
-    return os.path.abspath(file_path)
-
-
-def _line_window(ranges: list[int] | None) -> tuple[int, int]:
-    if not ranges:
-        return 1, 2000
-    if len(ranges) == 1:
-        return ranges[0], 1
-    start, end = ranges[0], ranges[1]
-    return start, max(end - start + 1, 1)
-
-
-def _chunk_text(chunk) -> str:
-    return "".join(getattr(block, "text", "") for block in chunk.content)
-
-
-def _response_from_content(text: str) -> ToolResponse:
-    return ToolResponse(content=[TextBlock(type="text", text=text)])

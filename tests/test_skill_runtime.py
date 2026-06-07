@@ -4,7 +4,7 @@ from pathlib import Path
 
 from agentops.runtime.skill_runtime import register_configured_skills
 from agentops.config.runtime_models import SkillConfig
-from agentops.tools import create_base_toolkit
+from agentops.tools import create_base_toolkit, get_skill_paths, get_tool_names
 from agentops.tools.native_tools import register_native_tools
 
 
@@ -22,7 +22,7 @@ def test_register_configured_skills_registers_agentscope_skill():
     )
 
     assert "example-skill" in registry.skills
-    assert "example-skill" in toolkit.skills
+    assert EXAMPLE_SKILL_DIR in get_skill_paths(toolkit)
     assert registry.skills["example-skill"].skill_dir == EXAMPLE_SKILL_DIR
 
 
@@ -34,5 +34,6 @@ def test_skill_registration_does_not_auto_register_structured_tools():
     )
 
     assert registry.list_skill_summaries()[0].structured_tools == []
-    assert "run_platform_report" not in toolkit.tools
-    assert "summarize_platform_callable" not in toolkit.tools
+    tool_names = get_tool_names(toolkit)
+    assert "run_platform_report" not in tool_names
+    assert "summarize_platform_callable" not in tool_names

@@ -4,7 +4,7 @@ import logging
 import os
 from collections.abc import Callable
 
-from agentscope.tool import FunctionTool, Toolkit
+from agentscope.tool import Bash, Edit, FunctionTool, Read, Toolkit, Write
 
 from ..config.runtime_models import ToolConfig, ToolSummary
 from .examples import (
@@ -23,15 +23,14 @@ _example_skill_dir = os.path.normpath(
 
 def register_default_tools(target_toolkit: Toolkit) -> None:
     """Register the built-in deterministic tool functions."""
-    _register_function_tool(target_toolkit, get_weather, "get_weather")
-    _register_function_tool(target_toolkit, calculate, "calculate")
+    _append_tools(target_toolkit, [FunctionTool(get_weather), FunctionTool(calculate)])
 
 
 def register_legacy_example_skill_support(target_toolkit: Toolkit) -> None:
     """Register the bundled example skill and its legacy script tool."""
-    _register_function_tool(target_toolkit, run_platform_report, "run_platform_report")
+    _append_tools(target_toolkit, [FunctionTool(run_platform_report)])
     if os.path.isdir(_example_skill_dir):
-        target_toolkit.tool_groups[0].skills_or_loaders.append(_example_skill_dir)
+        _append_skills(target_toolkit, [_example_skill_dir])
         logger.info("Example agent skill registered from %s", _example_skill_dir)
 
 
@@ -41,7 +40,6 @@ def create_base_toolkit(*, include_legacy_example_skill_support: bool = True) ->
     register_default_tools(target_toolkit)
     if include_legacy_example_skill_support:
         register_legacy_example_skill_support(target_toolkit)
-    _install_legacy_views(target_toolkit)
     return target_toolkit
 
 
@@ -50,6 +48,10 @@ TOOL_REGISTRY: dict[str, Callable[..., object]] = {
     "calculate": calculate,
     "run_platform_report": run_platform_report,
     "summarize_platform_callable": summarize_platform_callable,
+    "bash": Bash,
+    "read": Read,
+    "write": Write,
+    "edit": Edit,
 }
 
 
@@ -76,35 +78,46 @@ def register_configured_tools(
     summaries: list[ToolSummary] = []
     for tc in tool_configs:
         func = TOOL_REGISTRY[tc.name]
-        _register_function_tool(target_toolkit, func, tc.name)
+        tool = _build_registered_tool(func)
+        _append_tools(target_toolkit, [tool])
         description = (func.__doc__ or "").strip().split("\n")[0]
         summaries.append(ToolSummary(name=tc.name, description=description))
 
     return summaries
 
 
-def _register_function_tool(
-    target_toolkit: Toolkit,
-    func: Callable[..., object],
-    name: str,
-) -> None:
-    target_toolkit.tool_groups[0].tools.append(FunctionTool(func, name=name))
-    _install_legacy_views(target_toolkit)
+def _build_registered_tool(func: Callable[..., object]):
+    if isinstance(func, type):
+        return func()
+    return FunctionTool(func)
 
 
-def _install_legacy_views(target_toolkit: Toolkit) -> None:
-    if not hasattr(target_toolkit, "tools"):
-        target_toolkit.tools = {}
-    target_toolkit.tools.clear()
-    target_toolkit.tools.update(
-        {tool.name: tool for tool in target_toolkit.tool_groups[0].tools}
-    )
-    if not hasattr(target_toolkit, "skills"):
-        target_toolkit.skills = {}
-    target_toolkit.skills.clear()
-    target_toolkit.skills.update(
-        {
-            os.path.basename(os.path.normpath(str(skill))): {"dir": str(skill)}
-            for skill in target_toolkit.tool_groups[0].skills_or_loaders
-        }
-    )
+def _append_tools(target_toolkit: Toolkit, tools: list) -> None:
+    if not target_toolkit.tool_groups:
+        target_toolkit.tool_groups.append(Toolkit(tools=tools).tool_groups[0])
+        return
+    target_toolkit.tool_groups[0].tools.extend(tools)
+
+
+def _append_skills(target_toolkit: Toolkit, skills_or_loaders: list[str]) -> None:
+    if not target_toolkit.tool_groups:
+        target_toolkit.tool_groups.append(Toolkit(skills_or_loaders=skills_or_loaders).tool_groups[0])
+        return
+    target_toolkit.tool_groups[0].skills_or_loaders.extend(skills_or_loaders)
+
+
+def get_tool_names(toolkit: Toolkit) -> list[str]:
+    """Return registered tool names from an AgentScope v2 toolkit."""
+    names: list[str] = []
+    for group in toolkit.tool_groups:
+        names.extend(tool.name for tool in group.tools)
+    return names
+
+
+def get_skill_paths(toolkit: Toolkit) -> list[str]:
+    """Return registered skill paths from an AgentScope v2 toolkit."""
+    paths: list[str] = []
+    for group in toolkit.tool_groups:
+        for skill in group.skills_or_loaders:
+            paths.append(str(getattr(skill, "directory", skill)))
+    return paths

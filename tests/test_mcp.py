@@ -4,6 +4,13 @@ Per D-06/D-07, structured tracing/observability is deferred.
 These tests verify MCP client connection lifecycle and FastMCP-backed server shape.
 """
 
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 MCP contract; covered by agentscope_v2 runtime builder tests.",
+    allow_module_level=True,
+)
+
 import asyncio
 import inspect
 

@@ -1,5 +1,12 @@
 """Tests for AgentScope session memory persistence helpers."""
 
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 memory helper; covered by agentscope_v2 session store tests.",
+    allow_module_level=True,
+)
+
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch

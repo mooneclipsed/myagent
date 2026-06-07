@@ -22,6 +22,7 @@ from agentops.orchestration.runtime_manager import RuntimeManager, RuntimeManage
 
 ExecutorFactory = Callable[..., AgentScopeSessionExecutor]
 SessionStoreProviderFactory = Callable[[Settings], AgentScopeSessionStoreProvider]
+RUNTIME_SERVICE_STATE_KEY = "agentops_v2_runtime_service"
 
 
 class V2RuntimeApiService:
@@ -119,6 +120,7 @@ class V2RuntimeApiService:
 def register_v2_routes(app, service: V2RuntimeApiService | None = None) -> None:
     """Register refactor-v2 routes on a FastAPI-compatible app."""
     runtime_service = service or V2RuntimeApiService()
+    setattr(app.state, RUNTIME_SERVICE_STATE_KEY, runtime_service)
 
     @app.post(
         "/v2/runtimes/init",

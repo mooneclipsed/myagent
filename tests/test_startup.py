@@ -117,7 +117,19 @@ def test_main_uses_port_from_settings(configured_env, clear_settings_cache, monk
     main = importlib.import_module("agentops.main")
 
     with monkeypatch.context() as patch_ctx:
-        patch_ctx.setattr(main, "app", type("FakeApp", (), {"run": lambda self, host, port: setattr(self, "called", (host, port))})())
+        calls = {}
+        patch_ctx.setattr(main.uvicorn, "run", lambda app, host, port: calls.update(app=app, host=host, port=port))
         settings = get_settings()
-        main.app.run(host="127.0.0.1", port=settings.port)
-        assert main.app.called == ("127.0.0.1", 8211)
+        main.uvicorn.run(main.app, host="127.0.0.1", port=settings.port)
+        assert calls == {"app": main.app, "host": "127.0.0.1", "port": 8211}
+
+
+def test_main_registers_v2_routes(configured_env, clear_settings_cache):
+    from agentops.main import app
+
+    routes = {route.path for route in app.routes}
+
+    assert "/v2/runtimes/init" in routes
+    assert "/v2/chat" in routes
+    assert "/runtimes/init" not in routes
+    assert "/chat" not in routes

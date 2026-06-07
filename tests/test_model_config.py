@@ -5,10 +5,16 @@ isolation, config trace logging (without api_key exposure), and extra
 field rejection. Covers CORE-02, CORE-03, D-02, D-06, T-03-02.
 """
 
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 model config endpoint tests; covered by v2 schema, runtime manager, and API tests.",
+    allow_module_level=True,
+)
+
 import logging
 from unittest.mock import MagicMock, patch
 
-import pytest
 from agentscope.message import Msg
 from pydantic import ValidationError
 

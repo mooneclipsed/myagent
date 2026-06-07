@@ -9,11 +9,17 @@ Tests validate the session-aware query handler contract:
 Uses mock runtime stream pattern from test_chat_stream.py to avoid real LLM calls.
 """
 
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 /chat session contract; covered by agentscope_v2 execution and storage tests.",
+    allow_module_level=True,
+)
+
 import json
 import os
 from unittest.mock import patch
 
-import pytest
 from agentscope.memory import InMemoryMemory
 from agentscope.message import Msg
 from agentscope.session import JSONSession

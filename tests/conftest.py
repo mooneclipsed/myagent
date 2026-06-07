@@ -12,11 +12,15 @@ def _clear_session_runtimes(request):
         yield
         return
 
-    from agentops.application.runtime_service import close_all_session_runtimes
+    from agentops.main import app
+    from agentops.api.v2 import RUNTIME_SERVICE_STATE_KEY
 
-    asyncio.run(close_all_session_runtimes())
+    runtime_service = getattr(app.state, RUNTIME_SERVICE_STATE_KEY, None)
+    if runtime_service is not None:
+        asyncio.run(runtime_service.close())
     yield
-    asyncio.run(close_all_session_runtimes())
+    if runtime_service is not None:
+        asyncio.run(runtime_service.close())
 
 
 @pytest.fixture

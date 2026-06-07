@@ -7,7 +7,7 @@ def test_uat_helper_converts_legacy_bootstrap_payload_to_v2_capabilities() -> No
     payload = _v2_runtime_payload(
         "session-1",
         {
-            "tools": [{"name": "read_file"}],
+            "tools": [{"name": "read"}],
             "mcp_servers": [
                 {
                     "name": "time",
@@ -24,7 +24,7 @@ def test_uat_helper_converts_legacy_bootstrap_payload_to_v2_capabilities() -> No
         "runtime_id": "session-1",
         "framework": "agentscope",
         "capabilities": [
-            {"type": "tool", "name": "read_file", "config": {"tool_name": "read"}},
+            {"type": "tool", "name": "read", "config": {"tool_name": "read"}},
             {
                 "type": "mcp",
                 "name": "time",

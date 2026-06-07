@@ -8,13 +8,12 @@ from fastapi import FastAPI
 
 from ..branding import build_startup_banner
 from ..config.settings import get_settings
-from ..application.runtime_service import close_all_session_runtimes
-
+from .v2 import RUNTIME_SERVICE_STATE_KEY
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def app_lifespan(_: FastAPI):
+async def app_lifespan(app: FastAPI):
     print(build_startup_banner())
 
     settings = get_settings()
@@ -40,16 +39,8 @@ async def app_lifespan(_: FastAPI):
 
     yield
 
-    await close_all_session_runtimes()
-
-    from ..sessions.backend import _session_backend, reset_session_backend
-
-    if _session_backend is not None and hasattr(_session_backend, "close"):
-        try:
-            await _session_backend.close()
-            logger.info("Redis session backend closed")
-        except Exception as e:
-            logger.warning("Error closing session backend: %s", e)
-        reset_session_backend()
+    runtime_service = getattr(app.state, RUNTIME_SERVICE_STATE_KEY, None)
+    if runtime_service is not None:
+        await runtime_service.close()
 
     logger.info("Application lifespan cleanup complete")

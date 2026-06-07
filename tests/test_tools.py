@@ -8,17 +8,13 @@ import pytest
 from agentscope.tool import Toolkit, ToolResponse
 
 from agentops.config.runtime_models import ToolConfig
-from agentops.tools import TOOL_REGISTRY, ToolRegistryError, register_configured_tools
+from agentops.tools import TOOL_REGISTRY, ToolRegistryError, get_skill_paths, get_tool_names, register_configured_tools
 from agentops.tools.registry import (
     TOOL_REGISTRY as REGISTRY_TOOL_REGISTRY,
     ToolRegistryError as RegistryToolRegistryError,
     create_base_toolkit as registry_create_base_toolkit,
     register_configured_tools as registry_register_configured_tools,
 )
-
-
-def _text(response: ToolResponse) -> str:
-    return response.content[0].text
 
 
 class TestToolRegistration:
@@ -28,11 +24,11 @@ class TestToolRegistration:
         """Toolkit singleton contains only default tools by default."""
         from agentops.tools import toolkit
 
-        tool_names = list(toolkit.tools.keys())
+        tool_names = get_tool_names(toolkit)
         assert "get_weather" in tool_names, f"get_weather not in {tool_names}"
         assert "calculate" in tool_names, f"calculate not in {tool_names}"
         assert "run_platform_report" not in tool_names
-        assert "example-skill" not in toolkit.skills
+        assert get_skill_paths(toolkit) == []
 
     def test_toolkit_is_singleton(self):
         """Toolkit imported from different paths is the same object (D-02: shared)."""
@@ -45,7 +41,7 @@ class TestToolRegistration:
         """Toolkit shared across requests — no per-request isolation needed."""
         from agentops.tools import toolkit
 
-        initial_count = len(toolkit.tools)
+        initial_count = len(get_tool_names(toolkit))
         assert initial_count >= 2, f"Expected at least 2 tools, got {initial_count}"
 
 
@@ -60,7 +56,7 @@ class TestToolResponseFormat:
         assert isinstance(result, ToolResponse)
         assert len(result.content) > 0
         assert result.content[0].type == "text"
-        assert "London" in _text(result)
+        assert "London" in result.content[0].text
 
     def test_get_weather_is_deterministic(self):
         """Same input produces same output (no external API calls)."""
@@ -68,7 +64,7 @@ class TestToolResponseFormat:
 
         r1 = get_weather(city="Tokyo")
         r2 = get_weather(city="Tokyo")
-        assert _text(r1) == _text(r2)
+        assert r1.content[0].text == r2.content[0].text
 
     def test_calculate_add(self):
         """calculate performs addition correctly."""
@@ -76,7 +72,7 @@ class TestToolResponseFormat:
 
         result = calculate(operation="add", a=2, b=3)
         assert isinstance(result, ToolResponse)
-        assert "5" in _text(result)
+        assert "5" in result.content[0].text
 
     def test_calculate_divide_by_zero(self):
         """calculate handles division by zero gracefully."""
@@ -84,7 +80,7 @@ class TestToolResponseFormat:
 
         result = calculate(operation="divide", a=10, b=0)
         assert isinstance(result, ToolResponse)
-        assert "Error" in _text(result) or "division by zero" in _text(result)
+        assert "Error" in result.content[0].text or "division by zero" in result.content[0].text
 
     def test_calculate_unknown_operation(self):
         """calculate handles unknown operations gracefully."""
@@ -92,7 +88,7 @@ class TestToolResponseFormat:
 
         result = calculate(operation="modulo", a=10, b=3)
         assert isinstance(result, ToolResponse)
-        assert "Error" in _text(result) or "unknown" in _text(result)
+        assert "Error" in result.content[0].text or "unknown" in result.content[0].text
 
     def test_run_platform_report_returns_script_output(self):
         """run_platform_report executes the bundled script and returns raw stdout."""
@@ -100,7 +96,7 @@ class TestToolResponseFormat:
 
         result = run_platform_report()
         assert isinstance(result, ToolResponse)
-        text = _text(result)
+        text = result.content[0].text
         assert "EXAMPLE_SKILL_SCRIPT_OK" in text
         assert "platform=AgentScope Validation Platform" in text
         assert "backends=json,redis" in text
@@ -119,6 +115,15 @@ class TestToolRegistry:
         assert "calculate" in TOOL_REGISTRY
         assert "run_platform_report" in TOOL_REGISTRY
         assert "summarize_platform_callable" in TOOL_REGISTRY
+        assert "read" in TOOL_REGISTRY
+        assert "write" in TOOL_REGISTRY
+        assert "edit" in TOOL_REGISTRY
+        assert "bash" in TOOL_REGISTRY
+
+    def test_registry_does_not_expose_v1_native_tool_aliases(self):
+        assert "read_file" not in TOOL_REGISTRY
+        assert "edit_file" not in TOOL_REGISTRY
+        assert "run_local_shell" not in TOOL_REGISTRY
 
     def test_registry_values_are_callable(self):
         for name, func in TOOL_REGISTRY.items():
@@ -126,7 +131,7 @@ class TestToolRegistry:
 
     def test_registry_create_base_toolkit_registers_default_tools(self):
         tk = registry_create_base_toolkit(include_legacy_example_skill_support=False)
-        tool_names = list(tk.tools.keys())
+        tool_names = get_tool_names(tk)
         assert "get_weather" in tool_names
         assert "calculate" in tool_names
         assert "run_platform_report" not in tool_names

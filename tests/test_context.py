@@ -5,6 +5,13 @@ sends a multi-turn messages array. No production code changes needed --
 agentscope-runtime natively handles list[Msg] input via ReActAgent.reply().
 """
 
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 multi-turn /chat contract; v2 chat uses current input plus framework-private session state.",
+    allow_module_level=True,
+)
+
 from unittest.mock import patch
 
 

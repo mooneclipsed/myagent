@@ -1,9 +1,15 @@
 """SSE streaming contract tests for the /chat query endpoint."""
 
+import pytest
+
+pytest.skip(
+    "Retired AgentScope v1 /chat stream contract; covered by /v2/chat tests.",
+    allow_module_level=True,
+)
+
 import json
 from unittest.mock import patch
 
-import pytest
 from agentscope.message import Msg
 
 

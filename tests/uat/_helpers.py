@@ -135,11 +135,9 @@ def parse_sse_events(response_text: str) -> list[dict]:
 def extract_text(events: list[dict]) -> str:
     texts = []
     for event in events:
-        payload = event.get("payload")
-        if isinstance(payload, dict) and payload.get("status") == "streaming":
-            delta = payload.get("delta")
-            if isinstance(delta, str):
-                texts.append(delta)
+        payload = event.get("payload", {})
+        if isinstance(payload, dict) and isinstance(payload.get("delta"), str):
+            texts.append(payload["delta"])
         delta = event.get("delta", {})
         if isinstance(delta, dict) and "text" in delta:
             texts.append(delta["text"])
@@ -151,15 +149,17 @@ def extract_text(events: list[dict]) -> str:
 
 
 def initialize_runtime(session_id: str, payload: dict) -> dict:
+    runtime_payload = _v2_runtime_payload(session_id, payload)
     resp = httpx.post(
         f"{SERVICE_URL}/v2/runtimes/init",
-        json=_v2_runtime_payload(session_id, payload),
+        json=runtime_payload,
         timeout=DEFAULT_TIMEOUT,
     )
     if resp.status_code != 200:
         print(f"  Runtime initialize FAILED ({resp.status_code}): {resp.text[:300]}", file=sys.stderr)
         sys.exit(1)
-    return _legacy_bootstrap_summary(resp.json())
+    body = resp.json()
+    return _to_legacy_runtime_summary(body)
 
 
 bootstrap = initialize_runtime
@@ -177,53 +177,35 @@ def chat(
         "session_id": session_id,
         "input": text,
     }
-    if tenant_id:
-        payload["tenant_id"] = tenant_id
     target_path = path or CHAT_PATH
     resp = httpx.post(f"{SERVICE_URL}{target_path}", json=payload, timeout=DEFAULT_TIMEOUT)
     if resp.status_code != 200:
         print(f"  Chat FAILED ({resp.status_code}): {resp.text[:300]}", file=sys.stderr)
         sys.exit(1)
     events = parse_sse_events(resp.text)
-    statuses = [e.get("status") for e in events if "status" in e]
-    payload_statuses = [
-        e.get("payload", {}).get("status")
+    statuses = [
+        e.get("status") or (e.get("payload") or {}).get("status")
         for e in events
-        if isinstance(e.get("payload"), dict) and "status" in e["payload"]
+        if e.get("status") or isinstance(e.get("payload"), dict)
     ]
-    if "completed" not in statuses and "completed" not in payload_statuses:
+    if "completed" not in statuses:
         print(f"  Chat did not complete. Statuses: {statuses}", file=sys.stderr)
-        if "failed" in statuses or "failed" in payload_statuses:
+        if "failed" in statuses:
             print(f"  Events: {json.dumps(events, ensure_ascii=False)[:500]}", file=sys.stderr)
         sys.exit(1)
     return ChatResult(text=extract_text(events), events=events)
 
 
-def _v2_runtime_payload(session_id: str, payload: dict) -> dict:
-    converted = {
-        "runtime_id": payload.get("runtime_id", session_id),
-        "tenant_id": payload.get("tenant_id"),
-        "framework": payload.get("framework", "agentscope"),
-        "model_config": payload.get("model_config"),
-        "system_prompt": payload.get("system_prompt"),
-        "capabilities": payload.get("capabilities", []),
-    }
-    capabilities = list(converted["capabilities"])
-
+def _v2_runtime_payload(runtime_id: str, payload: dict) -> dict:
+    capabilities = []
     for tool in payload.get("tools", []):
         name = tool["name"]
-        tool_name = _v2_tool_name(name)
-        capabilities.append(
-            {
-                "type": "tool",
-                "name": name,
-                "config": {"tool_name": tool_name},
-            }
-        )
-
+        tool_name = _TOOL_NAME_ALIASES.get(name, name)
+        capabilities.append({"type": "tool", "name": name, "config": {"tool_name": tool_name}})
     for server in payload.get("mcp_servers", []):
+        transport = server.get("transport") or server.get("type") or "stdio"
         config = {
-            "transport": server.get("transport") or server.get("type", "stdio"),
+            "transport": "streamable_http" if transport == "http" else transport,
             "command": server.get("command"),
             "args": server.get("args", []),
             "env": server.get("env", {}),
@@ -233,41 +215,44 @@ def _v2_runtime_payload(session_id: str, payload: dict) -> dict:
             "timeout": server.get("timeout", 30),
         }
         capabilities.append({"type": "mcp", "name": server["name"], "config": config})
-
     for skill in payload.get("skills", []):
-        capabilities.append(
-            {
-                "type": "skill",
-                "name": os.path.basename(os.path.normpath(skill["skill_dir"])),
-                "config": {"path": skill["skill_dir"]},
-            }
-        )
+        path = skill.get("path") or skill.get("skill_dir")
+        capabilities.append({"type": "skill", "name": os.path.basename(path.rstrip(os.sep)), "config": {"path": path}})
 
-    converted["capabilities"] = capabilities
-    return {key: value for key, value in converted.items() if value is not None}
-
-
-def _legacy_bootstrap_summary(body: dict) -> dict:
-    capabilities = body.get("capabilities", [])
-    return {
-        **body,
-        "tools": [{"name": item["name"]} for item in capabilities if item.get("type") == "tool"],
-        "mcp_servers": [{"name": item["name"]} for item in capabilities if item.get("type") == "mcp"],
-        "skills": [{"name": item["name"]} for item in capabilities if item.get("type") == "skill"],
+    model_config = payload.get("model_config")
+    runtime_payload = {
+        "runtime_id": payload.get("runtime_id") or runtime_id,
+        "framework": payload.get("framework", "agentscope"),
+        "tenant_id": payload.get("tenant_id"),
+        "model_config": model_config,
+        "system_prompt": payload.get("system_prompt"),
+        "capabilities": capabilities,
     }
+    return {key: value for key, value in runtime_payload.items() if value is not None}
 
 
-def _v2_tool_name(name: str) -> str:
-    aliases = {
-        "run_local_shell": "bash",
-        "read_file": "read",
-        "edit_file": "write",
-        "get_weather": "local:get_weather",
-        "calculate": "local:calculate",
-        "run_platform_report": "local:run_platform_report",
-        "summarize_platform_callable": "local:summarize_platform_callable",
-    }
-    return aliases.get(name, name)
+def _to_legacy_runtime_summary(body: dict) -> dict:
+    grouped = {"tools": [], "mcp_servers": [], "skills": []}
+    for capability in body.get("capabilities", []):
+        item = {"name": capability["name"]}
+        if capability["type"] == "skill":
+            item["structured_tools"] = []
+            grouped["skills"].append(item)
+        elif capability["type"] == "mcp":
+            grouped["mcp_servers"].append(item)
+        elif capability["type"] == "tool":
+            grouped["tools"].append(item)
+    return {**body, **grouped}
+
+
+_TOOL_NAME_ALIASES = {
+    "get_weather": "local:get_weather",
+    "calculate": "local:calculate",
+    "read": "read",
+    "write": "write",
+    "edit": "edit",
+    "bash": "bash",
+}
 
 
 def check(condition: bool, label: str, detail: str = "") -> None:
